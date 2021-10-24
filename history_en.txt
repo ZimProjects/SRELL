@@ -1,3 +1,24 @@
+20211023; version 3.000:
+  * Updated srell_ucfdata2.hpp and srell_updata.hpp to support Unicode
+    14.0.0.
+  * Updated unicode/updataout.cpp to support Unicode 14. (Support in
+    advance new script names that are expected to be available in RegExp
+    of ECMAScript 2022).
+  * Changed the type used to store a Unicode value when char32_t is not
+    available, from an "unsigned integer type with width of at least 21
+    bits" to a "one of at least 32 bits".
+  * Changed the type used to store a repetition count or character class
+    number when char32_t is not available, from "unsigned int" to
+    "unsigned integer type of at least 32-bit width".
+  * Added overflow check in the function that translates digits into a
+    numeric value. For example, while up to the previous version
+    /a{0,4294967297}/ was treated as /a{0,1}/ because of overflow when
+    the unsigned int type is 32-bit width, SRELL now throws error_brace
+    in cases like this.
+  * Fixed a bug that caused /[^;]*^;?/ not to match the beginning of an
+    input string when the multiline flag is not set.
+  * Implemented a very simple and limited entry point selector.
+
 20211004; version 2.930:
   * Added new typedefs whose prefix is u1632w- and support UTF-16 or
     UTF-32 depending on the value of WCHAR_MAX. (When 0xFFFF <=
@@ -5,7 +26,8 @@
     When 0x10FFFF <= WCHAR_MAX, u1632w- types are aliases of u32w-
     types).
   * Reduced the amount of memory used for Eytzinger layout search.
-  * Various improvements.
+  * Various improvements. (Some of them are based on suggestions to NIRE
+    by Marko Njezic).
 
 20210624; version 2.920:
   * Added a new optimisation for the quantifier '?' (I.e., {0,1}).
