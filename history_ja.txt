@@ -1,3 +1,9 @@
+20211025; version 3.001:
+  ・カウンタ分割を廃止。効果がないかむしろ若干速度が低下しているように見
+    えるため。
+  ・潜在的なバグを修正。
+  ・その他細かな改良など。
+
 20211023; version 3.000:
   ・srell_ucfdata2.hppとsrell_updata.hppとをUnicode 14.0.0対応に更新。
   ・unicode/updataout.cppをUnicode 14対応に更新（ECMAScript 2022で対応さ

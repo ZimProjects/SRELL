@@ -1,3 +1,9 @@
+20211025; version 3.001:
+  * Removed the code for splitting counter as it seemed to be no effect
+    or to make performance a bit worse.
+  * Fixed potential bugs.
+  * Minor improvements.
+
 20211023; version 3.000:
   * Updated srell_ucfdata2.hpp and srell_updata.hpp to support Unicode
     14.0.0.

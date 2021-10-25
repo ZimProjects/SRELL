@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 3.000
+**  SRELL (std::regex-like library) version 3.001
 **
 **  Copyright (c) 2012-2021, Nozomu Katoo. All rights reserved.
 **
@@ -5121,34 +5121,37 @@ private:
 			atom.number = this->number_of_repeats;
 			++this->number_of_repeats;
 
+			const state_size_type org1stpos = (piece.size() >= 2 && piece[0].type == st_increment_counter) ? 2 : 0;
+
 			if (piece_is_noncapturinggroup_contaning_capturinggroup)
-				atom.quantifier = firstatom.quantifier;
+				atom.quantifier = piece[org1stpos].quantifier;
 			else
 				atom.quantifier.set(1, 0);
 
-			const state_size_type pos = (piece.size() >= 2 && piece[0].type == st_increment_counter) ? 2 : 0;
-
-			atom.type  = st_repeat_in_push;
-			atom.next1 = 2;
-			atom.next2 = 1;
-//			piece_with_quantifier.push_back(atom);
-			piece.insert(pos, atom);
-
-			atom.type  = st_repeat_in_pop;
+			atom.type = st_repeat_in_pop;
 			atom.next1 = 0;
 			atom.next2 = 0;
-//			piece_with_quantifier.push_back(atom);
-			piece.insert(pos + 1, atom);
+			piece.insert(org1stpos, atom);
+
+			atom.type = st_repeat_in_push;
+			atom.next1 = 2;
+			atom.next2 = 1;
+			piece.insert(org1stpos, atom);
 
 			atom.type  = st_check_0_width_repeat;
-//			atom.next1 = 0 - static_cast<std::ptrdiff_t>(piece.size()) - 3;	//  3 for push, pop, and this. Points to *1.
 			atom.next1 = 0 - static_cast<std::ptrdiff_t>(piece.size()) - 1;	//  Points to *1.
 			atom.next2 = 1;
 			piece.push_back(atom);
-				//  greedy:  1.epsilon or check_counter(2|6),
-				//  !greedy: 1.epsilon or check_counter(6|2),
+				//  greedy:  1.epsilon(2|6),
+				//  !greedy: 1.epsilon(6|2),
 				//    2.repeat_in_push(4|3), 3.repeat_in_pop(0|0), 4.piece,
-				//    5.check_0_width_repeat(1|0), 6.OutOfLoop.
+				//    5.check_0_width_repeat(1|6), 6.OutOfLoop.
+				//  or
+				//  greedy:  1.check_counter(2|8),
+				//  !greedy: 1.check_counter(8|2),
+				//    2.increment_counter(4|3), 3.decrement_counter(0|0)
+				//    4.repeat_in_push(6|5), 5.repeat_in_pop(0|0), 6.piece,
+				//    7.check_0_width_repeat(1|8), 8.OutOfLoop.
 		}
 		piece_with_quantifier += piece;
 	}
@@ -6007,16 +6010,17 @@ private:
 				}
 				break;
 
-			case st_bol:
 			case st_eol:
-				if (subsequent)
-				{
-					if (is_multiline())
-						nextcharclass.merge(this->character_class[re_character_class::newline]);
-					else
-						nextcharclass.set_solerange(range_pair_helper(0, constants::unicode_max_codepoint));
-				}
+				if (subsequent && is_multiline())
+					nextcharclass.merge(this->character_class[re_character_class::newline]);
+
 				break;
+
+			case st_bol:
+				if (!subsequent)
+					break;
+
+				//@fallthrough@
 
 			case st_boundary:
 				if (subsequent)
@@ -6209,14 +6213,6 @@ private:
 				}
 				break;
 
-#if !defined(SRELLDBG_NO_SPLIT_COUNTER)
-				//  check_counter, increment_counter, decrement_counter, char_or_class?
-			case st_check_counter:
-				if (!curstate.quantifier.is_same() && (cur + 4 < this->NFA_states.size()) && is_exclusive_sequence(cur + 3))
-					split_counter(cur);
-				break;
-#endif
-
 			default:;
 			}
 		}
@@ -6325,76 +6321,6 @@ private:
 		for (std::ptrdiff_t count = 0; count < len; ++count)
 			this->NFA_states.insert(pos, newstate);
 	}
-
-#if !defined(SRELLDBG_NO_ASTERISK_OPT)
-
-	void split_counter(typename state_array::size_type &cur)
-	{
-		insert_at(cur + 1, 4);
-			//  check_counter, epsilon x 4, increment_counter, decrement_counter, char_or_class
-		state_type &cur_chkcnt = this->NFA_states[cur];	//  check_counter.
-		state_type &new_inccnt = this->NFA_states[cur + 1];	//  Copy of increment_counter (cur_inccnt).
-		state_type &new_deccnt = this->NFA_states[cur + 2];	//  Copy of decrement_counter (cur_deccnt).
-		state_type &new_chorcl = this->NFA_states[cur + 3];	//  Copy of char or class (cur_chorcl).
-		state_type &new_chkcnt = this->NFA_states[cur + 4];	//  Copy of check_counter (cur).
-		state_type &cur_inccnt = this->NFA_states[cur + 5];	//  increment_counter.
-		state_type &cur_deccnt = this->NFA_states[cur + 6];	//  decrement_counter.
-		state_type &cur_chorcl = this->NFA_states[cur + 7];	//  character or class.
-
-		cur_chorcl.next1 += 4;
-//		cur_chorcl.next2 = 0;
-
-		cur_chkcnt.next1 = 1;
-		cur_chkcnt.next2 = 4;
-		cur_chkcnt.quantifier.is_greedy = true;
-
-		new_chkcnt = cur_chkcnt;
-
-		if (new_chkcnt.quantifier.atleast <= 4)
-		{
-			if (new_chkcnt.quantifier.atleast > 0)
-			{
-				cur_chkcnt = cur_chorcl;
-				cur_chkcnt.next1 = 1;
-//				cur_chkcnt.next2 = 0;
-				cur_chkcnt.quantifier.reset();
-
-				if (new_chkcnt.quantifier.atleast > 1)
-				{
-					new_inccnt = cur_chkcnt;
-					if (new_chkcnt.quantifier.atleast > 2)
-					{
-						new_deccnt = cur_chkcnt;
-						if (new_chkcnt.quantifier.atleast > 3)
-							new_chorcl = cur_chkcnt;
-					}
-				}
-			}
-			else
-			{
-				cur_chkcnt.reset();
-				cur_chkcnt.type = st_epsilon;
-			}
-
-			if (!new_chkcnt.quantifier.is_infinity())
-				new_chkcnt.quantifier.atmost -= new_chkcnt.quantifier.atleast;
-
-			new_chkcnt.quantifier.atleast = 0;
-		}
-		else
-		{
-			cur_chkcnt.quantifier.atmost = cur_chkcnt.quantifier.atleast;
-
-			new_inccnt = cur_inccnt;	//  increment_counter.
-			new_deccnt = cur_deccnt;	//  decrement_counter.
-			new_chorcl = cur_chorcl;	//  character or character_class.
-		}
-		new_chkcnt.dont_push = true;	//  Disables backtracking.
-		cur_chorcl.next2 = 1;
-		cur += 4;
-	}
-
-#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 
 	bool check_if_backref_presents(typename state_array::size_type begin /* = 0 */, const uint_l32 number /* = 0 */) const
 	{
@@ -6519,6 +6445,7 @@ private:
 
 				gather_nextchars(nextcc, cur, 0u, true);
 
+				//  Counting the number of the first code units is preferable to counting code points.
 				const uint_l32 cpnum_curcc = curcc.total_codepoints();
 				const uint_l32 cpnum_nextcc = nextcc.total_codepoints();
 
@@ -8373,10 +8300,7 @@ private:
 					{
 						if (counter >= current_NFA.quantifier.atleast)
 						{
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_SPLIT_COUNTER)
-							if (!current_NFA.dont_push)
-#endif
-								sstate.bt_stack.push_back(sstate.nth);
+							sstate.bt_stack.push_back(sstate.nth);
 							sstate.nth.in_NFA_states = current_NFA.next_state1;
 						}
 						else
