@@ -1,3 +1,31 @@
+20220429; version 3.007:
+  * Further modification to the counter mechanism.
+
+20220428; version 3.006:
+  * Modified the mechanism of the counter used for repetition.
+  * Re-removed the implementation of linear search for small character
+    classes.
+
+20220424; version 3.005:
+  * Fixed a bug that caused /(?<=$.*)/ not to match the end of "a" when
+    the multiline flag is set
+  * Preparations for \A, \z, (?m:) that have been proposed in TC39.
+
+20220420; version 3.004:
+  * Added a new optimisation for /A*B/ and /A+B/ where a character class
+    A overlaps a character or character class B, such as /[A-Za-z]+ing/,
+    /".*"/.
+
+20220416; version 3.003:
+  * Combined two optimisation functions into one.
+  * Reduced the amount of code for lookaround (lookahead and lookbehind)
+    assertions.
+
+20220416; version 3.002:
+  * Fixed a bug that caused regex_match or regex_search with the
+    match_continuous flag being set to fail when the entry point
+    selector introduced in version 3.000 was used internally.
+
 20211025; version 3.001:
   * Removed the code for splitting counter as it seemed to be no effect
     or to make performance a bit worse.
