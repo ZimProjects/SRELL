@@ -1,3 +1,8 @@
+20220504; version 3.008:
+  * Fixed the behaviour of [^\P{...}] when the icase flag is set, as it
+    behaved similarly to the one in v-mode that has been proposed in
+    TC39.
+
 20220429; version 3.007:
   * Further modification to the counter mechanism.
 

@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 3.007
+**  SRELL (std::regex-like library) version 3.008
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -1813,12 +1813,21 @@ private:
 	typedef uint_l32 pname_type;
 	typedef const char *pname_string_type;
 
+#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION > 110)
+	struct pvalue_type
+	{
+		pname_type pname;
+		property_type pnumber;
+		pname_string_type csstrings;
+	};
+#else
 	struct pvalue_type
 	{
 		pname_type pname;
 		pname_string_type csstrings;
 		property_type pnumber;
 	};
+#endif
 
 	struct offset_and_number
 	{
@@ -2794,7 +2803,7 @@ private:
 		return load_updata_and_register_as_charclass(property_number, icase, false);
 	}
 
-	uint_l32 load_updata_and_register_as_charclass(const uint_l32 property_number, const bool icase, const bool negation)
+	uint_l32 load_updata_and_register_as_charclass(const uint_l32 property_number, const bool /* icase */, const bool negation)
 	{
 		const uchar32 *const address = unicode_property::ranges_address(property_number);
 //		const std::size_t offset = unicode_property::ranges_offset(property_number);
@@ -2802,9 +2811,6 @@ private:
 		range_pairs newranges;
 
 		newranges.load_from_memory(address, number);
-
-		if (icase)
-			newranges.make_caseunfoldedcharset();
 
 		if (negation)
 			newranges.negation();
@@ -4739,9 +4745,11 @@ private:
 			else
 #endif
 			{
-				atom.number = static_cast<uint_l32>(re_character_class::newline);
-				atom.is_not = true;
-				register_if_negatedcharclass(atom);
+//				atom.number = static_cast<uint_l32>(re_character_class::newline);
+				range_pairs nlclass = this->character_class[static_cast<uint_l32>(re_character_class::newline)];
+
+				nlclass.negation();
+				atom.number = this->character_class.register_newclass(nlclass);
 			}
 			break;
 
@@ -5648,23 +5656,27 @@ private:
 			if (atom.character >= char_alnum::ch_1 && atom.character <= char_alnum::ch_9)	//  \1, \9.
 				return parse_backreference_number(atom, curpos, end, cstate);
 
-			return translate_escseq(atom, curpos, end) && register_if_negatedcharclass(atom);
+			translate_escseq(atom, curpos, end);
+
+			if (atom.type == st_character_class)
+			{
+				range_pairs newclass = this->character_class[atom.number];
+
+				if (atom.is_not)
+				{
+					newclass.negation();
+					atom.is_not = false;
+				}
+
+				if (this->is_icase() && atom.number >= static_cast<uint_l32>(re_character_class::number_of_predefcls))
+					newclass.make_caseunfoldedcharset();
+
+				atom.number = this->character_class.register_newclass(newclass);
+			}
+			return true;
 		}
 
 		++curpos;
-		return true;
-	}
-
-	bool register_if_negatedcharclass(state_type &atom)
-	{
-		if (atom.is_negcharclass())
-		{
-			range_pairs ranges;
-
-			add_predefclass_to_charclass(ranges, atom);
-			atom.number = this->character_class.register_newclass(ranges);
-			atom.is_not = false;
-		}
 		return true;
 	}
 
