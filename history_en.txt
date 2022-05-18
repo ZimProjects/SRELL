@@ -1,3 +1,6 @@
+20220511; version 3.009:
+  * Fixed an optimisation bug that caused /abcd|ab/ not to match "abc".
+
 20220504; version 3.008:
   * Fixed the behaviour of [^\P{...}] when the icase flag is set, as it
     behaved similarly to the one in v-mode that has been proposed in

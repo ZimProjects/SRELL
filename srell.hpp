@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 3.008
+**  SRELL (std::regex-like library) version 3.009
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -362,6 +362,8 @@ private:
 			static const uchar32 unicode_max_codepoint = 0x10ffff;
 			static const uchar32 invalid_u32value = static_cast<uchar32>(-1);
 			static const uchar32 max_u32value = static_cast<uchar32>(-2);
+			static const uchar32 asc_icase = 0x20;
+			static const uchar32 ccstr_empty = static_cast<uchar32>(-3);
 		}
 		//  constants
 
@@ -1436,16 +1438,16 @@ private:
 
 	void move_forward(const size_type pos, const size_type count)
 	{
-		size_type oldsize = size_;
+		const size_type oldsize = size_;
 
 		resize(size_ + count);
 
-		const pointer begin = buffer_ + pos;
-		pointer src = buffer_ + oldsize;
-		pointer dest = src + count;
+		if (pos < oldsize)
+		{
+			const pointer base = buffer_ + pos;
 
-		while (src > begin)
-			*--dest = *--src;
+			std::memmove(base + count, base, (oldsize - pos) * sizeof (ElemT));
+		}
 	}
 
 private:
@@ -1686,13 +1688,13 @@ public:
 		return count;
 #else
 //		const uchar32 nocase = static_cast<uchar32>(cp & ~0x20);
-		const uchar32 nocase = static_cast<uchar32>(cp | 0x20);
+		const uchar32 nocase = static_cast<uchar32>(cp | constants::asc_icase);
 
 		out[0] = cp;
 //		if (nocase >= char_alnum::ch_A && nocase <= char_alnum::ch_Z)
 		if (nocase >= char_alnum::ch_a && nocase <= char_alnum::ch_z)
 		{
-			out[1] = static_cast<uchar32>(cp ^ 0x20);
+			out[1] = static_cast<uchar32>(cp ^ constants::asc_icase);
 			return 2;
 		}
 		return 1;
@@ -1813,7 +1815,7 @@ private:
 	typedef uint_l32 pname_type;
 	typedef const char *pname_string_type;
 
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION > 110)
+#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
 	struct pvalue_type
 	{
 		pname_type pname;
@@ -1913,6 +1915,10 @@ private:
 public:
 
 	static const std::size_t number_of_properties = updata::last_property_number + 1;
+	static const std::size_t last_property_number = updata::last_property_number;
+#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
+	static const std::size_t last_pos_number = updata::last_pos_number;
+#endif
 	static const property_type gc_Zs = updata::gc_Space_Separator;
 	static const property_type gc_Cn = updata::gc_Unassigned;
 	static const property_type bp_Assigned = updata::bp_Assigned;
@@ -2766,7 +2772,7 @@ public:
 	{
 		const uint_l32 property_number = static_cast<uint_l32>(unicode_property::lookup_property(pname, pvalue));
 
-		if (property_number != unicode_property::error_property)
+		if (property_number != unicode_property::error_property && property_number < unicode_property::number_of_properties)
 		{
 			const uint_l32 charclass_number = register_property_as_charclass(property_number, icase);
 			return charclass_number;
@@ -3084,8 +3090,6 @@ struct re_quantifier
 		//  (Special case 3: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
 		//    2=matchpointrewinder.
 		//  (Special case 4) in NFA_states[0] represents the class number of the first character class.
-		//  (Special case 5) in backreference represents the least number of characters captured
-		//    by the pair of the corresponding roundbrackets. Used only in compiler.
 		uchar32 offset;
 	};
 	union
@@ -5437,7 +5441,7 @@ private:
 			if (curpos != end)
 			{
 //				atom.character = static_cast<uchar32>(utf_traits().codepoint_inc(curpos, end) & 0x1f);	//  *curpos++
-				atom.character = static_cast<uchar32>(*curpos | 0x20);
+				atom.character = static_cast<uchar32>(*curpos | constants::asc_icase);
 
 				if (atom.character >= char_alnum::ch_a && atom.character <= char_alnum::ch_z)
 					atom.character = static_cast<uchar32>(*curpos++ & 0x1f);
@@ -6587,7 +6591,7 @@ private:
 
 			if (curstate.type == st_character && curstate.next2 == 0)
 			{
-				charclass.join(range_pair_helper(curstate.character));
+				charclass.set_solerange(range_pair_helper(curstate.character));
 				return pos;
 			}
 			else if (curstate.type == st_character_class && curstate.next2 == 0)
@@ -6610,48 +6614,33 @@ private:
 #if !defined(SRELLDBG_NO_BRANCH_OPT)
 	void branch_optimisation()
 	{
+		range_pairs nextcharclass1;
+
 		for (typename state_array::size_type pos = 0; pos < this->NFA_states.size(); ++pos)
 		{
 			const state_type &state = this->NFA_states[pos];
 
-			if (state.type == st_epsilon)
+			if (state.is_branch())
 			{
-				if (state.next2 && state.character == meta_char::mc_bar)
+				const typename state_array::size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1);
+
+				if (nextcharpos)
 				{
+					range_pairs nextcharclass2;
+
+					const bool canbe0length = gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
+
+					if (!canbe0length && !nextcharclass1.is_overlap(nextcharclass2))
 					{
-						range_pairs nextcharclass1;
-						const typename state_array::size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1);
+						state_type &branch = this->NFA_states[pos];
+						state_type &next1 = this->NFA_states[nextcharpos];
 
-						if (nextcharpos)
-						{
-							range_pairs nextcharclass2;
-
-							gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
-
-							if (!nextcharclass1.is_overlap(nextcharclass2))
-							{
-								state_type &branch = this->NFA_states[pos];
-								state_type &next1 = this->NFA_states[nextcharpos];
-
-								next1.next2 = pos + branch.next2 - nextcharpos;
-								branch.next2 = 0;
-							}
-						}
+						next1.next2 = pos + branch.next2 - nextcharpos;
+						branch.next2 = 0;
 					}
 				}
 			}
-#if 0
-			else if (state.type == st_roundbracket_open)
-			{
-				pos = branch_optimisation(pos + 1, state.number);
-			}
-			else if (state.type == st_roundbracket_close && state.number == bracket_number)
-			{
-				return pos;
-			}
-#endif
 		}
-//		return pos;
 	}
 #endif	//  !defined(SRELLDBG_NO_BRANCH_OPT)
 
@@ -6760,27 +6749,27 @@ private:
 
 			if (curstate.is_branch())
 			{
-				state_size_type originalchainbranchpos = pos;
-				const state_size_type next1pos = originalchainbranchpos + curstate.next1;
+				const state_size_type next1pos = pos + curstate.next1;
+				state_size_type precharchainpos = pos;
 
 				if (gather_if_char_or_charclass_strict(basealt1stch, this->NFA_states[next1pos]))
 				{
-					state_size_type next2pos = originalchainbranchpos + curstate.next2;
-					state_size_type newbranchpos = 0;
+					state_size_type next2pos = precharchainpos + curstate.next2;
+					state_size_type postcharchainpos = 0;
 
 					for (;;)
 					{
-						state_size_type nextaltpos = next2pos;
+						state_size_type next2next1pos = next2pos;
 						state_type &nstate2 = this->NFA_states[next2pos];
 						state_size_type next2next2pos = 0;
 
 						if (nstate2.is_branch())
 						{
 							next2next2pos = next2pos + nstate2.next2;
-							nextaltpos += nstate2.next1;
+							next2next1pos += nstate2.next1;
 						}
 
-						if (gather_if_char_or_charclass_strict(nextalt1stch, this->NFA_states[nextaltpos]))
+						if (gather_if_char_or_charclass_strict(nextalt1stch, this->NFA_states[next2next1pos]))
 						{
 							const int relation = basealt1stch.relationship(nextalt1stch);
 
@@ -6792,52 +6781,52 @@ private:
 									nstate2.type = st_epsilon;
 								}
 
-								if (newbranchpos == 0)
+								if (postcharchainpos == 0)
 								{
-									newbranchpos = next1pos + 1;
-									insert_at(newbranchpos, 1);
+									postcharchainpos = next1pos + 1;
+									insert_at(postcharchainpos, 1);
 									this->NFA_states[next1pos].next1 = 1;
 								}
 								else
 								{
-									const state_size_type prevbranchpos = newbranchpos;
+									const state_size_type prevbranchpos = postcharchainpos;
 
-									newbranchpos = prevbranchpos + this->NFA_states[prevbranchpos].next2;
-									insert_at(newbranchpos, 1);
-									this->NFA_states[prevbranchpos].next2 = newbranchpos - prevbranchpos;
+									postcharchainpos = prevbranchpos + this->NFA_states[prevbranchpos].next2;
+									insert_at(postcharchainpos, 1);
+									this->NFA_states[prevbranchpos].next2 = postcharchainpos - prevbranchpos;
 									//  Fix for bug210423. This line cannot be omitted, because
 									//  NFA_states[prevbranchpos].next2 has been incremented in insert_at().
 								}
 
-//								if (nextaltpos >= newbranchpos)
-								++nextaltpos;
+//								if (next2next1pos >= postcharchainpos)
+								++next2next1pos;
 
-								if (originalchainbranchpos >= newbranchpos)
-									++originalchainbranchpos;
+								if (precharchainpos >= postcharchainpos)
+									++precharchainpos;
 
-								state_type &n2chainbranchpoint = this->NFA_states[originalchainbranchpos];
+								state_type &prechainbranchpoint = this->NFA_states[precharchainpos];
 								if (next2next2pos)
 								{
-//									if (next2next2pos >= newbranchpos)
+//									if (next2next2pos >= postcharchainpos)
 									++next2next2pos;
-									n2chainbranchpoint.next2 = next2next2pos - originalchainbranchpos;
+									prechainbranchpoint.next2 = next2next2pos - precharchainpos;
 								}
 								else
 								{
-									n2chainbranchpoint.next2 = 0;
+									prechainbranchpoint.next2 = 0;
 								}
 
-								state_type &newbranchpoint = this->NFA_states[newbranchpos];
+								state_type &newbranchpoint = this->NFA_states[postcharchainpos];
 								newbranchpoint.character = meta_char::mc_bar;
 //								newbranchpoint.next1 = 1;
-								newbranchpoint.next2 = nextaltpos + this->NFA_states[nextaltpos].next1 - newbranchpos;
+								newbranchpoint.next2 = next2next1pos + this->NFA_states[next2next1pos].next1 - postcharchainpos;
 							}
 							else if (relation == 1)
 							{
 								break;
 							}
 							else
-								originalchainbranchpos = next2pos;
+								precharchainpos = next2pos;
 						}
 						else
 						{
