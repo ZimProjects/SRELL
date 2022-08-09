@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 3.009
+**  SRELL (std::regex-like library) version 3.010
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -250,8 +250,22 @@ namespace srell
 		static const error_type error_complexity = 111;
 		static const error_type error_stack      = 112;
 
-		//  SRELL's extension.
+		//  SRELL's extensions.
 		static const error_type error_utf8       = 113;
+			//  The expression contained an invalid UTF-8 sequence.
+
+		static const error_type error_property   = 114;
+			//  The expression contained an invalid Unicode property name or value.
+
+		static const error_type error_noescape   = 115;
+			//  (Only in v-mode) ( ) [ ] { } / - \ | need to be escaped in a character class.
+
+		static const error_type error_operator   = 116;
+			//  (Only in v-mode) A character class contained a reserved double punctuation
+			//  operator or different types of operators at the same level, such as [ab--cd].
+
+		static const error_type error_complement = 117;
+			//  (Only in v-mode) \P or a negated character class contained a property of strings.
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		static const error_type error_lookbehind = 200;
@@ -363,13 +377,14 @@ private:
 			static const uchar32 invalid_u32value = static_cast<uchar32>(-1);
 			static const uchar32 max_u32value = static_cast<uchar32>(-2);
 			static const uchar32 asc_icase = 0x20;
-			static const uchar32 ccstr_empty = static_cast<uchar32>(-3);
+			static const uchar32 ccstr_empty = static_cast<uchar32>(-1);
 		}
 		//  constants
 
 		namespace meta_char
 		{
 			static const uchar32 mc_exclam = 0x21;	//  '!'
+			static const uchar32 mc_sharp  = 0x23;	//  '#'
 			static const uchar32 mc_dollar = 0x24;	//  '$'
 			static const uchar32 mc_rbraop = 0x28;	//  '('
 			static const uchar32 mc_rbracl = 0x29;	//  ')'
@@ -428,6 +443,7 @@ private:
 			static const uchar32 ch_k = 0x6b;	//  'k'
 			static const uchar32 ch_n = 0x6e;	//  'n'
 			static const uchar32 ch_p = 0x70;	//  'p'
+			static const uchar32 ch_q = 0x71;	//  'q'
 			static const uchar32 ch_r = 0x72;	//  'r'
 			static const uchar32 ch_s = 0x73;	//  's'
 			static const uchar32 ch_t = 0x74;	//  't'
@@ -442,11 +458,15 @@ private:
 		namespace char_other
 		{
 			static const uchar32 co_sp    = 0x20;	//  ' '
+			static const uchar32 co_perc  = 0x25;	//  '%'
 			static const uchar32 co_amp   = 0x26;	//  '&'
 			static const uchar32 co_apos  = 0x27;	//  '\''
 			static const uchar32 co_slash = 0x2f;	//  '/'
+			static const uchar32 co_smcln = 0x3b;	//  ';'
+			static const uchar32 co_atmrk = 0x40;	//  '@'
 			static const uchar32 co_ll    = 0x5f;	//  '_'
 			static const uchar32 co_grav  = 0x60;	//  '`'
+			static const uchar32 co_tilde = 0x7e;	//  '~'
 		}
 		//  char_other
 	}
@@ -1300,13 +1320,28 @@ public:
 		return *this;
 	}
 
-	//  For rei_char_class class.
 	void erase(const size_type pos)
 	{
 		if (pos < size_)
 		{
 			std::memmove(buffer_ + pos, buffer_ + pos + 1, (size_ - pos - 1) * sizeof (ElemT));
 			--size_;
+		}
+	}
+	void erase(const size_type pos, const size_type len)
+	{
+		if (pos < size_)
+		{
+			size_type rmndr = size_ - pos;
+
+			if (rmndr > len)
+			{
+				rmndr -= len;
+				std::memmove(buffer_ + pos, buffer_ + pos + len, rmndr * sizeof (ElemT));
+				size_ -= len;
+			}
+			else
+				size_ = pos;
 		}
 	}
 
@@ -10411,6 +10446,8 @@ public:
 	static const std::size_t last_property_number = updata::last_property_number;
 #if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
 	static const std::size_t last_pos_number = updata::last_pos_number;
+#else
+	static const std::size_t last_pos_number = updata::last_property_number;
 #endif
 	static const property_type gc_Zs = updata::gc_Space_Separator;
 	static const property_type gc_Cn = updata::gc_Unassigned;
@@ -10427,7 +10464,7 @@ public:
 	}	//  namespace regex_internal
 
 //  ... "rei_up.hpp"]
-//  ["rei_char_class.hpp" ...
+//  ["rei_range_pair.hpp" ...
 
 	namespace regex_internal
 	{
@@ -10441,6 +10478,12 @@ struct range_pair	//  , public std::pair<charT, charT>
 	{
 		this->first = min;
 		this->second = max;
+	}
+
+	void set(const uchar32 minmax)
+	{
+		this->first = minmax;
+		this->second = minmax;
 	}
 
 	bool is_range_valid() const
@@ -11027,6 +11070,14 @@ public:	//  For debug.
 };
 //  range_pairs
 
+	}	//  namespace regex_internal
+
+//  ... "rei_range_pair.hpp"]
+//  ["rei_char_class.hpp" ...
+
+	namespace regex_internal
+	{
+
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
 //  For RegExpIdentifierStart and RegExpIdentifierPart
@@ -11261,16 +11312,57 @@ public:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	uint_l32 lookup_property(const pstring &pname, const pstring &pvalue, const bool icase)
+	uint_l32 get_propertynumber(const pstring &pname, const pstring &pvalue) const
 	{
-		const uint_l32 property_number = static_cast<uint_l32>(unicode_property::lookup_property(pname, pvalue));
+		const uint_l32 pno = static_cast<uint_l32>(unicode_property::lookup_property(pname, pvalue));
 
-		if (property_number != unicode_property::error_property && property_number < unicode_property::number_of_properties)
+		return (pno != unicode_property::error_property) ? pno : error_property;
+	}
+
+	bool load_upranges(range_pairs &newranges, const uint_l32 property_number) const
+	{
+		newranges.clear();
+
+		if (property_number != unicode_property::error_property && property_number <= unicode_property::last_property_number)
 		{
-			const uint_l32 charclass_number = register_property_as_charclass(property_number, icase);
-			return charclass_number;
+			if (property_number == unicode_property::bp_Assigned)
+			{
+				load_updata(newranges, unicode_property::gc_Cn);
+				newranges.negation();
+			}
+			else
+				load_updata(newranges, property_number);
+
+			return true;
 		}
-		return error_property;
+		return false;
+	}
+
+	//  Properties of strings.
+	bool is_pos(const uint_l32 pno) const
+	{
+		return pno > unicode_property::last_property_number && pno <= unicode_property::last_pos_number;
+	}
+
+	bool get_prawdata(simple_array<uchar32> &seq, uint_l32 property_number)
+	{
+		if (property_number != unicode_property::error_property)
+		{
+			if (property_number == unicode_property::bp_Assigned)
+				property_number = unicode_property::gc_Cn;	//  plus negation.
+
+			const uchar32 *const address = unicode_property::ranges_address(property_number);
+//			const std::size_t offset = unicode_property::ranges_offset(property_number);
+			const std::size_t number = unicode_property::number_of_ranges(property_number) * 2;
+
+			seq.resize(number);
+			for (uchar32 i = 0; i < number; ++i)
+				seq[i] = address[i];
+
+			return true;
+		}
+		seq.clear();
+		return false;
 	}
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -11292,29 +11384,13 @@ private:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	uint_l32 register_property_as_charclass(const uint_l32 property_number, const bool icase)
-	{
-		if (property_number == unicode_property::bp_Assigned)
-		{
-			//  \p{Assigned} == \P{Cn}
-			return load_updata_and_register_as_charclass(unicode_property::gc_Cn, false, true);
-		}
-		return load_updata_and_register_as_charclass(property_number, icase, false);
-	}
-
-	uint_l32 load_updata_and_register_as_charclass(const uint_l32 property_number, const bool /* icase */, const bool negation)
+	void load_updata(range_pairs &newranges, const uint_l32 property_number) const
 	{
 		const uchar32 *const address = unicode_property::ranges_address(property_number);
 //		const std::size_t offset = unicode_property::ranges_offset(property_number);
 		const std::size_t number = unicode_property::number_of_ranges(property_number);
-		range_pairs newranges;
 
 		newranges.load_from_memory(address, number);
-
-		if (negation)
-			newranges.negation();
-
-		return register_newclass(newranges);
 	}
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -13032,7 +13108,7 @@ private:
 
 	bool compile_core(const uchar32 *begin, const uchar32 *const end, const regex_constants::syntax_option_type flags)
 	{
-		re_quantifier piececharlen;
+		re_quantifier piecesize;
 		re_compiler_state<charT> cstate;
 		state_type atom;
 
@@ -13045,7 +13121,7 @@ private:
 		atom.next2 = 1;
 		this->NFA_states.push_back(atom);
 
-		if (!make_nfa_states(this->NFA_states, piececharlen, begin, end, cstate))
+		if (!make_nfa_states(this->NFA_states, piecesize, begin, end, cstate))
 		{
 			return false;
 		}
@@ -13076,14 +13152,14 @@ private:
 		return true;
 	}
 
-	bool make_nfa_states(state_array &piece, re_quantifier &piececharlen, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
+	bool make_nfa_states(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
 	{
 		typename state_array::size_type prevbranch_end = 0;
 		state_type atom;
 		state_array branch;
 		re_quantifier branchsize;
 
-		piececharlen.reset(0);
+		piecesize.reset(0);
 
 		for (;;)
 		{
@@ -13092,13 +13168,13 @@ private:
 			if (!make_branch(branch, branchsize, curpos, end, cstate))
 				return false;
 
-			//  For piececharlen.atleast, 0 as the initial value and 0 as an
+			//  For piecesize.atleast, 0 as the initial value and 0 as an
 			//  actual value must be distinguished.
-			if (piececharlen.atmost == 0 || piececharlen.atleast > branchsize.atleast)
-				piececharlen.atleast = branchsize.atleast;
+			if (piecesize.atmost == 0 || piecesize.atleast > branchsize.atleast)
+				piecesize.atleast = branchsize.atleast;
 
-			if (piececharlen.atmost < branchsize.atmost)
-				piececharlen.atmost = branchsize.atmost;
+			if (piecesize.atmost < branchsize.atmost)
+				piecesize.atmost = branchsize.atmost;
 
 			if (curpos != end && *curpos == meta_char::mc_bar)
 			{
@@ -13140,7 +13216,7 @@ private:
 
 		for (;;)
 		{
-			re_quantifier piececharlen;
+			re_quantifier piecesize;
 
 			if (curpos == end)
 				return true;
@@ -13156,7 +13232,7 @@ private:
 				return true;
 
 			default:
-				if (!get_atom(piece, piececharlen, curpos, end, cstate))
+				if (!get_atom(piece, piecesize, curpos, end, cstate))
 					return false;
 			}
 
@@ -13179,19 +13255,19 @@ private:
 					;	//  Do nothing.
 				}
 				else
-					combine_piece_with_quantifier(piece_with_quantifier, piece, quantifier, piececharlen);
+					combine_piece_with_quantifier(piece_with_quantifier, piece, quantifier, piecesize);
 
 #if 01
-				piececharlen.multiply(quantifier);
-				branchsize.add(piececharlen);
+				piecesize.multiply(quantifier);
+				branchsize.add(piecesize);
 #else
-				branchsize.atleast += piececharlen.atleast * quantifier.atleast;
+				branchsize.atleast += piecesize.atleast * quantifier.atleast;
 				if (!branchsize.is_infinity())
 				{
-					if (piececharlen.is_infinity() || quantifier.is_infinity())
+					if (piecesize.is_infinity() || quantifier.is_infinity())
 						branchsize.set_infinity();
 					else
-						branchsize.atmost += piececharlen.atmost * quantifier.atmost;
+						branchsize.atmost += piecesize.atmost * quantifier.atmost;
 				}
 #endif
 
@@ -13208,7 +13284,7 @@ private:
 		}
 	}
 
-	bool get_atom(state_array &piece, re_quantifier &atomsize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
+	bool get_atom(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
 	{
 		state_type atom;
 
@@ -13218,7 +13294,7 @@ private:
 		switch (atom.character)
 		{
 		case meta_char::mc_rbraop:	//  '(':
-			return get_piece_in_roundbrackets(piece, atomsize, curpos, end, cstate);
+			return get_piece_in_roundbrackets(piece, piecesize, curpos, end, cstate);
 
 		case meta_char::mc_sbraop:	//  '[':
 			if (!register_character_class(atom, curpos, end, cstate))
@@ -13282,14 +13358,14 @@ private:
 		}
 
 		piece.push_back(atom);
-		atomsize = atom.quantifier;
+		piecesize = atom.quantifier;
 
 		return true;
 	}
 
 	//  '('.
 
-	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piececharlen, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
+	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
 	{
 		const re_compiler_state<charT> original_cstate(cstate);
 		state_type atom;
@@ -13314,7 +13390,7 @@ private:
 //		if (curpos == end)
 //			this->throw_error(regex_constants::error_paren);
 
-		if (!make_nfa_states(piece, piececharlen, curpos, end, cstate))
+		if (!make_nfa_states(piece, piecesize, curpos, end, cstate))
 			return false;
 
 		//  end or ')'?
@@ -13348,17 +13424,17 @@ private:
 //				if (firstatom.reverse)
 				if (firstatom.quantifier.atleast)	//  > 0 means lookbehind.
 				{
-					if (!piececharlen.is_same() || piececharlen.is_infinity())
+					if (!piecesize.is_same() || piecesize.is_infinity())
 						this->throw_error(regex_constants::error_lookbehind);
 
-					firstatom.quantifier = piececharlen;
+					firstatom.quantifier = piecesize;
 				}
 #endif
 
 #if defined(SRELL_ENABLE_GT)
 				if (firstatom.character != meta_char::mc_gt)
 #endif
-					piececharlen.reset(0);
+					piecesize.reset(0);
 
 				firstatom.next1 = static_cast<std::ptrdiff_t>(piece.size()) + 1;
 
@@ -13369,7 +13445,7 @@ private:
 			break;
 
 		default:
-			set_bracket_close(piece, atom, piececharlen, cstate);
+			set_bracket_close(piece, atom, piecesize, cstate);
 		}
 
 		piece.push_back(atom);
@@ -13459,7 +13535,7 @@ private:
 		piece.push_back(atom);
 	}
 
-	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier &piececharlen, re_compiler_state<charT> &cstate)
+	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier &piecesize, re_compiler_state<charT> &cstate)
 	{
 //		uint_l32 max_bracketno = atom.number;
 
@@ -13485,10 +13561,10 @@ private:
 		if (cstate.atleast_widths_of_brackets.size() < atom.number)
 			cstate.atleast_widths_of_brackets.resize(atom.number, 0);
 
-		cstate.atleast_widths_of_brackets[atom.number - 1] = piececharlen.atleast;
+		cstate.atleast_widths_of_brackets[atom.number - 1] = piecesize.atleast;
 	}
 
-	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piececharlen)
+	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
 	{
 		state_type &firstatom = piece[0];
 //		const bool firstpiece_is_roundbracket_open = (firstatom.type == st_roundbracket_open);
@@ -13649,7 +13725,7 @@ private:
 		//  atom.type is epsilon or check_counter.
 		//  Its "next"s point to piece and OutOfLoop.
 
-		if (!piece_is_noncapturinggroup_contaning_capturinggroup && (piececharlen.atleast || piece_has_0widthchecker))
+		if (!piece_is_noncapturinggroup_contaning_capturinggroup && (piecesize.atleast || piece_has_0widthchecker))
 		{
 			const typename state_array::size_type piece_size = piece.size();
 			state_type &lastatom = piece[piece_size - 1];
@@ -13734,9 +13810,10 @@ private:
 
 	bool register_character_class(state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> & /* cstate */)
 	{
-		range_pair code_range;
 		range_pairs ranges;
+		range_pair code_range;
 		state_type classatom;
+		range_pairs curranges;
 
 		if (curpos == end)
 			this->throw_error(regex_constants::error_brack);
@@ -13759,12 +13836,12 @@ private:
 
 			classatom.reset();
 
-			if (!get_character_in_class(classatom, curpos, end))
+			if (!get_character_in_class(curranges, classatom, curpos, end))
 				return false;
 
 			if (classatom.type == st_character_class)
 			{
-				add_predefclass_to_charclass(ranges, classatom);
+				ranges.merge(curranges);
 				continue;
 			}
 
@@ -13788,12 +13865,12 @@ private:
 				}
 				else
 				{
-					if (!get_character_in_class(classatom, curpos, end))
+					if (!get_character_in_class(curranges, classatom, curpos, end))
 						return false;
 
 					if (classatom.type == st_character_class)
 					{
-						add_predefclass_to_charclass(ranges, classatom);
+						ranges.merge(curranges);
 						goto PUSH_SEPARATELY;
 					}
 
@@ -13831,12 +13908,15 @@ private:
 		return true;
 	}
 
-	bool get_character_in_class(state_type &atom, const uchar32 *&curpos, const uchar32 *const end /* , const re_compiler_state &cstate */)
+	bool get_character_in_class(range_pairs &rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end /* , const re_compiler_state &cstate */)
 	{
 		atom.character = *curpos++;
 
-		return atom.character != meta_char::mc_escape	//  '\\'
-			|| translate_escseq(atom, curpos, end);
+		if (atom.character != meta_char::mc_escape)	//  '\\'
+			return true;
+
+		rp.clear();
+		return translate_escseq(&rp, atom, curpos, end, true);
 	}
 
 	void add_predefclass_to_charclass(range_pairs &cls, const state_type &classatom)
@@ -13849,63 +13929,109 @@ private:
 		cls.merge(predefclass);
 	}
 
-	//  Escape characters which appear both in and out of [] pairs.
-	bool translate_escseq(state_type &atom, const uchar32 *&curpos, const uchar32 *const end)
+	bool translate_escseq(range_pairs *const rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
 		atom.character = *curpos++;
 
-		switch (atom.character)
-		{
-		//  Predefined classes.
+		return translate_escseq_nocheck(rp, atom, curpos, end, insidecharclass, false);
+	}
 
+	bool translate_character_class_escape(range_pairs *const rp, state_type &cceatom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
+	{
+		//  Predefined classes.
+		switch (cceatom.character)
+		{
 		case char_alnum::ch_D:	//  'D':
-			atom.is_not = true;
+			cceatom.is_not = true;
 			//@fallthrough@
 
 		case char_alnum::ch_d:	//  'd':
-			atom.number = static_cast<uint_l32>(re_character_class::digit);	//  \d, \D.
-			atom.type = st_character_class;
+			cceatom.number = static_cast<uint_l32>(re_character_class::digit);	//  \d, \D.
 			break;
 
 		case char_alnum::ch_S:	//  'S':
-			atom.is_not = true;
+			cceatom.is_not = true;
 			//@fallthrough@
 
 		case char_alnum::ch_s:	//  's':
-			atom.number = static_cast<uint_l32>(re_character_class::space);	//  \s, \S.
-			atom.type = st_character_class;
+			cceatom.number = static_cast<uint_l32>(re_character_class::space);	//  \s, \S.
 			break;
 
 		case char_alnum::ch_W:	//  'W':
-			atom.is_not = true;
+			cceatom.is_not = true;
 			//@fallthrough@
 
 		case char_alnum::ch_w:	//  'w':
 			if (this->is_icase())
 			{
 				this->character_class.setup_icase_word();
-				atom.number = static_cast<uint_l32>(re_character_class::icase_word);
+				cceatom.number = static_cast<uint_l32>(re_character_class::icase_word);
 			}
 			else
-				atom.number = static_cast<uint_l32>(re_character_class::word);	//  \w, \W.
-			atom.type = st_character_class;
+				cceatom.number = static_cast<uint_l32>(re_character_class::word);	//  \w, \W.
 			break;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 		//  Prepared for Unicode properties and script names.
 		case char_alnum::ch_P:	//  \P{...}
-			atom.is_not = true;
+			cceatom.is_not = true;
 			//@fallthrough@
 
 		case char_alnum::ch_p:	//  \p{...}
-			atom.number = get_property_number(curpos, end);
-			atom.type = st_character_class;
-			break;
+			{
+				range_pairs lranges;
+				range_pairs *const pranges = (rp != NULL) ? rp : &lranges;
+
+				get_property_ranges(*pranges, curpos, end);
+
+				if (cceatom.is_not)
+				{
+					pranges->negation();
+					cceatom.is_not = false;
+				}
+
+				if (!insidecharclass && this->is_icase())
+					pranges->make_caseunfoldedcharset();
+
+				if (rp == NULL)
+					cceatom.number = this->character_class.register_newclass(*pranges);
+			}
+			cceatom.type = st_character_class;
+			return true;
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
+		default:
+			return false;
+		}
+
+		if (rp != NULL)
+			add_predefclass_to_charclass(*rp, cceatom);
+		else
+		{
+			if (cceatom.is_not)
+			{
+				range_pairs lranges;
+
+				add_predefclass_to_charclass(lranges, cceatom);
+				cceatom.number = this->character_class.register_newclass(lranges);
+			}
+		}
+
+		cceatom.is_not = false;
+		cceatom.type = st_character_class;
+		return true;
+	}
+
+	bool translate_escseq_nocheck(range_pairs *const rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass, const bool no_ccesc)
+	{
+		if (!no_ccesc && translate_character_class_escape(rp, atom, curpos, end, insidecharclass))
+			return true;
+
+		switch (atom.character)
+		{
 		case char_alnum::ch_b:
 			atom.character = char_ctrl::cc_bs;	//  '\b' 0x08:BS
 			break;
@@ -13950,12 +14076,12 @@ private:
 			atom.character = char_ctrl::cc_nul;	//  '\0' 0x00:NUL
 			break;
 
-		case char_alnum::ch_u:	//  \uhhhh, \u{h~hhhhhh}
-			atom.character = parse_escape_u(curpos, end);
-			break;
-
 		case char_alnum::ch_x:	//  \xhh
 			atom.character = translate_numbers(curpos, end, 16, 2, 2, 0xff);
+			break;
+
+		case char_alnum::ch_u:	//  \uhhhh, \u{h~hhhhhh}
+			atom.character = parse_escape_u(curpos, end);
 			break;
 
 		//  SyntaxCharacter, '/', and '-'.
@@ -13974,8 +14100,12 @@ private:
 		case meta_char::mc_cbracl:	//  '}'
 		case meta_char::mc_bar:		//  '|'
 		case char_other::co_slash:	//  '/'
-		case meta_char::mc_minus:	//  '-' allowed only in charclass.
 			break;
+
+		case meta_char::mc_minus:	//  '-' allowed only in charclass.
+			if (insidecharclass)
+				break;
+			//@fallthrough@
 
 		default:
 			atom.character = constants::invalid_u32value;
@@ -14028,13 +14158,33 @@ private:
 	}
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-	uint_l32 get_property_number(const uchar32 *&curpos, const uchar32 *const end)
+
+	void get_property_ranges(range_pairs &pranges, const uchar32 *&curpos, const uchar32 *const end)
+	{
+		const uint_l32 pnumber = lookup_propertynumber(curpos, end);
+
+		if (pnumber == re_character_class::error_property || this->character_class.is_pos(pnumber))
+			this->throw_error(regex_constants::error_property);
+
+		this->character_class.load_upranges(pranges, pnumber);
+	}
+
+	uint_l32 lookup_propertynumber(const uchar32 *&curpos, const uchar32 *const end)
+	{
+		pstring pname;
+		pstring pvalue;
+
+		get_property_name_and_value(pname, pvalue, curpos, end);
+
+		return this->character_class.get_propertynumber(pname, pvalue);
+	}
+
+	void get_property_name_and_value(pstring &pname, pstring &pvalue, const uchar32 *&curpos, const uchar32 *const end)
 	{
 		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 			this->throw_error(regex_constants::error_escape);
 
-		pstring pname;
-		pstring pvalue(get_property_name_or_value(++curpos, end));
+		get_property_name_or_value(pvalue, ++curpos, end);
 
 		if (!pvalue.size())
 			this->throw_error(regex_constants::error_escape);
@@ -14047,7 +14197,7 @@ private:
 			if (*curpos == meta_char::mc_eq)	//  '='
 			{
 				pname = pvalue;
-				pvalue = get_property_name_or_value(++curpos, end);
+				get_property_name_or_value(pvalue, ++curpos, end);
 				if (!pvalue.size())
 					this->throw_error(regex_constants::error_escape);
 			}
@@ -14060,19 +14210,13 @@ private:
 			pvalue.resize(pvalue.size() - 1);
 
 		++curpos;
-
-		const uint_l32 class_number = this->character_class.lookup_property(pname, pvalue, this->is_icase());
-
-		if (class_number == re_character_class::error_property)
-			this->throw_error(regex_constants::error_escape);
-
-		return class_number;
 	}
 
-	pstring get_property_name_or_value(const uchar32 *&curpos, const uchar32 *const end) const
+	void get_property_name_or_value(pstring &name_or_value, const uchar32 *&curpos, const uchar32 *const end) const
 	{
-		pstring name_or_value;
 		bool number_found = false;
+
+		name_or_value.clear();
 
 		for (;; ++curpos)
 		{
@@ -14097,40 +14241,34 @@ private:
 		if (number_found)
 			name_or_value.append(1, char_other::co_sp);	//  ' '
 
-		return name_or_value;
 	}
+
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	//  Escape characters which do not appear in [] pairs.
-
-	bool translate_atom_escape(state_type &atom, const uchar32 *&curpos, const uchar32 *const end, /* const */ re_compiler_state<charT> &cstate)
+	bool translate_atom_escape(state_type &escatom, const uchar32 *&curpos, const uchar32 *const end, /* const */ re_compiler_state<charT> &cstate)
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
-		atom.character = *curpos;
+		escatom.character = *curpos;
 
-		switch (atom.character)
+		switch (escatom.character)
 		{
-		case meta_char::mc_minus:	//  '-'
-			this->throw_error(regex_constants::error_escape);
-			//@fallthrough@
-
 		case char_alnum::ch_B:	//  'B':
-			atom.is_not = true;
+			escatom.is_not = true;
 			//@fallthrough@
 
 		case char_alnum::ch_b:	//  'b':
-			atom.type   = st_boundary;	//  \b, \B.
-			atom.quantifier.reset(0);
+			escatom.type   = st_boundary;	//  \b, \B.
+			escatom.quantifier.reset(0);
 //			atom.number = 0;
 			if (this->is_icase())
 			{
 				this->character_class.setup_icase_word();
-				atom.number = static_cast<uint_l32>(re_character_class::icase_word);
+				escatom.number = static_cast<uint_l32>(re_character_class::icase_word);
 			}
 			else
-				atom.number = static_cast<uint_l32>(re_character_class::word);	//  \w, \W.
+				escatom.number = static_cast<uint_l32>(re_character_class::word);	//  \w, \W.
 			break;
 
 //		case char_alnum::ch_A:	//  'A':
@@ -14139,38 +14277,23 @@ private:
 //			atom.type   = st_eol;	//  '\Z'
 //		case char_alnum::ch_z:	//  'z':
 //			atom.type   = st_eol;	//  '\z'
+//		case char_alnum::ch_R:	//  'R':
+		//  (?>\r\n?|[\x0A-\x0C\x85\u{2028}\u{2029}])
 
 		//  Backreferences.
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		//  Prepared for named captures.
 		case char_alnum::ch_k:	//  'k':
-			return parse_backreference_name(atom, curpos, end, cstate);	//  \k.
+			return parse_backreference_name(escatom, curpos, end, cstate);	//  \k.
 #endif
 
 		default:
 
-			if (atom.character >= char_alnum::ch_1 && atom.character <= char_alnum::ch_9)	//  \1, \9.
-				return parse_backreference_number(atom, curpos, end, cstate);
+			if (escatom.character >= char_alnum::ch_1 && escatom.character <= char_alnum::ch_9)	//  \1, \9.
+				return parse_backreference_number(escatom, curpos, end, cstate);
 
-			translate_escseq(atom, curpos, end);
-
-			if (atom.type == st_character_class)
-			{
-				range_pairs newclass = this->character_class[atom.number];
-
-				if (atom.is_not)
-				{
-					newclass.negation();
-					atom.is_not = false;
-				}
-
-				if (this->is_icase() && atom.number >= static_cast<uint_l32>(re_character_class::number_of_predefcls))
-					newclass.make_caseunfoldedcharset();
-
-				atom.number = this->character_class.register_newclass(newclass);
-			}
-			return true;
+			return translate_escseq(NULL, escatom, curpos, end, false);
 		}
 
 		++curpos;
@@ -14541,11 +14664,18 @@ private:
 			switch (state.type)
 			{
 			case st_character:
-				nextcharclass.join(range_pair_helper(state.character));
+				if (!this->is_ricase())
+				{
+					nextcharclass.join(range_pair_helper(state.character));
+				}
+				else
+				{
+					uchar32 table[unicode_case_folding::rev_maxset] = {};
+					const uchar32 setnum = unicode_case_folding::casefoldedcharset(table, state.character);
 
-				if (this->is_ricase())
-					nextcharclass.make_caseunfoldedcharset();
-
+					for (uchar32 j = 0; j < setnum; ++j)
+						nextcharclass.join(range_pair_helper(table[j]));
+				}
 				return canbe0length;
 
 			case st_character_class:
@@ -15075,10 +15205,11 @@ private:
 #if !defined(SRELLDBG_NO_NEXTPOS_OPT)
 #endif	//  !defined(SRELLDBG_NO_NEXTPOS_OPT)
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT) || defined(SRELLTEST_NEXTPOS_OPT2)
-	typename state_array::size_type gather_if_char_or_charclass(range_pairs &charclass, typename state_array::size_type pos) const
+#if !defined(SRELLDBG_NO_BRANCH_OPT) || !defined(SRELLDBG_NO_BRANCH_OPT2)
+
+	state_size_type gather_if_char_or_charclass(range_pairs &charclass, state_size_type pos, const bool strictly) const
 	{
-		for (; pos < this->NFA_states.size();)
+		for (;;)
 		{
 			const state_type &curstate = this->NFA_states[pos];
 
@@ -15092,7 +15223,7 @@ private:
 				charclass = this->character_class[curstate.number];
 				return pos;
 			}
-			else if (curstate.type == st_epsilon && curstate.next2 == 0)
+			else if (curstate.type == st_epsilon && curstate.next2 == 0 && !strictly)
 			{
 			}
 			else
@@ -15102,7 +15233,7 @@ private:
 		}
 		return 0;
 	}
-#endif	//  !defined(SRELLDBG_NO_BRANCH_OPT) || defined(SRELLTEST_NEXTPOS_OPT2)
+#endif	//  !defined(SRELLDBG_NO_BRANCH_OPT) || !defined(SRELLDBG_NO_BRANCH_OPT2)
 
 #if !defined(SRELLDBG_NO_BRANCH_OPT)
 	void branch_optimisation()
@@ -15115,12 +15246,11 @@ private:
 
 			if (state.is_branch())
 			{
-				const typename state_array::size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1);
+				const typename state_array::size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1, false);
 
 				if (nextcharpos)
 				{
 					range_pairs nextcharclass2;
-
 					const bool canbe0length = gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
 
 					if (!canbe0length && !nextcharclass1.is_overlap(nextcharclass2))
@@ -15215,22 +15345,6 @@ private:
 
 #if !defined(SRELLDBG_NO_BRANCH_OPT2)
 
-	bool gather_if_char_or_charclass_strict(range_pairs &out, const state_type &state) const
-	{
-		if (state.type == st_character /* && state.next2 == 0 */)
-		{
-			out.set_solerange(range_pair_helper(state.character));
-		}
-		else if (state.type == st_character_class /* && state.next2 == 0 */)
-		{
-			out = this->character_class[state.number];
-		}
-		else
-			return false;
-
-		return true;
-	}
-
 	void branch_optimisation2()
 	{
 		range_pairs basealt1stch;
@@ -15245,7 +15359,7 @@ private:
 				const state_size_type next1pos = pos + curstate.next1;
 				state_size_type precharchainpos = pos;
 
-				if (gather_if_char_or_charclass_strict(basealt1stch, this->NFA_states[next1pos]))
+				if (gather_if_char_or_charclass(basealt1stch, next1pos, true) != 0)
 				{
 					state_size_type next2pos = precharchainpos + curstate.next2;
 					state_size_type postcharchainpos = 0;
@@ -15262,7 +15376,7 @@ private:
 							next2next1pos += nstate2.next1;
 						}
 
-						if (gather_if_char_or_charclass_strict(nextalt1stch, this->NFA_states[next2next1pos]))
+						if (gather_if_char_or_charclass(nextalt1stch, next2next1pos, true) != 0)
 						{
 							const int relation = basealt1stch.relationship(nextalt1stch);
 

@@ -1,3 +1,12 @@
+20220529; version 3.010:
+  * Reduced the amount of memory used to hold a character class that
+    contains Unicode property escapes.
+  * Changed the value of error_type thrown when an invalid name or value
+    is specified in curly brackets of \p or \P, from
+    regex_constants::error_escape to newly-introduced
+    regex_constants::error_property.
+  * Other minor improvements.
+
 20220511; version 3.009:
   * Fixed an optimisation bug that caused /abcd|ab/ not to match "abc".
 

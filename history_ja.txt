@@ -1,3 +1,10 @@
+20220529; version 3.010:
+  ・\pや\Pを含む文字クラスのメモリ使用量を削減。
+  ・\pや\Pの{}内が不正の時にthrowされるエラーの種類を、
+    regex_constants::error_escapeから新設の
+    regex_constants::error_propertyに変更。
+  ・その他細々とした改良。
+
 20220511; version 3.009:
   ・最適化バグにより /abcd|ab/ が "abc" にマッチしなかった問題を修正。
 
