@@ -1,7 +1,7 @@
 //
-//  updataout.cpp: version 1.400 (2021/10/10).
+//  updataout.cpp: version 2.000 (2022/05/03).
 //
-//  This is a program that generates srell_updata.hpp from:
+//  This is a program that generates srell_updata2.hpp from:
 //    DerivedCoreProperties.txt
 //    DerivedNormalizationProps.txt
 //    emoji-data.txt
@@ -9,9 +9,14 @@
 //    ScriptExtensions.txt
 //    Scripts.txt
 //    UnicodeData.txt
-//  provided by the Unicode Consortium. The latese versions of them
-//  except emoji-data.txt are available at: http://www.unicode.org/Public/UNIDATA/
-//  emoji-data.txt is available at: http://www.unicode.org/Public/UNIDATA/emoji/
+//    emoji-sequences.txt
+//    emoji-zwj-sequences.txt
+//  provided by the Unicode Consortium. The latese versions of them are
+//  available at:
+//    emoji-data.txt: http://www.unicode.org/Public/UNIDATA/emoji/
+//    emoji-sequences.txt and emoji-zwj-sequences.txt:
+//      http://www.unicode.org/Public/emoji/
+//    others: http://www.unicode.org/Public/UNIDATA/
 //
 
 #include <cstdio>
@@ -92,6 +97,16 @@ static const char *const binary_property_names[] = {	//  53 (52+1)
 	//    "Extended_Pictographic:ExtPict",
 	//  ECMAScript 2021/Unicode 13:
 	//    Aliases: EComp, EMod, EBase, EPres, and ExtPict
+	""
+};
+static const char *const emoseq_property_names[] = {
+	"RGI_Emoji",
+	"Basic_Emoji",							//  emoji-sequences.txt
+	"Emoji_Keycap_Sequence",				//  emoji-sequences.txt
+	"RGI_Emoji_Modifier_Sequence",			//  emoji-sequences.txt
+	"RGI_Emoji_Flag_Sequence",				//  emoji-sequences.txt
+	"RGI_Emoji_Tag_Sequence",				//  emoji-sequences.txt
+	"RGI_Emoji_ZWJ_Sequence",				//  emoji-zwj-sequences.txt
 	""
 };
 static const char *const gc_values[] = {	//  38
@@ -245,9 +260,9 @@ struct up_options
 	int errorno;
 
 	up_options(const int argc, const char *const *const argv)
-		: outfilename("srell_updata.hpp")
+		: outfilename("srell_updata2.hpp")
 		, indir("")
-		, version(110)
+		, version(201)
 		, errorno(0)
 	{
 		for (int index = 1; index < argc; ++index)
@@ -268,9 +283,9 @@ struct up_options
 				{
 					if (index + 1 >= argc)
 						goto NO_ARGUMENT;
-					version = static_cast<int>(std::strtod(argv[++index], NULL) * 100.0);
+					version = static_cast<int>(std::strtod(argv[++index], NULL) * 100.0 + 0.5);
 				}
-				else if (std::strcmp(option, "id") == 0)
+				else if (std::strcmp(option, "i") == 0)
 				{
 					if (index + 1 >= argc)
 						goto NO_ARGUMENT;
@@ -311,14 +326,17 @@ public:
 		int errorno = opts.errorno;
 		const char *const unidatafilename = "UnicodeData.txt";
 		const char *const propdatafiles[] = { "PropList.txt", "DerivedCoreProperties.txt", "emoji-data.txt", "DerivedNormalizationProps.txt", "" };
+		const char *const emodatafiles[] = { "emoji-sequences.txt", "emoji-zwj-sequences.txt", "" };
 		const char *const scfilename = "Scripts.txt";
 		const char *const scxfilename = "ScriptExtensions.txt";
 		std::string licensetext;
 		rangeholder general_category_values;
 		rangeholder binary_properties;
+		seqholder emoseq_properties;
 		rangeholder scripts;
 		rangeholder scriptextensions;
 		sortedrangeholder combined_properties;
+		sortedseqholder combined_pos;
 //		scriptnameholder ucs_to_scriptname;	//  codepoint->scriptname.
 
 		if (errorno)
@@ -335,6 +353,9 @@ public:
 			create_compositecategories(general_category_values);	//  This needs "Cn".
 
 			read_binprops(binary_properties, licensetext, propdatafiles, opts.indir);
+#if !defined(SRELL_NO_VMODE)
+			read_emoseq(emoseq_properties, licensetext, emodatafiles, opts.indir);
+#endif
 
 			read_scripts(scripts, /* ucs_to_scriptname, */ licensetext, scfilename, opts.indir);
 
@@ -345,7 +366,10 @@ public:
 			combine_properties(combined_properties, binary_properties, "bp", updata::binary_property_names);
 			combine_properties(combined_properties, scripts, "sc", updata::script_names);
 			combine_properties(combined_properties, scriptextensions, "scx", updata::script_names);
-			do_formatting(outdata, combined_properties, opts.version);
+#if !defined(SRELL_NO_VMODE)
+			combine_pos(combined_pos, emoseq_properties, "bp", updata::emoseq_property_names);
+#endif
+			do_formatting(outdata, combined_properties, combined_pos, opts.version);
 
 			licensetext.append(1, '\n');
 			outdata.insert(0, licensetext);
@@ -365,6 +389,8 @@ private:
 	typedef srell::regex_internal::range_pair ucprange;
 	typedef srell::regex_internal::range_pair_helper ucprange_helper;
 	typedef std::map<std::string, ucprange_array> rangeholder;
+	typedef srell::regex_internal::simple_array<uchar32> u32array;
+	typedef std::map<std::string, u32array> seqholder;
 //	typedef srell::regex_internal::bitset<0x110000> ucsset;
 	typedef std::vector<std::string> strings_type;
 	typedef std::map<uchar32, std::string> scriptnameholder;
@@ -381,6 +407,15 @@ private:
 		ucprange_array ucpranges;
 	};
 	typedef std::vector<sorted_name_and_ranges> sortedrangeholder;
+
+	struct sorted_name_and_seqs
+	{
+		std::string ptype;
+		std::string canonicalname;
+		std::string namealiases;
+		u32array ucpseqs;
+	};
+	typedef std::vector<sorted_name_and_seqs> sortedseqholder;
 
 	void split(strings_type &parts, const std::string &data, const char splitter)
 	{
@@ -454,7 +489,7 @@ private:
 				range.first = range.second = static_cast<uchar32>(std::strtol(codepoint.first, NULL, 16));
 
 				if (prevucp >= range.first && prevucp != invalid_u32value)
-					unishared::throw_error("out of order: %.4lX >= %.4lX", prevucp, range.first);
+					unishared::throw_error("Out of order: %.4lX >= %.4lX", prevucp, range.first);
 
 //				parts.clear();
 //				split(parts, property, ';');
@@ -498,10 +533,10 @@ private:
 					bidi_mirrored_ranges.join(range);
 				}
 				else if (bidi_mirrored != stringN)
-					unishared::throw_error("unknown Bidi_Mirrored value [%s] in %s.", bidi_mirrored.c_str(), line.c_str());
+					unishared::throw_error("Unknown Bidi_Mirrored value [%s] in %s.", bidi_mirrored.c_str(), line.c_str());
 			}
 			else if (line.size())
-				unishared::throw_error("unknown format [%s]", line.c_str());
+				unishared::throw_error("Unknown format [%s]", line.c_str());
 		}
 		bp["Bidi_Mirrored"] = bidi_mirrored_ranges;
 	}
@@ -578,7 +613,7 @@ private:
 
 	void read_binprops(rangeholder &bp, std::string &licensetext, const char *const *propdatafiles, const char *const indir)
 	{
-		const srell::regex re_propfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*(\\S+)\\s*(#.*)?$");
+		const srell::regex re_propfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#]+)\\s*");	//  (#.*)?$");
 		const char separator = '\0';
 		bool licenseend_found = false;
 		ucprange range;
@@ -612,7 +647,7 @@ private:
 			{
 				licenseend_found = false;
 			}
-			else if (srell::regex_match(line.c_str(), lineend, cmatch, re_propfmt))
+			else if (srell::regex_search(line.c_str(), lineend, cmatch, re_propfmt, srell::regex_constants::match_continuous))
 			{
 				const srell::cmatch::value_type &begin = cmatch[1];
 				const srell::cmatch::value_type &end = cmatch[2];
@@ -630,9 +665,101 @@ private:
 		}
 	}
 
+	void read_emoseq(seqholder &emsq, std::string &licensetext, const char *const *emodatafiles, const char *const indir)
+	{
+		const srell::regex re_emsqfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,})|((?:\\s+[0-9A-Fa-f]{4,})+))?\\s*;\\s*([^\\s;#]+)\\s*");	//  (?:\\s*;[^#]*)(#.*)?$");
+		const srell::regex re_emsq2fmt("\\s*([0-9A-Fa-f]{4,})");
+		const srell::cregex_iterator eit;
+		const char separator = '\0';
+		bool licenseend_found = false;
+		strings_type lines;
+		srell::cmatch cmatch;
+
+		{
+			std::string alldata;
+			read_files(alldata, emodatafiles, separator, indir);
+			split(lines, alldata, '\n');
+		}
+
+		for (std::string::size_type i = 0; i < lines.size(); ++i)
+		{
+			const std::string &line = lines[i];
+			const char *const lineend = line.c_str() + line.size();
+
+			if (!licenseend_found)
+			{
+				if (srell::regex_match(line.c_str(), lineend, cmatch, re_licenseend_))
+				{
+					licensetext += "//\n";
+					licenseend_found = true;
+				}
+				else if (srell::regex_match(line.c_str(), lineend, cmatch, re_licenseline_))
+				{
+					licensetext += "//  " + cmatch[1].str() + '\n';
+				}
+			}
+			else if (line.size() == 1 && line[0] == separator)
+			{
+				licenseend_found = false;
+			}
+			else if (srell::regex_search(line.c_str(), lineend, cmatch, re_emsqfmt, srell::regex_constants::match_continuous))
+			{
+				const srell::cmatch::value_type &begin = cmatch[1];
+				const srell::cmatch::value_type &end = cmatch[2];
+				const srell::cmatch::value_type &seqs = cmatch[3];
+				const srell::cmatch::value_type &seqname = cmatch[4];
+//				const srell::cmatch::value_type &comment = cmatch[5];
+				const uchar32 first = static_cast<uchar32>(std::strtol(begin.first, NULL, 16));
+
+				if (seqs.matched)
+				{
+					const u32array::size_type orgsize = emsq[seqname].size();
+					srell::cregex_iterator it(seqs.first, seqs.second, re_emsq2fmt, srell::regex_constants::match_continuous);
+					uchar32 count = 2;
+
+					emsq[seqname].push_backncr(0);	//  Number of code points.
+					emsq[seqname].push_back(first);
+
+					for (; it != eit; ++it, ++count)
+					{
+						const srell::cmatch::value_type &ucp = (*it)[1];
+
+						emsq[seqname].push_back(static_cast<uchar32>(std::strtol(ucp.first, NULL, 16)));
+					}
+					emsq[seqname][orgsize] = count;
+				}
+				else
+				{
+					if (end.matched)
+					{
+						emsq[seqname].push_backncr(1);	//  Range.
+						emsq[seqname].push_back(first);
+						emsq[seqname].push_back(static_cast<uchar32>(std::strtol(end.first, NULL, 16)));
+					}
+					else
+					{
+						emsq[seqname].push_backncr(2);	//  Single code point.
+						emsq[seqname].push_back(first);
+					}
+				}
+			}
+		}
+
+		for (seqholder::iterator it = emsq.begin(); it != emsq.end(); ++it)
+		{
+			if (it->second.size() & 1)
+			{
+				std::printf("[Info] Padding added to \"%s\" (%u).\n", it->first.c_str(), static_cast<unsigned int>(it->second.size()));
+				it->second.push_backncr(0);
+			}
+		}
+
+		emsq["RGI_Emoji"].push_backncr(compositeclass);	//  Dummy data.
+	}
+
 	void read_scripts(rangeholder &sc, /* scriptnameholder &ucs_to_scriptname, */ std::string &licensetext, const char *const filename, const char *const indir)
 	{
-		const srell::regex re_scriptdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*(\\S+)\\s*(#.*)?$");
+		const srell::regex re_scriptdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#]+)\\s*");	//  (#.*)?$");
 		bool licenseend_found = false;
 		ucprange range;
 		strings_type lines;
@@ -662,7 +789,7 @@ private:
 					licensetext += "//  " + cmatch[1].str() + '\n';
 				}
 			}
-			else if (srell::regex_match(line.c_str(), lineend, cmatch, re_scriptdata))
+			else if (srell::regex_search(line.c_str(), lineend, cmatch, re_scriptdata, srell::regex_constants::match_continuous))
 			{
 				const srell::cmatch::value_type &begin = cmatch[1];
 				const srell::cmatch::value_type &end = cmatch[2];
@@ -700,7 +827,7 @@ private:
 
 	void modify_for_scx(rangeholder &scx, /* scriptnameholder &ucs_to_scriptname, */ std::string &licensetext, const char *const filename, const char *const indir)
 	{
-		const srell::regex re_scxdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*(\\S.*?\\S)\\s*(#.*)?$");
+		const srell::regex re_scxdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#][^;#]*[^\\s;#])\\s*");	//  (#.*)?$");
 		const canonicalname_mapper canonicalnames(load_canonicalnames(updata::script_names));
 		const std::string name_common("Common");
 		const std::string name_inherited("Inherited");
@@ -737,7 +864,7 @@ private:
 					licensetext += "//  " + cmatch[1].str() + '\n';
 				}
 			}
-			else if (srell::regex_match(line.c_str(), lineend, cmatch, re_scxdata))
+			else if (srell::regex_search(line.c_str(), lineend, cmatch, re_scxdata, srell::regex_constants::match_continuous))
 			{
 				const srell::cmatch::value_type &begin = cmatch[1];
 				const srell::cmatch::value_type &end = cmatch[2];
@@ -768,10 +895,10 @@ private:
 								scx[it->second].join(range);
 							else
 							{
-//								unishared::throw_error("canonical name for \"%s\" is not found.", scriptname.c_str());
+//								unishared::throw_error("Canonical name for \"%s\" is not found.", scriptname.c_str());
 								if (!warning_out.count(scriptname))
 								{
-									std::printf("[Info] canonical name for \"%s\" is not found. New script?\n", scriptname.c_str());
+									std::printf("[Info] Canonical name for \"%s\" is not found. New script?\n", scriptname.c_str());
 									warning_out[scriptname] = true;
 								}
 							}
@@ -813,7 +940,7 @@ private:
 			}
 
 			if (!pdata_found)
-				unishared::throw_error("no property value for \"%s\" found.", aliases.c_str());
+				unishared::throw_error("No property value for \"%s\" found.", aliases.c_str());
 
 			elem.ptype = ptype;
 			elem.canonicalname = canonicalname;
@@ -821,6 +948,63 @@ private:
 			base.push_back(elem);
 		}
 	}
+
+#if !defined(SRELL_NO_VMODE)
+
+	void combine_pos(sortedseqholder &base, const seqholder &addition, const char *const ptype, const char *const *aliasnames)
+	{
+		const canonicalname_mapper canonicalnames(load_canonicalnames(aliasnames));
+		sorted_name_and_seqs elem;
+		strings_type names;
+		uchar32 total = 0;
+		u32array compclass;
+
+		//  Composite class.
+		compclass.push_backncr(compositeclass);
+		compclass.push_backncr(0);
+
+		elem.ptype = ptype;
+		for (; **aliasnames; ++aliasnames)
+		{
+			const std::string aliases(*aliasnames);
+			bool pdata_found = false;
+
+			names.clear();
+			split(names, aliases, ':');
+
+			const std::string canonicalname(names[0]);
+
+			for (strings_type::size_type i = 0; i < names.size(); ++i)
+			{
+				const seqholder::const_iterator it = addition.find(names[i]);
+
+				if (it != addition.end())
+				{
+					elem.ucpseqs = it->second;
+					pdata_found = true;
+					if (elem.ucpseqs.size() != 1 || elem.ucpseqs[0] != compositeclass)
+					{
+						compclass.push_back(elem.ucpseqs.size());
+						total += static_cast<uchar32>(elem.ucpseqs.size());
+					}
+					break;
+				}
+			}
+
+			if (!pdata_found)
+				unishared::throw_error("No property value for \"%s\" found.", aliases.c_str());
+
+			elem.canonicalname = canonicalname;
+			elem.namealiases = aliases;
+			base.push_back(elem);
+		}
+
+		//  Composite class.
+		compclass[1] = total;
+		base[0].ucpseqs = compclass;
+	}
+
+#endif	//  !defined(SRELL_NO_VMODE)
 
 	name_mapper create_ptype_mappings()
 	{
@@ -833,22 +1017,32 @@ private:
 		return categories;
 	}
 
-	std::string create_ptypes(const name_mapper &ptypes)
+	std::string create_ptypes(const name_mapper &ptypes, const int version)
 	{
-		std::string ptypedef("\tstruct ptype\n\t{\n\t\tstatic const T2 unknown = 0;\n");
+		std::string ptypedef(version >= 201 ? "\tuptype_unknown = 0,\n" : "\tstruct ptype\n\t{\n\t\tstatic const T2 unknown = 0;\n");
 		const char *names[] = { "bp", "gc", "sc", "scx", "" };
+		const std::string t2head = version >= 201 ? "\t" : "\t\tstatic const T2 ";
+		const std::string t2tail = version >= 201 ? "," : ";";
+		const std::string t2finaltail = version >= 201 ? "" : ";";
+		const std::string t2prefix = version >= 201 ? "uptype_" : "";
 
 		for (unsigned int i = 0; *names[i];)
 		{
 			const name_mapper::const_iterator it = ptypes.find(names[i]);
 
 			if (it == ptypes.end())
-				unishared::throw_error("name for ptype \"%s\" is not found.", names[i]);
+				unishared::throw_error("Name for ptype \"%s\" is not found.", names[i]);
 
-			ptypedef += "\t\tstatic const T2 " + it->second + " = " + unishared::stringify<16>(++i, "%u") + ";\n";
+			ptypedef += t2head + t2prefix + it->second + " = " + unishared::stringify<16>(++i, "%u") + t2tail + "\n";
 		}
 
-		ptypedef += "\t};\n";
+		if (version >= 201)
+		{
+			drop_finalcomma(ptypedef);
+		}
+		else
+			ptypedef += "\t};\n";
+
 		return ptypedef;
 	}
 
@@ -874,6 +1068,64 @@ private:
 		}
 		return rangestring;
 	}
+
+#if !defined(SRELL_NO_VMODE)
+	std::string seqs_to_string(const u32array &array, const std::string &indent)
+	{
+		std::string seqstring;
+
+		if (array.size() == 1 && array[0] == compositeclass)
+		{
+		}
+		else
+		{
+			for (u32array::size_type i = 0; i < array.size();)
+			{
+				const uchar32 num = array[i];
+
+				if (num == compositeclass)
+				{
+					break;
+				}
+
+				if (num == 0)	//  Padding.
+				{
+					seqstring += indent + "0,\t//  Padding.\n";
+					break;
+				}
+
+				if (++i == array.size())
+					unishared::throw_error("[InternalError] No data follows %u.", num);
+
+				seqstring += indent + unishared::stringify<16>(num, "%u");
+				seqstring += ", 0x" + unishared::stringify<16>(array[i++], "%.4lX");
+
+				if (num == 1)	//  Range.
+				{
+					if (i == array.size())
+						unishared::throw_error("[InternalError] No pair for %.4lX.", array[i - 1]);
+
+					seqstring += ", 0x" + unishared::stringify<16>(array[i++], "%.4lX");
+				}
+				else
+				{
+					for (uchar32 j = 2; j < num; ++j)
+					{
+						if (i == array.size())
+							unishared::throw_error("[InternalError] Broken after %.4lX.", array[i - 1]);
+
+						seqstring += ", 0x" + unishared::stringify<16>(array[i++], "%.4lX");
+					}
+				}
+				seqstring += ",\n";
+			}
+
+			if (seqstring.size())
+				seqstring.resize(seqstring.size() - 1);
+		}
+		return seqstring;
+	}
+#endif	//  !defined(SRELL_NO_VMODE)
 
 	void drop_finalcomma(std::string &data)
 	{
@@ -912,26 +1164,31 @@ private:
 		return tmp;
 	}
 
-	void do_formatting(std::string &out, const sortedrangeholder &alldata, const int version)
+	void do_formatting(std::string &out, const sortedrangeholder &alldata, const sortedseqholder &emsq, const int version)
 	{
 		typedef std::map<std::string, unsigned int> registered_sequence;
-		const std::string template1("template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>\n");
-		const std::string template2("unicode_property_data<T1, T2, T3, T4, T5, T6>::");
+		const std::string template1(version >= 201 ? "template <typename T3, typename T4, typename T5, typename T6>\n" : "template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>\n");
+		const std::string template2(version >= 201 ? "unicode_property_data<T3, T4, T5, T6>::" : "unicode_property_data<T1, T2, T3, T4, T5, T6>::");
 		const std::string return_table(version == 100 ? "\t\t};\n\t\treturn table;\n\t}\n" : "};\n");
 		const std::string indent(version == 100 ? "\t\t\t" : "\t");
 		name_mapper ptype_mappings(create_ptype_mappings());
-		const std::string ptypes(create_ptypes(ptype_mappings));
+		const std::string ptypes(create_ptypes(ptype_mappings, version));
 		const std::string pnames(create_pnametable(return_table, version, template1, template2, indent));
-		std::string pnumbers("\tstatic const T1 unknown = 0;\n");	//  property numbers.
+		const std::string t1head = version >= 201 ? "\t" : "\tstatic const T1 ";
+		const std::string t1tail = version >= 201 ? "," : ";";
+		const std::string t1finaltail = version >= 201 ? "" : ";";
+		const std::string t1prefix = version >= 201 ? "upid_" : "";
+		const std::string t2scope = version >= 201 ? "{ uptype_" : "{ ptype::";
+		const std::string maxorlast = version >= 200 ? "max" : "last";
+		std::string pnumbers(t1head + t1prefix + "unknown = 0" + t1tail + "\n");	//  property numbers.
 		strings_type rangetable;
 		strings_type lookup_ranges;
 		unsigned int property_id_number = 1;
 		unsigned int property_number = 1;
+		unsigned int offset = 0;
 		registered_sequence registered;
 		std::string lookup_numbers;
-		unsigned int offset = 0;
 
-		out.append(template1 + "struct unicode_property_data\n{\n");
 		if (version == 100)
 		{
 			rangetable.push_back(std::string("\tstatic const T4 *ranges()\n\t{\n\t\tstatic const T4 table[] =\n\t\t{"));
@@ -962,7 +1219,10 @@ private:
 				pno = rit->second;
 				lookup_ranges[pno] += position_comment;
 				rangetable[pno * 2 - 1] += position_comment;
-				lookup_numbers.append(indent + "{ ptype::" + ptype_mappings[ptype] + ", \"" + aliases + "\", " + unishared::stringify<16>(pno, "%u") + " },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
+				if (version >= 200)
+					lookup_numbers.append(indent + t2scope + ptype_mappings[ptype] + ", " + unishared::stringify<16>(pno, "%u") + ", \"" + aliases + "\" },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
+				else
+					lookup_numbers.append(indent + t2scope + ptype_mappings[ptype] + ", \"" + aliases + "\", " + unishared::stringify<16>(pno, "%u") + " },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
 			}
 			else
 			{
@@ -971,7 +1231,7 @@ private:
 
 				if (compositeclass_found)
 				{
-					std::printf("[Info] composite property \"%s\" found.\n", aliases.c_str());
+					std::printf("[Info] Composite property \"%s\" found.\n", aliases.c_str());
 					numofranges = array[0].second;
 					rangestring = indent + "//  ";
 
@@ -991,7 +1251,10 @@ private:
 					registered[rangestring] = property_number;
 				}
 
-				lookup_numbers.append(indent + "{ ptype::" + ptype_mappings[ptype] + ", \"" + aliases + "\", " + unishared::stringify<16>(property_number, "%u") + " },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
+				if (version >= 200)
+					lookup_numbers.append(indent + t2scope + ptype_mappings[ptype] + ", " + unishared::stringify<16>(property_number, "%u") + ", \"" + aliases + "\" },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
+				else
+					lookup_numbers.append(indent + t2scope + ptype_mappings[ptype] + ", \"" + aliases + "\", " + unishared::stringify<16>(property_number, "%u") + " },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
 				lookup_ranges.push_back(indent + "{ " + unishared::stringify<16>(offset, "%u") + ", " + unishared::stringify<16>(numofranges, "%u") + " },\t//  #" + unishared::stringify<16>(pno, "%u") + position_comment);
 				rangetable.push_back(indent + "//  #" + unishared::stringify<16>(pno, "%u") + " (" + unishared::stringify<16>(offset, "%u") + '+' + unishared::stringify<16>(numofranges, "%u") + "):" + position_comment);
 				rangetable.push_back(rangestring);
@@ -1001,18 +1264,101 @@ private:
 
 				++property_number;
 			}
-			pnumbers.append("\tstatic const T1 " + pnumber_keyname + " = " + unishared::stringify<16>(property_id_number, "%u") + ";\t//  #" + unishared::stringify<16>(pno, "%u") + '\n');
+			pnumbers.append(t1head + pnumber_keyname + " = " + unishared::stringify<16>(property_id_number, "%u") + t1tail + "\t//  #" + unishared::stringify<16>(pno, "%u") + '\n');
 			++property_id_number;
 		}
 
-		pnumbers.append("\tstatic const T1 last_property_number = " + unishared::stringify<16>(--property_number, "%u") + ";\n");
+		pnumbers.append(t1head + t1prefix + maxorlast + "_property_number = " + unishared::stringify<16>(property_number - 1, "%u") + t1tail + "\n");
 
-		lookup_numbers.append(indent + "{ ptype::unknown, \"\", 0 }\n");
-		lookup_numbers.append(return_table);
-		lookup_numbers.insert(0, version == 100 ? "\tstatic const T5 *rangenumber_table()\n\t{\n\t\tstatic const T5 table[] =\n\t\t{\n\t\t\t{ ptype::unknown, \"*\", 0 },\t//  #0\n" : template1 + "const T5 " + template2 + "rangenumbertable[] =\n{\n\t{ ptype::unknown, \"*\", 0 },\t//  #0\n");
+#if !defined(SRELL_NO_VMODE)
+		if (rangetable.size())
+			drop_finalcomma(rangetable[rangetable.size() - 1]);
+		rangetable.push_back("#if !defined(SRELL_NO_UNICODE_POS)\n" + indent + ",");
 
-		out.append(pnumbers);
-		out.append(ptypes);
+		lookup_numbers.append("#if !defined(SRELL_NO_UNICODE_POS)\n");
+
+		for (sortedseqholder::size_type i = 0; i < emsq.size(); ++i)
+		{
+			const sorted_name_and_seqs &elem = emsq[i];
+			const std::string ptype = elem.ptype;
+			const std::string name = elem.canonicalname;
+			const std::string aliases = elem.namealiases;
+			const u32array &array = elem.ucpseqs;
+			const bool compositeclass_found = array.size() && array[0] == compositeclass;
+			const std::string pnumber_keyname(ptype + '_' + name);
+			const std::string position_comment(' ' + ptype + '=' + aliases);
+			unsigned int numofseqs = static_cast<unsigned int>(array.size());
+			std::string seqstring;
+
+			if (compositeclass_found)
+			{
+				std::printf("[Info] Composite property \"%s\" found.\n", aliases.c_str());
+				numofseqs = array[1];
+				seqstring = indent + "//  ";
+
+				for (u32array::size_type i = 2; i < array.size(); ++i)
+				{
+					if (i > 2)
+						seqstring += " + ";
+					seqstring += unishared::stringify<16>(array[i], "%u") + "/2";
+				}
+			}
+			else
+			{
+				seqstring = seqs_to_string(array, indent);
+			}
+
+			const unsigned int numofranges = numofseqs / 2;
+
+			pnumbers.append(t1head + pnumber_keyname + " = " + unishared::stringify<16>(property_id_number, "%u") + t1tail + "\t//  #" + unishared::stringify<16>(property_number, "%u") + '\n');
+			if (version >= 200)
+				lookup_numbers.append(indent + t2scope + ptype_mappings[ptype] + ", " + unishared::stringify<16>(property_number, "%u") + ", \"" + aliases + "\" },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
+			else
+				lookup_numbers.append(indent + t2scope + ptype_mappings[ptype] + ", \"" + aliases + "\", " + unishared::stringify<16>(property_number, "%u") + " },\t//  #" + unishared::stringify<16>(property_id_number, "%u") + "\n");
+			lookup_ranges.push_back(indent + "{ " + unishared::stringify<16>(offset, "%u") + ", " + unishared::stringify<16>(numofranges, "%u") + " },\t//  #" + unishared::stringify<16>(property_number, "%u") + position_comment);
+			rangetable.push_back(indent + "//  #" + unishared::stringify<16>(property_number, "%u") + " (" + unishared::stringify<16>(offset, "%u") + '+' + unishared::stringify<16>(numofseqs, "%u") + "/2):" + position_comment);
+			rangetable.push_back(seqstring);
+
+			++property_number;
+			++property_id_number;
+			if (!compositeclass_found)
+				offset += numofranges;
+		}
+
+		pnumbers.append(t1head + t1prefix + maxorlast + "_pos_number = " + unishared::stringify<16>(--property_number, "%u") + t1finaltail + "\n");
+		rangetable.push_back("#endif\t//  !defined(SRELL_NO_UNICODE_POS)");
+		lookup_numbers.append("#endif\t//  !defined(SRELL_NO_UNICODE_POS)\n");
+
+#endif	//  !defined(SRELL_NO_VMODE)
+
+		if (version >= 200)
+		{
+			lookup_numbers.append(indent + t2scope + "unknown, 0, \"\" }\n");
+			lookup_numbers.append(return_table);
+			lookup_numbers.insert(0, template1 + "const T5 " + template2 + "rangenumbertable[] =\n{\n\t" + t2scope + "unknown, 0, \"*\" },\t//  #0\n");
+		}
+		else
+		{
+			lookup_numbers.append(indent + t2scope + "unknown, \"\", 0 }\n");
+			lookup_numbers.append(return_table);
+			lookup_numbers.insert(0, version == 100 ? "\tstatic const T5 *rangenumber_table()\n\t{\n\t\tstatic const T5 table[] =\n\t\t{\n\t\t\t" + t2scope + "unknown, \"*\", 0 },\t//  #0\n" : template1 + "const T5 " + template2 + "rangenumbertable[] =\n{\n\t" + t2scope + "unknown, \"*\", 0 },\t//  #0\n");
+		}
+
+		if (version >= 201)
+		{
+			out.append("enum upid_type\n{\n");
+			out.append(pnumbers);	//  T1
+			out.append("};\n\nenum up_type\n{\n");
+			out.append(ptypes);
+			out.append("};\n\n");
+			out.append(template1 + "struct unicode_property_data\n{\n");
+		}
+		else
+		{
+			out.append(template1 + "struct unicode_property_data\n{\n");
+			out.append(pnumbers);
+			out.append(ptypes);
+		}
 		if (version == 100)
 		{
 			out.append(pnames);
@@ -1026,23 +1372,26 @@ private:
 			out.append("\tstatic const T3 propertynametable[];\n");
 			out.append("\tstatic const T4 rangetable[];\n");
 			out.append("\tstatic const T5 rangenumbertable[];\n");
-			out.append("\tstatic const T6 positiontable[];\n\n");
+			out.append("\tstatic const T6 positiontable[];\n");
 
-			out.append("\tstatic const T3 *propertyname_table()\n\t{\n\t\treturn propertynametable;\n\t}\n");
-			out.append("\tstatic const T4 *ranges()\n\t{\n\t\treturn rangetable;\n\t}\n");
-			out.append("\tstatic const T5 *rangenumber_table()\n\t{\n\t\treturn rangenumbertable;\n\t}\n");
-			out.append("\tstatic const T6 *position_table()\n\t{\n\t\treturn positiontable;\n\t}\n");
+			if (version <= 200)
+			{
+				out.append("\n\tstatic const T3 *propertyname_table()\n\t{\n\t\treturn propertynametable;\n\t}\n");
+				out.append("\tstatic const T4 *ranges()\n\t{\n\t\treturn rangetable;\n\t}\n");
+				out.append("\tstatic const T5 *rangenumber_table()\n\t{\n\t\treturn rangenumbertable;\n\t}\n");
+				out.append("\tstatic const T6 *position_table()\n\t{\n\t\treturn positiontable;\n\t}\n");
+			}
 			out.append("};\n\n");
-			out.append(pnames);
+			out.append(pnames);	//  T3
 			out.append("\n");
-			out.append(join_dropcomma_append(rangetable, return_table));
+			out.append(join_dropcomma_append(rangetable, return_table));	//  T4
 			out.append("\n");
-			out.append(lookup_numbers);
+			out.append(lookup_numbers);	//  T5
 			out.append("\n");
-			out.append(join_dropcomma_append(lookup_ranges, return_table));
+			out.append(join_dropcomma_append(lookup_ranges, return_table));	//  T6
 		}
 		if (version > 100)
-			out.append("#define SRELL_UPDATA_VERSION 110\n");
+			out.append("#define SRELL_UPDATA_VERSION " + unishared::stringify<16>(static_cast<unsigned int>(version), "%u") + "\n");
 	}
 
 	srell::regex re_licenseline_;

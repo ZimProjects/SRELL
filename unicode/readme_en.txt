@@ -50,27 +50,28 @@ updataout with the following text files provided by the Unicode Consortium:
   * ScriptExtensions.txt
   * Scripts.txt
   * UnicodeData.txt
+  * emoji-sequences.txt
+  * emoji-zwj-sequences.txt
 
   As well as CaseFolding.txt mentioned above, these files may be updated
 accordingly whenever a new version of the Unicode Standard is released.
 
   2-1. Usage
 
-    1) compile updataout.cpp,
+    1) compile updataout2.cpp,
     2) get the latest versions of the text files mentioned above, which are
        available at:
        a. emoji-data.txt: http://www.unicode.org/Public/UNIDATA/emoji/
-       b. others: http://www.unicode.org/Public/UNIDATA/ ,
+       b. emoji-sequences.txt and emoji-zwj-sequences.txt:
+          http://www.unicode.org/Public/emoji/(version number)/
+       c. others: http://www.unicode.org/Public/UNIDATA/ ,
     3) put the text files and a binary file generated at 1) in the same
        directory and run the binary file,
-    4) move the newly generated "srell_updata.hpp" to the directory in where
+    4) move the newly generated "srell_updata2.hpp" to the directory in where
        SRELL is put.
-
-  Note: emoji-data.txt has been moved from /Public/UNIDATA/ to
-        /Public/emoji/(version number)/ since Unicode 11.0.0.
-        Since Unicode 13.0.0, moved to /Public/UNIDATA/emoji/ .
 
   2-2. Compatibility
 
-    srell_updata.hpp does not have compatibility issues as of this release.
+    srell_updata2.hpp is not compatible with srell_updata.hpp that SRELL up
+    to 3.010 was using.
 

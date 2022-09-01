@@ -1,3 +1,11 @@
+20220618; version 4.000:
+  ・ECMAScriptに追加される見込みのvフラグモードに対応。
+  ・srell_updata.hppの仕様変更。srell_updata2.hppに。
+  ・上記変更に併せてunicode/updataout.cppを更新し、updataout2.cppに。
+  ・64ビット環境でclang-tidyが "excessive padding" と警告する問題に対応
+    するため構造体メンバの順番を変更（ご報告に感謝します）。
+  ・unicode/ucfdataout2.cppを更新。
+
 20220529; version 3.010:
   ・\pや\Pを含む文字クラスのメモリ使用量を削減。
   ・\pや\Pの{}内が不正の時にthrowされるエラーの種類を、

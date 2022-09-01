@@ -1,5 +1,5 @@
 //
-//  ucfdataout.cpp: version 2.100 (2020/05/13).
+//  ucfdataout.cpp: version 2.101 (2022/06/12).
 //
 //  This is a program that generates srell_ucfdata.hpp from CaseFolding.txt
 //  provided by the Unicode Consortium. The latese version is available at:
@@ -93,7 +93,7 @@ struct ucf_options
 		: infilename("CaseFolding.txt")
 		, outfilename("srell_ucfdata2.hpp")
 		, indir("")
-		, version(2)
+		, version(201)
 		, errorno(0)
 	{
 		bool outfile_specified = false;
@@ -124,8 +124,8 @@ struct ucf_options
 				{
 					if (index >= argc)
 						goto NO_ARGUMENT;
-					version = static_cast<int>(std::strtol(argv[index], NULL, 10));
-					if (!outfile_specified && version < 2)
+					version = static_cast<int>(std::strtod(argv[index], NULL) * 100 + 0.5);
+					if (!outfile_specified && version < 200)
 					{
 						static const char *const v1name = "srell_ucfdata.hpp";
 						outfilename = v1name;
@@ -203,7 +203,7 @@ public:
 				}
 			}
 
-			if (opts.version <= 1)
+			if (opts.version <= 100)
 				outdata += "template <typename T1, typename T2, typename T3>\nstruct unicode_casefolding\n{\n\tstatic const T1 *table()\n\t{\n\t\tstatic const T1 ucftable[] =\n\t\t{\n";
 			else
 				outdata += "template <typename T2, typename T3>\nstruct unicode_casefolding\n{\n";
@@ -222,7 +222,7 @@ public:
 
 					update(from, to);
 
-					if (opts.version == 1)
+					if (opts.version == 100)
 						outdata += indent + "{ 0x" + from + ", 0x" + to + " },\t//  " + type + "; " + name + "\n";
 					else if (opts.version <= 0)
 					{
@@ -236,7 +236,7 @@ public:
 						}
 					}
 				}
-				else if (opts.version == 1)
+				else if (opts.version == 100)
 				{
 					static const srell::regex re_comment_or_emptyline("^#.*|^$");
 
@@ -246,7 +246,7 @@ public:
 			}
 			if (colcount > 0)
 				outdata.append(1, '\n');
-			if (opts.version <= 1)
+			if (opts.version <= 100)
 				outdata += indent + "{ 0, 0 }\n\t\t};\n\t\treturn ucftable;\n\t}\n";
 
 			outdata += "\tstatic const T2 ucf_maxcodepoint = 0x" + unishared::stringify<16>(ucf_maxcodepoint_, "%.4lX") + ";\n";
@@ -258,11 +258,16 @@ public:
 			outdata += "\tstatic const T3 rev_maxset = " + unishared::stringify<16>(maxset(), "%u") + ";\n";
 			outdata += "\tstatic const T2 eos = 0;\n";
 
-			if (opts.version >= 2)
+			if (opts.version >= 200)
 			{
-				outdata += "\n\tstatic const T2 ucf_deltatable[];\n\tstatic const T3 ucf_segmenttable[];\n\tstatic const T3 rev_indextable[];\n\tstatic const T3 rev_segmenttable[];\n\tstatic const T2 rev_charsettable[];\n\n\tstatic const T2 *ucf_deltatable_ptr()\n\t{\n\t\treturn ucf_deltatable;\n\t}\n\tstatic const T3 *ucf_segmenttable_ptr()\n\t{\n\t\treturn ucf_segmenttable;\n\t}\n\tstatic const T3 *rev_indextable_ptr()\n\t{\n\t\treturn rev_indextable;\n\t}\n\tstatic const T3 *rev_segmenttable_ptr()\n\t{\n\t\treturn rev_segmenttable;\n\t}\n\tstatic const T2 *rev_charsettable_ptr()\n\t{\n\t\treturn rev_charsettable;\n\t}\n};\n\n";
+				outdata += "\n\tstatic const T2 ucf_deltatable[];\n\tstatic const T3 ucf_segmenttable[];\n\tstatic const T3 rev_indextable[];\n\tstatic const T3 rev_segmenttable[];\n\tstatic const T2 rev_charsettable[];\n";
+
+				if (opts.version <= 200)
+					outdata += "\n\tstatic const T2 *ucf_deltatable_ptr()\n\t{\n\t\treturn ucf_deltatable;\n\t}\n\tstatic const T3 *ucf_segmenttable_ptr()\n\t{\n\t\treturn ucf_segmenttable;\n\t}\n\tstatic const T3 *rev_indextable_ptr()\n\t{\n\t\treturn rev_indextable;\n\t}\n\tstatic const T3 *rev_segmenttable_ptr()\n\t{\n\t\treturn rev_segmenttable;\n\t}\n\tstatic const T2 *rev_charsettable_ptr()\n\t{\n\t\treturn rev_charsettable;\n\t}\n";
+
+				outdata += "};\ntemplate <typename T2, typename T3>\n\tconst T2 unicode_casefolding<T2, T3>::ucf_maxcodepoint;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::ucf_deltatablesize;\ntemplate <typename T2, typename T3>\n\tconst T2 unicode_casefolding<T2, T3>::rev_maxcodepoint;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::rev_indextablesize;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::rev_charsettablesize;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::rev_maxset;\ntemplate <typename T2, typename T3>\n\tconst T2 unicode_casefolding<T2, T3>::eos;\n\n";
 				out_v2tables(outdata);
-				outdata += "#define SRELL_UCFDATA_VERSION 200\n";
+				outdata += "#define SRELL_UCFDATA_VERSION " + unishared::stringify<16>(static_cast<unsigned int>(opts.version), "%u") + "\n";
 			}
 			else
 				outdata += "};\n#define SRELL_UCFDATA_VER 201909L\n";

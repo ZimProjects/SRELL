@@ -1,3 +1,14 @@
+20220618; version 4.000:
+  * Added support for the v-flag mode that is expected to be added to
+    a future version of ECMAScript.
+  * Changed the format of srell_updata.hpp and renamed to
+    srell_updata2.hpp.
+  * In accordance with the change above, unicode/updataout.cpp was
+    updated and renamed to updataout2.cpp.
+  * Fixed an issue of a struct layout that clang-tidy warns as
+    "excessive padding" on 64-bit systems (Thanks for the report).
+  * Updated unicode/ucfdataout2.cpp.
+
 20220529; version 3.010:
   * Reduced the amount of memory used to hold a character class that
     contains Unicode property escapes.
@@ -242,9 +253,8 @@
     instead of creating them from case folding data when its instance is
     first created.
   * In accordance with the change above, srell_ucfdata.hpp and
-    ucfdataout.cpp that outputs the former were replaced with
-    srell_ucfdata2.hpp that holds precomputed tables and ucfdataout2.cpp
-    that outputs the former.
+    ucfdataout.cpp were replaced with srell_ucfdata2.hpp and
+    ucfdataout2.cpp, accordingly.
   * Changed the method of character class matching from linear search to
     binary search.
   * Changed the timing of optimisation of a character class from "when a

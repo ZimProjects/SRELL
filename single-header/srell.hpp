@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 3.010
+**  SRELL (std::regex-like library) version 4.000
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -111,6 +111,9 @@
 #ifndef SRELL_NO_UNICODE_PROPERTY
 #define SRELL_NO_UNICODE_PROPERTY
 #endif
+#ifndef SRELL_NO_VMODE
+#define SRELL_NO_VMODE
+#endif
 #define SRELL_NO_NAMEDCAPTURE
 #define SRELL_NO_SINGLELINE
 #define SRELL_FIXEDWIDTHLOOKBEHIND
@@ -137,7 +140,8 @@ namespace srell
 			multiline  = 1 << 10,
 
 			//  SRELL's extension.
-			dotall     = 1 << 11	//  singleline.
+			dotall      = 1 << 11,	//  singleline.
+			unicodesets = 1 << 12
 		};
 
 		inline syntax_option_type operator&(const syntax_option_type left, const syntax_option_type right)
@@ -267,6 +271,9 @@ namespace srell
 		static const error_type error_complement = 117;
 			//  (Only in v-mode) \P or a negated character class contained a property of strings.
 
+		static const error_type error_modifier   = 118;
+			//  A specific flag modifier appears more then once.
+
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		static const error_type error_lookbehind = 200;
 #endif
@@ -378,6 +385,7 @@ private:
 			static const uchar32 max_u32value = static_cast<uchar32>(-2);
 			static const uchar32 asc_icase = 0x20;
 			static const uchar32 ccstr_empty = static_cast<uchar32>(-1);
+			static const uint_l32 infinity = static_cast<uint_l32>(~0);
 		}
 		//  constants
 
@@ -547,7 +555,18 @@ public:
 	{
 		return begin != end;
 	}
-};	//  utf_traits_core
+};
+template <typename charT>
+	 const std::size_t utf_traits_core<charT>::maxseqlen;
+template <typename charT>
+	 const int utf_traits_core<charT>::utftype;
+template <typename charT>
+	 const std::size_t utf_traits_core<charT>::bitsetsize;
+template <typename charT>
+	 const uchar32 utf_traits_core<charT>::bitsetmask;
+template <typename charT>
+	 const uchar32 utf_traits_core<charT>::cumask;
+//  utf_traits_core
 
 //  common and utf-32.
 template <typename charT>
@@ -558,7 +577,16 @@ struct utf_traits : public utf_traits_core<charT>
 	static const std::size_t bitsetsize = 0x10000;
 	static const uchar32 bitsetmask = 0xffff;
 	static const uchar32 cumask = 0x1fffff;
-};	//  utf_traits
+};
+template <typename charT>
+	 const int utf_traits<charT>::utftype;
+template <typename charT>
+	 const std::size_t utf_traits<charT>::bitsetsize;
+template <typename charT>
+	 const uchar32 utf_traits<charT>::bitsetmask;
+template <typename charT>
+	 const uchar32 utf_traits<charT>::cumask;
+//  utf_traits
 
 //  utf-8 specific.
 template <typename charT>
@@ -808,7 +836,12 @@ public:
 		}
 		return false;
 	}
-};	//  utf8_traits
+};
+template <typename charT>
+	 const std::size_t utf8_traits<charT>::maxseqlen;
+template <typename charT>
+	 const int utf8_traits<charT>::utftype;
+//  utf8_traits
 
 //  utf-16 specific.
 template <typename charT>
@@ -928,7 +961,18 @@ public:
 		}
 		return false;
 	}
-};	//  utf16_traits
+};
+template <typename charT>
+	 const std::size_t utf16_traits<charT>::maxseqlen;
+template <typename charT>
+	 const int utf16_traits<charT>::utftype;
+template <typename charT>
+	 const std::size_t utf16_traits<charT>::bitsetsize;
+template <typename charT>
+	 const uchar32 utf16_traits<charT>::bitsetmask;
+template <typename charT>
+	 const uchar32 utf16_traits<charT>::cumask;
+//  utf16_traits
 
 //  specialisation for char.
 template <>
@@ -1265,6 +1309,11 @@ public:
 		buffer_[oldsize] = n;
 	}
 
+	void push_backncr(const ElemT e)
+	{
+		push_back(e);
+	}
+
 	const_reference back() const
 	{
 		return buffer_[size_ - 1];
@@ -1494,6 +1543,8 @@ private:
 //	static const size_type maxsize_ = (npos - sizeof (simple_array)) / sizeof (ElemT);
 	static const size_type maxsize_ = (npos - sizeof (pointer) - sizeof (size_type) * 2) / sizeof (ElemT) / 2;
 };
+template <typename ElemT>
+const typename simple_array<ElemT>::size_type simple_array<ElemT>::npos;
 //  simple_array
 
 	}	//  namespace regex_internal
@@ -1672,6 +1723,10 @@ private:
 	{
 
 #if !defined(SRELL_NO_UNICODE_ICASE)
+
+		namespace ucf_constants
+		{
+
 //  ["srell_ucfdata2.hpp" ...
 //  CaseFolding-14.0.0.txt
 //  Date: 2021-03-08, 19:35:41 GMT
@@ -1695,28 +1750,21 @@ struct unicode_casefolding
 	static const T3 rev_indextable[];
 	static const T3 rev_segmenttable[];
 	static const T2 rev_charsettable[];
-
-	static const T2 *ucf_deltatable_ptr()
-	{
-		return ucf_deltatable;
-	}
-	static const T3 *ucf_segmenttable_ptr()
-	{
-		return ucf_segmenttable;
-	}
-	static const T3 *rev_indextable_ptr()
-	{
-		return rev_indextable;
-	}
-	static const T3 *rev_segmenttable_ptr()
-	{
-		return rev_segmenttable;
-	}
-	static const T2 *rev_charsettable_ptr()
-	{
-		return rev_charsettable;
-	}
 };
+template <typename T2, typename T3>
+	const T2 unicode_casefolding<T2, T3>::ucf_maxcodepoint;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::ucf_deltatablesize;
+template <typename T2, typename T3>
+	const T2 unicode_casefolding<T2, T3>::rev_maxcodepoint;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::rev_indextablesize;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::rev_charsettablesize;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::rev_maxset;
+template <typename T2, typename T3>
+	const T2 unicode_casefolding<T2, T3>::eos;
 
 template <typename T2, typename T3>
 const T2 unicode_casefolding<T2, T3>::ucf_deltatable[] =
@@ -4163,32 +4211,37 @@ const T2 unicode_casefolding<T2, T3>::rev_charsettable[] =
 	0x1E942, 0x1E920, eos,
 	0x1E943, 0x1E921, eos	//  4300
 };
-#define SRELL_UCFDATA_VERSION 200
+#define SRELL_UCFDATA_VERSION 201
 //  ... "srell_ucfdata2.hpp"]
+
+		}	//  namespace ucf_constants
 
 		namespace ucf_internal
 		{
 
-typedef unicode_casefolding<uchar32, uchar32> ucf_data;
+typedef ucf_constants::unicode_casefolding<uchar32, uchar32> ucfdata;
 
 		}	//  namespace ucf_internal
 #endif	//  !defined(SRELL_NO_UNICODE_ICASE)
+
+		namespace ucf_constants
+		{
+#if !defined(SRELL_NO_UNICODE_ICASE)
+			static const uchar32 rev_maxset = ucf_internal::ucfdata::rev_maxset;
+#else
+			static const uchar32 rev_maxset = 2;
+#endif
+		}	//  namespace ucf_constants
 
 class unicode_case_folding
 {
 public:
 
-#if !defined(SRELL_NO_UNICODE_ICASE)
-	static const uchar32 rev_maxset = ucf_internal::ucf_data::rev_maxset;
-#else
-	static const uchar32 rev_maxset = 2;
-#endif
-
 	static uchar32 do_casefolding(const uchar32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
-		if (cp <= ucf_internal::ucf_data::ucf_maxcodepoint)
-			return cp + ucf_internal::ucf_data::ucf_deltatable[ucf_internal::ucf_data::ucf_segmenttable[cp >> 8] + (cp & 0xff)];
+		if (cp <= ucf_internal::ucfdata::ucf_maxcodepoint)
+			return cp + ucf_internal::ucfdata::ucf_deltatable[ucf_internal::ucfdata::ucf_segmenttable[cp >> 8] + (cp & 0xff)];
 #else
 		if (cp >= char_alnum::ch_A && cp <= char_alnum::ch_Z)	//  'A' && 'Z'
 			return static_cast<uchar32>(cp - char_alnum::ch_A + char_alnum::ch_a);	//  - 'A' + 'a'
@@ -4196,17 +4249,17 @@ public:
 		return cp;
 	}
 
-	static uchar32 casefoldedcharset(uchar32 out[rev_maxset], const uchar32 cp)
+	static uchar32 casefoldedcharset(uchar32 out[ucf_constants::rev_maxset], const uchar32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
 		uchar32 count = 0;
 
-		if (cp <= ucf_internal::ucf_data::rev_maxcodepoint)
+		if (cp <= ucf_internal::ucfdata::rev_maxcodepoint)
 		{
-			const uchar32 offset_of_charset = ucf_internal::ucf_data::rev_indextable[ucf_internal::ucf_data::rev_segmenttable[cp >> 8] + (cp & 0xff)];
-			const uchar32 *ptr = &ucf_internal::ucf_data::rev_charsettable[offset_of_charset];
+			const uchar32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
+			const uchar32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
 
-			for (; *ptr != cfcharset_eos_ && count < rev_maxset; ++ptr, ++count)
+			for (; *ptr != cfcharset_eos_ && count < ucf_constants::rev_maxset; ++ptr, ++count)
 				out[count] = *ptr;
 		}
 		if (count == 0)
@@ -4247,7 +4300,7 @@ public:
 private:
 
 #if !defined(SRELL_NO_UNICODE_ICASE)
-	static const uchar32 cfcharset_eos_ = ucf_internal::ucf_data::eos;
+	static const uchar32 cfcharset_eos_ = ucf_internal::ucfdata::eos;
 #endif
 
 public:	//  For debug.
@@ -4265,7 +4318,11 @@ public:	//  For debug.
 	{
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-//  ["srell_updata.hpp" ...
+
+		namespace up_constants
+		{
+
+//  ["srell_updata2.hpp" ...
 //  UnicodeData.txt
 //
 //  PropList-14.0.0.txt
@@ -4292,6 +4349,18 @@ public:	//  For debug.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see http://www.unicode.org/terms_of_use.html
 //
+//  emoji-sequences.txt
+//  Date: 2021-08-26, 17:22:22 GMT
+//  © 2021 Unicode®, Inc.
+//  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
+//  For terms of use, see http://www.unicode.org/terms_of_use.html
+//
+//  emoji-zwj-sequences.txt
+//  Date: 2021-06-08, 05:19:16 GMT
+//  © 2021 Unicode®, Inc.
+//  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
+//  For terms of use, see http://www.unicode.org/terms_of_use.html
+//
 //  Scripts-14.0.0.txt
 //  Date: 2021-07-10, 00:35:31 GMT
 //  © 2021 Unicode®, Inc.
@@ -4305,457 +4374,453 @@ public:	//  For debug.
 //  For terms of use, see http://www.unicode.org/terms_of_use.html
 //
 
-template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
+enum upid_type
+{
+	upid_unknown = 0,
+	gc_Other = 1,	//  #1
+	gc_Control = 2,	//  #2
+	gc_Format = 3,	//  #3
+	gc_Unassigned = 4,	//  #4
+	gc_Private_Use = 5,	//  #5
+	gc_Surrogate = 6,	//  #6
+	gc_Letter = 7,	//  #7
+	gc_Cased_Letter = 8,	//  #8
+	gc_Lowercase_Letter = 9,	//  #9
+	gc_Titlecase_Letter = 10,	//  #10
+	gc_Uppercase_Letter = 11,	//  #11
+	gc_Modifier_Letter = 12,	//  #12
+	gc_Other_Letter = 13,	//  #13
+	gc_Mark = 14,	//  #14
+	gc_Spacing_Mark = 15,	//  #15
+	gc_Enclosing_Mark = 16,	//  #16
+	gc_Nonspacing_Mark = 17,	//  #17
+	gc_Number = 18,	//  #18
+	gc_Decimal_Number = 19,	//  #19
+	gc_Letter_Number = 20,	//  #20
+	gc_Other_Number = 21,	//  #21
+	gc_Punctuation = 22,	//  #22
+	gc_Connector_Punctuation = 23,	//  #23
+	gc_Dash_Punctuation = 24,	//  #24
+	gc_Close_Punctuation = 25,	//  #25
+	gc_Final_Punctuation = 26,	//  #26
+	gc_Initial_Punctuation = 27,	//  #27
+	gc_Other_Punctuation = 28,	//  #28
+	gc_Open_Punctuation = 29,	//  #29
+	gc_Symbol = 30,	//  #30
+	gc_Currency_Symbol = 31,	//  #31
+	gc_Modifier_Symbol = 32,	//  #32
+	gc_Math_Symbol = 33,	//  #33
+	gc_Other_Symbol = 34,	//  #34
+	gc_Separator = 35,	//  #35
+	gc_Line_Separator = 36,	//  #36
+	gc_Paragraph_Separator = 37,	//  #37
+	gc_Space_Separator = 38,	//  #38
+	bp_ASCII = 39,	//  #39
+	bp_ASCII_Hex_Digit = 40,	//  #40
+	bp_Alphabetic = 41,	//  #41
+	bp_Any = 42,	//  #42
+	bp_Assigned = 43,	//  #43
+	bp_Bidi_Control = 44,	//  #44
+	bp_Bidi_Mirrored = 45,	//  #45
+	bp_Case_Ignorable = 46,	//  #46
+	bp_Cased = 47,	//  #47
+	bp_Changes_When_Casefolded = 48,	//  #48
+	bp_Changes_When_Casemapped = 49,	//  #49
+	bp_Changes_When_Lowercased = 50,	//  #50
+	bp_Changes_When_NFKC_Casefolded = 51,	//  #51
+	bp_Changes_When_Titlecased = 52,	//  #52
+	bp_Changes_When_Uppercased = 53,	//  #53
+	bp_Dash = 54,	//  #54
+	bp_Default_Ignorable_Code_Point = 55,	//  #55
+	bp_Deprecated = 56,	//  #56
+	bp_Diacritic = 57,	//  #57
+	bp_Emoji = 58,	//  #58
+	bp_Emoji_Component = 59,	//  #59
+	bp_Emoji_Modifier = 60,	//  #60
+	bp_Emoji_Modifier_Base = 61,	//  #61
+	bp_Emoji_Presentation = 62,	//  #62
+	bp_Extended_Pictographic = 63,	//  #63
+	bp_Extender = 64,	//  #64
+	bp_Grapheme_Base = 65,	//  #65
+	bp_Grapheme_Extend = 66,	//  #66
+	bp_Hex_Digit = 67,	//  #67
+	bp_IDS_Binary_Operator = 68,	//  #68
+	bp_IDS_Trinary_Operator = 69,	//  #69
+	bp_ID_Continue = 70,	//  #70
+	bp_ID_Start = 71,	//  #71
+	bp_Ideographic = 72,	//  #72
+	bp_Join_Control = 73,	//  #73
+	bp_Logical_Order_Exception = 74,	//  #74
+	bp_Lowercase = 75,	//  #75
+	bp_Math = 76,	//  #76
+	bp_Noncharacter_Code_Point = 77,	//  #77
+	bp_Pattern_Syntax = 78,	//  #78
+	bp_Pattern_White_Space = 79,	//  #79
+	bp_Quotation_Mark = 80,	//  #80
+	bp_Radical = 81,	//  #81
+	bp_Regional_Indicator = 82,	//  #82
+	bp_Sentence_Terminal = 83,	//  #83
+	bp_Soft_Dotted = 84,	//  #84
+	bp_Terminal_Punctuation = 85,	//  #85
+	bp_Unified_Ideograph = 86,	//  #86
+	bp_Uppercase = 87,	//  #87
+	bp_Variation_Selector = 88,	//  #88
+	bp_White_Space = 89,	//  #89
+	bp_XID_Continue = 90,	//  #90
+	bp_XID_Start = 91,	//  #91
+	sc_Adlam = 92,	//  #92
+	sc_Ahom = 93,	//  #93
+	sc_Anatolian_Hieroglyphs = 94,	//  #94
+	sc_Arabic = 95,	//  #95
+	sc_Armenian = 96,	//  #96
+	sc_Avestan = 97,	//  #97
+	sc_Balinese = 98,	//  #98
+	sc_Bamum = 99,	//  #99
+	sc_Bassa_Vah = 100,	//  #100
+	sc_Batak = 101,	//  #101
+	sc_Bengali = 102,	//  #102
+	sc_Bhaiksuki = 103,	//  #103
+	sc_Bopomofo = 104,	//  #104
+	sc_Brahmi = 105,	//  #105
+	sc_Braille = 106,	//  #106
+	sc_Buginese = 107,	//  #107
+	sc_Buhid = 108,	//  #108
+	sc_Canadian_Aboriginal = 109,	//  #109
+	sc_Carian = 110,	//  #110
+	sc_Caucasian_Albanian = 111,	//  #111
+	sc_Chakma = 112,	//  #112
+	sc_Cham = 113,	//  #113
+	sc_Cherokee = 114,	//  #114
+	sc_Chorasmian = 115,	//  #115
+	sc_Common = 116,	//  #116
+	sc_Coptic = 117,	//  #117
+	sc_Cypro_Minoan = 118,	//  #118
+	sc_Cuneiform = 119,	//  #119
+	sc_Cypriot = 120,	//  #120
+	sc_Cyrillic = 121,	//  #121
+	sc_Deseret = 122,	//  #122
+	sc_Devanagari = 123,	//  #123
+	sc_Dives_Akuru = 124,	//  #124
+	sc_Dogra = 125,	//  #125
+	sc_Duployan = 126,	//  #126
+	sc_Egyptian_Hieroglyphs = 127,	//  #127
+	sc_Elbasan = 128,	//  #128
+	sc_Elymaic = 129,	//  #129
+	sc_Ethiopic = 130,	//  #130
+	sc_Georgian = 131,	//  #131
+	sc_Glagolitic = 132,	//  #132
+	sc_Gothic = 133,	//  #133
+	sc_Grantha = 134,	//  #134
+	sc_Greek = 135,	//  #135
+	sc_Gujarati = 136,	//  #136
+	sc_Gunjala_Gondi = 137,	//  #137
+	sc_Gurmukhi = 138,	//  #138
+	sc_Han = 139,	//  #139
+	sc_Hangul = 140,	//  #140
+	sc_Hanifi_Rohingya = 141,	//  #141
+	sc_Hanunoo = 142,	//  #142
+	sc_Hatran = 143,	//  #143
+	sc_Hebrew = 144,	//  #144
+	sc_Hiragana = 145,	//  #145
+	sc_Imperial_Aramaic = 146,	//  #146
+	sc_Inherited = 147,	//  #147
+	sc_Inscriptional_Pahlavi = 148,	//  #148
+	sc_Inscriptional_Parthian = 149,	//  #149
+	sc_Javanese = 150,	//  #150
+	sc_Kaithi = 151,	//  #151
+	sc_Kannada = 152,	//  #152
+	sc_Katakana = 153,	//  #153
+	sc_Kayah_Li = 154,	//  #154
+	sc_Kharoshthi = 155,	//  #155
+	sc_Khitan_Small_Script = 156,	//  #156
+	sc_Khmer = 157,	//  #157
+	sc_Khojki = 158,	//  #158
+	sc_Khudawadi = 159,	//  #159
+	sc_Lao = 160,	//  #160
+	sc_Latin = 161,	//  #161
+	sc_Lepcha = 162,	//  #162
+	sc_Limbu = 163,	//  #163
+	sc_Linear_A = 164,	//  #164
+	sc_Linear_B = 165,	//  #165
+	sc_Lisu = 166,	//  #166
+	sc_Lycian = 167,	//  #167
+	sc_Lydian = 168,	//  #168
+	sc_Mahajani = 169,	//  #169
+	sc_Makasar = 170,	//  #170
+	sc_Malayalam = 171,	//  #171
+	sc_Mandaic = 172,	//  #172
+	sc_Manichaean = 173,	//  #173
+	sc_Marchen = 174,	//  #174
+	sc_Masaram_Gondi = 175,	//  #175
+	sc_Medefaidrin = 176,	//  #176
+	sc_Meetei_Mayek = 177,	//  #177
+	sc_Mende_Kikakui = 178,	//  #178
+	sc_Meroitic_Cursive = 179,	//  #179
+	sc_Meroitic_Hieroglyphs = 180,	//  #180
+	sc_Miao = 181,	//  #181
+	sc_Modi = 182,	//  #182
+	sc_Mongolian = 183,	//  #183
+	sc_Mro = 184,	//  #184
+	sc_Multani = 185,	//  #185
+	sc_Myanmar = 186,	//  #186
+	sc_Nabataean = 187,	//  #187
+	sc_Nandinagari = 188,	//  #188
+	sc_New_Tai_Lue = 189,	//  #189
+	sc_Newa = 190,	//  #190
+	sc_Nko = 191,	//  #191
+	sc_Nushu = 192,	//  #192
+	sc_Nyiakeng_Puachue_Hmong = 193,	//  #193
+	sc_Ogham = 194,	//  #194
+	sc_Ol_Chiki = 195,	//  #195
+	sc_Old_Hungarian = 196,	//  #196
+	sc_Old_Italic = 197,	//  #197
+	sc_Old_North_Arabian = 198,	//  #198
+	sc_Old_Permic = 199,	//  #199
+	sc_Old_Persian = 200,	//  #200
+	sc_Old_Sogdian = 201,	//  #201
+	sc_Old_South_Arabian = 202,	//  #202
+	sc_Old_Turkic = 203,	//  #203
+	sc_Old_Uyghur = 204,	//  #204
+	sc_Oriya = 205,	//  #205
+	sc_Osage = 206,	//  #206
+	sc_Osmanya = 207,	//  #207
+	sc_Pahawh_Hmong = 208,	//  #208
+	sc_Palmyrene = 209,	//  #209
+	sc_Pau_Cin_Hau = 210,	//  #210
+	sc_Phags_Pa = 211,	//  #211
+	sc_Phoenician = 212,	//  #212
+	sc_Psalter_Pahlavi = 213,	//  #213
+	sc_Rejang = 214,	//  #214
+	sc_Runic = 215,	//  #215
+	sc_Samaritan = 216,	//  #216
+	sc_Saurashtra = 217,	//  #217
+	sc_Sharada = 218,	//  #218
+	sc_Shavian = 219,	//  #219
+	sc_Siddham = 220,	//  #220
+	sc_SignWriting = 221,	//  #221
+	sc_Sinhala = 222,	//  #222
+	sc_Sogdian = 223,	//  #223
+	sc_Sora_Sompeng = 224,	//  #224
+	sc_Soyombo = 225,	//  #225
+	sc_Sundanese = 226,	//  #226
+	sc_Syloti_Nagri = 227,	//  #227
+	sc_Syriac = 228,	//  #228
+	sc_Tagalog = 229,	//  #229
+	sc_Tagbanwa = 230,	//  #230
+	sc_Tai_Le = 231,	//  #231
+	sc_Tai_Tham = 232,	//  #232
+	sc_Tai_Viet = 233,	//  #233
+	sc_Takri = 234,	//  #234
+	sc_Tamil = 235,	//  #235
+	sc_Tangsa = 236,	//  #236
+	sc_Tangut = 237,	//  #237
+	sc_Telugu = 238,	//  #238
+	sc_Thaana = 239,	//  #239
+	sc_Thai = 240,	//  #240
+	sc_Tibetan = 241,	//  #241
+	sc_Tifinagh = 242,	//  #242
+	sc_Tirhuta = 243,	//  #243
+	sc_Toto = 244,	//  #244
+	sc_Ugaritic = 245,	//  #245
+	sc_Vai = 246,	//  #246
+	sc_Vithkuqi = 247,	//  #247
+	sc_Wancho = 248,	//  #248
+	sc_Warang_Citi = 249,	//  #249
+	sc_Yezidi = 250,	//  #250
+	sc_Yi = 251,	//  #251
+	sc_Zanabazar_Square = 252,	//  #252
+	scx_Adlam = 253,	//  #253
+	scx_Ahom = 254,	//  #93
+	scx_Anatolian_Hieroglyphs = 255,	//  #94
+	scx_Arabic = 256,	//  #254
+	scx_Armenian = 257,	//  #96
+	scx_Avestan = 258,	//  #97
+	scx_Balinese = 259,	//  #98
+	scx_Bamum = 260,	//  #99
+	scx_Bassa_Vah = 261,	//  #100
+	scx_Batak = 262,	//  #101
+	scx_Bengali = 263,	//  #255
+	scx_Bhaiksuki = 264,	//  #103
+	scx_Bopomofo = 265,	//  #256
+	scx_Brahmi = 266,	//  #105
+	scx_Braille = 267,	//  #106
+	scx_Buginese = 268,	//  #257
+	scx_Buhid = 269,	//  #258
+	scx_Canadian_Aboriginal = 270,	//  #109
+	scx_Carian = 271,	//  #110
+	scx_Caucasian_Albanian = 272,	//  #111
+	scx_Chakma = 273,	//  #259
+	scx_Cham = 274,	//  #113
+	scx_Cherokee = 275,	//  #114
+	scx_Chorasmian = 276,	//  #115
+	scx_Common = 277,	//  #260
+	scx_Coptic = 278,	//  #261
+	scx_Cypro_Minoan = 279,	//  #262
+	scx_Cuneiform = 280,	//  #119
+	scx_Cypriot = 281,	//  #263
+	scx_Cyrillic = 282,	//  #264
+	scx_Deseret = 283,	//  #122
+	scx_Devanagari = 284,	//  #265
+	scx_Dives_Akuru = 285,	//  #124
+	scx_Dogra = 286,	//  #266
+	scx_Duployan = 287,	//  #267
+	scx_Egyptian_Hieroglyphs = 288,	//  #127
+	scx_Elbasan = 289,	//  #128
+	scx_Elymaic = 290,	//  #129
+	scx_Ethiopic = 291,	//  #130
+	scx_Georgian = 292,	//  #268
+	scx_Glagolitic = 293,	//  #269
+	scx_Gothic = 294,	//  #133
+	scx_Grantha = 295,	//  #270
+	scx_Greek = 296,	//  #271
+	scx_Gujarati = 297,	//  #272
+	scx_Gunjala_Gondi = 298,	//  #273
+	scx_Gurmukhi = 299,	//  #274
+	scx_Han = 300,	//  #275
+	scx_Hangul = 301,	//  #276
+	scx_Hanifi_Rohingya = 302,	//  #277
+	scx_Hanunoo = 303,	//  #278
+	scx_Hatran = 304,	//  #143
+	scx_Hebrew = 305,	//  #144
+	scx_Hiragana = 306,	//  #279
+	scx_Imperial_Aramaic = 307,	//  #146
+	scx_Inherited = 308,	//  #280
+	scx_Inscriptional_Pahlavi = 309,	//  #148
+	scx_Inscriptional_Parthian = 310,	//  #149
+	scx_Javanese = 311,	//  #281
+	scx_Kaithi = 312,	//  #282
+	scx_Kannada = 313,	//  #283
+	scx_Katakana = 314,	//  #284
+	scx_Kayah_Li = 315,	//  #285
+	scx_Kharoshthi = 316,	//  #155
+	scx_Khitan_Small_Script = 317,	//  #156
+	scx_Khmer = 318,	//  #157
+	scx_Khojki = 319,	//  #286
+	scx_Khudawadi = 320,	//  #287
+	scx_Lao = 321,	//  #160
+	scx_Latin = 322,	//  #288
+	scx_Lepcha = 323,	//  #162
+	scx_Limbu = 324,	//  #289
+	scx_Linear_A = 325,	//  #290
+	scx_Linear_B = 326,	//  #291
+	scx_Lisu = 327,	//  #166
+	scx_Lycian = 328,	//  #167
+	scx_Lydian = 329,	//  #168
+	scx_Mahajani = 330,	//  #292
+	scx_Makasar = 331,	//  #170
+	scx_Malayalam = 332,	//  #293
+	scx_Mandaic = 333,	//  #294
+	scx_Manichaean = 334,	//  #295
+	scx_Marchen = 335,	//  #174
+	scx_Masaram_Gondi = 336,	//  #296
+	scx_Medefaidrin = 337,	//  #176
+	scx_Meetei_Mayek = 338,	//  #177
+	scx_Mende_Kikakui = 339,	//  #178
+	scx_Meroitic_Cursive = 340,	//  #179
+	scx_Meroitic_Hieroglyphs = 341,	//  #180
+	scx_Miao = 342,	//  #181
+	scx_Modi = 343,	//  #297
+	scx_Mongolian = 344,	//  #298
+	scx_Mro = 345,	//  #184
+	scx_Multani = 346,	//  #299
+	scx_Myanmar = 347,	//  #300
+	scx_Nabataean = 348,	//  #187
+	scx_Nandinagari = 349,	//  #301
+	scx_New_Tai_Lue = 350,	//  #189
+	scx_Newa = 351,	//  #190
+	scx_Nko = 352,	//  #302
+	scx_Nushu = 353,	//  #192
+	scx_Nyiakeng_Puachue_Hmong = 354,	//  #193
+	scx_Ogham = 355,	//  #194
+	scx_Ol_Chiki = 356,	//  #195
+	scx_Old_Hungarian = 357,	//  #196
+	scx_Old_Italic = 358,	//  #197
+	scx_Old_North_Arabian = 359,	//  #198
+	scx_Old_Permic = 360,	//  #303
+	scx_Old_Persian = 361,	//  #200
+	scx_Old_Sogdian = 362,	//  #201
+	scx_Old_South_Arabian = 363,	//  #202
+	scx_Old_Turkic = 364,	//  #203
+	scx_Old_Uyghur = 365,	//  #304
+	scx_Oriya = 366,	//  #305
+	scx_Osage = 367,	//  #206
+	scx_Osmanya = 368,	//  #207
+	scx_Pahawh_Hmong = 369,	//  #208
+	scx_Palmyrene = 370,	//  #209
+	scx_Pau_Cin_Hau = 371,	//  #210
+	scx_Phags_Pa = 372,	//  #306
+	scx_Phoenician = 373,	//  #212
+	scx_Psalter_Pahlavi = 374,	//  #307
+	scx_Rejang = 375,	//  #214
+	scx_Runic = 376,	//  #215
+	scx_Samaritan = 377,	//  #216
+	scx_Saurashtra = 378,	//  #217
+	scx_Sharada = 379,	//  #308
+	scx_Shavian = 380,	//  #219
+	scx_Siddham = 381,	//  #220
+	scx_SignWriting = 382,	//  #221
+	scx_Sinhala = 383,	//  #309
+	scx_Sogdian = 384,	//  #310
+	scx_Sora_Sompeng = 385,	//  #224
+	scx_Soyombo = 386,	//  #225
+	scx_Sundanese = 387,	//  #226
+	scx_Syloti_Nagri = 388,	//  #311
+	scx_Syriac = 389,	//  #312
+	scx_Tagalog = 390,	//  #313
+	scx_Tagbanwa = 391,	//  #314
+	scx_Tai_Le = 392,	//  #315
+	scx_Tai_Tham = 393,	//  #232
+	scx_Tai_Viet = 394,	//  #233
+	scx_Takri = 395,	//  #316
+	scx_Tamil = 396,	//  #317
+	scx_Tangsa = 397,	//  #236
+	scx_Tangut = 398,	//  #237
+	scx_Telugu = 399,	//  #318
+	scx_Thaana = 400,	//  #319
+	scx_Thai = 401,	//  #240
+	scx_Tibetan = 402,	//  #241
+	scx_Tifinagh = 403,	//  #242
+	scx_Tirhuta = 404,	//  #320
+	scx_Toto = 405,	//  #244
+	scx_Ugaritic = 406,	//  #245
+	scx_Vai = 407,	//  #246
+	scx_Vithkuqi = 408,	//  #247
+	scx_Wancho = 409,	//  #248
+	scx_Warang_Citi = 410,	//  #249
+	scx_Yezidi = 411,	//  #321
+	scx_Yi = 412,	//  #322
+	scx_Zanabazar_Square = 413,	//  #252
+	upid_max_property_number = 322,
+	bp_RGI_Emoji = 414,	//  #323
+	bp_Basic_Emoji = 415,	//  #324
+	bp_Emoji_Keycap_Sequence = 416,	//  #325
+	bp_RGI_Emoji_Modifier_Sequence = 417,	//  #326
+	bp_RGI_Emoji_Flag_Sequence = 418,	//  #327
+	bp_RGI_Emoji_Tag_Sequence = 419,	//  #328
+	bp_RGI_Emoji_ZWJ_Sequence = 420,	//  #329
+	upid_max_pos_number = 329
+};
+
+enum up_type
+{
+	uptype_unknown = 0,
+	uptype_binary = 1,
+	uptype_general_category = 2,
+	uptype_script = 3,
+	uptype_script_extensions = 4
+};
+
+template <typename T3, typename T4, typename T5, typename T6>
 struct unicode_property_data
 {
-	static const T1 unknown = 0;
-	static const T1 gc_Other = 1;	//  #1
-	static const T1 gc_Control = 2;	//  #2
-	static const T1 gc_Format = 3;	//  #3
-	static const T1 gc_Unassigned = 4;	//  #4
-	static const T1 gc_Private_Use = 5;	//  #5
-	static const T1 gc_Surrogate = 6;	//  #6
-	static const T1 gc_Letter = 7;	//  #7
-	static const T1 gc_Cased_Letter = 8;	//  #8
-	static const T1 gc_Lowercase_Letter = 9;	//  #9
-	static const T1 gc_Titlecase_Letter = 10;	//  #10
-	static const T1 gc_Uppercase_Letter = 11;	//  #11
-	static const T1 gc_Modifier_Letter = 12;	//  #12
-	static const T1 gc_Other_Letter = 13;	//  #13
-	static const T1 gc_Mark = 14;	//  #14
-	static const T1 gc_Spacing_Mark = 15;	//  #15
-	static const T1 gc_Enclosing_Mark = 16;	//  #16
-	static const T1 gc_Nonspacing_Mark = 17;	//  #17
-	static const T1 gc_Number = 18;	//  #18
-	static const T1 gc_Decimal_Number = 19;	//  #19
-	static const T1 gc_Letter_Number = 20;	//  #20
-	static const T1 gc_Other_Number = 21;	//  #21
-	static const T1 gc_Punctuation = 22;	//  #22
-	static const T1 gc_Connector_Punctuation = 23;	//  #23
-	static const T1 gc_Dash_Punctuation = 24;	//  #24
-	static const T1 gc_Close_Punctuation = 25;	//  #25
-	static const T1 gc_Final_Punctuation = 26;	//  #26
-	static const T1 gc_Initial_Punctuation = 27;	//  #27
-	static const T1 gc_Other_Punctuation = 28;	//  #28
-	static const T1 gc_Open_Punctuation = 29;	//  #29
-	static const T1 gc_Symbol = 30;	//  #30
-	static const T1 gc_Currency_Symbol = 31;	//  #31
-	static const T1 gc_Modifier_Symbol = 32;	//  #32
-	static const T1 gc_Math_Symbol = 33;	//  #33
-	static const T1 gc_Other_Symbol = 34;	//  #34
-	static const T1 gc_Separator = 35;	//  #35
-	static const T1 gc_Line_Separator = 36;	//  #36
-	static const T1 gc_Paragraph_Separator = 37;	//  #37
-	static const T1 gc_Space_Separator = 38;	//  #38
-	static const T1 bp_ASCII = 39;	//  #39
-	static const T1 bp_ASCII_Hex_Digit = 40;	//  #40
-	static const T1 bp_Alphabetic = 41;	//  #41
-	static const T1 bp_Any = 42;	//  #42
-	static const T1 bp_Assigned = 43;	//  #43
-	static const T1 bp_Bidi_Control = 44;	//  #44
-	static const T1 bp_Bidi_Mirrored = 45;	//  #45
-	static const T1 bp_Case_Ignorable = 46;	//  #46
-	static const T1 bp_Cased = 47;	//  #47
-	static const T1 bp_Changes_When_Casefolded = 48;	//  #48
-	static const T1 bp_Changes_When_Casemapped = 49;	//  #49
-	static const T1 bp_Changes_When_Lowercased = 50;	//  #50
-	static const T1 bp_Changes_When_NFKC_Casefolded = 51;	//  #51
-	static const T1 bp_Changes_When_Titlecased = 52;	//  #52
-	static const T1 bp_Changes_When_Uppercased = 53;	//  #53
-	static const T1 bp_Dash = 54;	//  #54
-	static const T1 bp_Default_Ignorable_Code_Point = 55;	//  #55
-	static const T1 bp_Deprecated = 56;	//  #56
-	static const T1 bp_Diacritic = 57;	//  #57
-	static const T1 bp_Emoji = 58;	//  #58
-	static const T1 bp_Emoji_Component = 59;	//  #59
-	static const T1 bp_Emoji_Modifier = 60;	//  #60
-	static const T1 bp_Emoji_Modifier_Base = 61;	//  #61
-	static const T1 bp_Emoji_Presentation = 62;	//  #62
-	static const T1 bp_Extended_Pictographic = 63;	//  #63
-	static const T1 bp_Extender = 64;	//  #64
-	static const T1 bp_Grapheme_Base = 65;	//  #65
-	static const T1 bp_Grapheme_Extend = 66;	//  #66
-	static const T1 bp_Hex_Digit = 67;	//  #67
-	static const T1 bp_IDS_Binary_Operator = 68;	//  #68
-	static const T1 bp_IDS_Trinary_Operator = 69;	//  #69
-	static const T1 bp_ID_Continue = 70;	//  #70
-	static const T1 bp_ID_Start = 71;	//  #71
-	static const T1 bp_Ideographic = 72;	//  #72
-	static const T1 bp_Join_Control = 73;	//  #73
-	static const T1 bp_Logical_Order_Exception = 74;	//  #74
-	static const T1 bp_Lowercase = 75;	//  #75
-	static const T1 bp_Math = 76;	//  #76
-	static const T1 bp_Noncharacter_Code_Point = 77;	//  #77
-	static const T1 bp_Pattern_Syntax = 78;	//  #78
-	static const T1 bp_Pattern_White_Space = 79;	//  #79
-	static const T1 bp_Quotation_Mark = 80;	//  #80
-	static const T1 bp_Radical = 81;	//  #81
-	static const T1 bp_Regional_Indicator = 82;	//  #82
-	static const T1 bp_Sentence_Terminal = 83;	//  #83
-	static const T1 bp_Soft_Dotted = 84;	//  #84
-	static const T1 bp_Terminal_Punctuation = 85;	//  #85
-	static const T1 bp_Unified_Ideograph = 86;	//  #86
-	static const T1 bp_Uppercase = 87;	//  #87
-	static const T1 bp_Variation_Selector = 88;	//  #88
-	static const T1 bp_White_Space = 89;	//  #89
-	static const T1 bp_XID_Continue = 90;	//  #90
-	static const T1 bp_XID_Start = 91;	//  #91
-	static const T1 sc_Adlam = 92;	//  #92
-	static const T1 sc_Ahom = 93;	//  #93
-	static const T1 sc_Anatolian_Hieroglyphs = 94;	//  #94
-	static const T1 sc_Arabic = 95;	//  #95
-	static const T1 sc_Armenian = 96;	//  #96
-	static const T1 sc_Avestan = 97;	//  #97
-	static const T1 sc_Balinese = 98;	//  #98
-	static const T1 sc_Bamum = 99;	//  #99
-	static const T1 sc_Bassa_Vah = 100;	//  #100
-	static const T1 sc_Batak = 101;	//  #101
-	static const T1 sc_Bengali = 102;	//  #102
-	static const T1 sc_Bhaiksuki = 103;	//  #103
-	static const T1 sc_Bopomofo = 104;	//  #104
-	static const T1 sc_Brahmi = 105;	//  #105
-	static const T1 sc_Braille = 106;	//  #106
-	static const T1 sc_Buginese = 107;	//  #107
-	static const T1 sc_Buhid = 108;	//  #108
-	static const T1 sc_Canadian_Aboriginal = 109;	//  #109
-	static const T1 sc_Carian = 110;	//  #110
-	static const T1 sc_Caucasian_Albanian = 111;	//  #111
-	static const T1 sc_Chakma = 112;	//  #112
-	static const T1 sc_Cham = 113;	//  #113
-	static const T1 sc_Cherokee = 114;	//  #114
-	static const T1 sc_Chorasmian = 115;	//  #115
-	static const T1 sc_Common = 116;	//  #116
-	static const T1 sc_Coptic = 117;	//  #117
-	static const T1 sc_Cypro_Minoan = 118;	//  #118
-	static const T1 sc_Cuneiform = 119;	//  #119
-	static const T1 sc_Cypriot = 120;	//  #120
-	static const T1 sc_Cyrillic = 121;	//  #121
-	static const T1 sc_Deseret = 122;	//  #122
-	static const T1 sc_Devanagari = 123;	//  #123
-	static const T1 sc_Dives_Akuru = 124;	//  #124
-	static const T1 sc_Dogra = 125;	//  #125
-	static const T1 sc_Duployan = 126;	//  #126
-	static const T1 sc_Egyptian_Hieroglyphs = 127;	//  #127
-	static const T1 sc_Elbasan = 128;	//  #128
-	static const T1 sc_Elymaic = 129;	//  #129
-	static const T1 sc_Ethiopic = 130;	//  #130
-	static const T1 sc_Georgian = 131;	//  #131
-	static const T1 sc_Glagolitic = 132;	//  #132
-	static const T1 sc_Gothic = 133;	//  #133
-	static const T1 sc_Grantha = 134;	//  #134
-	static const T1 sc_Greek = 135;	//  #135
-	static const T1 sc_Gujarati = 136;	//  #136
-	static const T1 sc_Gunjala_Gondi = 137;	//  #137
-	static const T1 sc_Gurmukhi = 138;	//  #138
-	static const T1 sc_Han = 139;	//  #139
-	static const T1 sc_Hangul = 140;	//  #140
-	static const T1 sc_Hanifi_Rohingya = 141;	//  #141
-	static const T1 sc_Hanunoo = 142;	//  #142
-	static const T1 sc_Hatran = 143;	//  #143
-	static const T1 sc_Hebrew = 144;	//  #144
-	static const T1 sc_Hiragana = 145;	//  #145
-	static const T1 sc_Imperial_Aramaic = 146;	//  #146
-	static const T1 sc_Inherited = 147;	//  #147
-	static const T1 sc_Inscriptional_Pahlavi = 148;	//  #148
-	static const T1 sc_Inscriptional_Parthian = 149;	//  #149
-	static const T1 sc_Javanese = 150;	//  #150
-	static const T1 sc_Kaithi = 151;	//  #151
-	static const T1 sc_Kannada = 152;	//  #152
-	static const T1 sc_Katakana = 153;	//  #153
-	static const T1 sc_Kayah_Li = 154;	//  #154
-	static const T1 sc_Kharoshthi = 155;	//  #155
-	static const T1 sc_Khitan_Small_Script = 156;	//  #156
-	static const T1 sc_Khmer = 157;	//  #157
-	static const T1 sc_Khojki = 158;	//  #158
-	static const T1 sc_Khudawadi = 159;	//  #159
-	static const T1 sc_Lao = 160;	//  #160
-	static const T1 sc_Latin = 161;	//  #161
-	static const T1 sc_Lepcha = 162;	//  #162
-	static const T1 sc_Limbu = 163;	//  #163
-	static const T1 sc_Linear_A = 164;	//  #164
-	static const T1 sc_Linear_B = 165;	//  #165
-	static const T1 sc_Lisu = 166;	//  #166
-	static const T1 sc_Lycian = 167;	//  #167
-	static const T1 sc_Lydian = 168;	//  #168
-	static const T1 sc_Mahajani = 169;	//  #169
-	static const T1 sc_Makasar = 170;	//  #170
-	static const T1 sc_Malayalam = 171;	//  #171
-	static const T1 sc_Mandaic = 172;	//  #172
-	static const T1 sc_Manichaean = 173;	//  #173
-	static const T1 sc_Marchen = 174;	//  #174
-	static const T1 sc_Masaram_Gondi = 175;	//  #175
-	static const T1 sc_Medefaidrin = 176;	//  #176
-	static const T1 sc_Meetei_Mayek = 177;	//  #177
-	static const T1 sc_Mende_Kikakui = 178;	//  #178
-	static const T1 sc_Meroitic_Cursive = 179;	//  #179
-	static const T1 sc_Meroitic_Hieroglyphs = 180;	//  #180
-	static const T1 sc_Miao = 181;	//  #181
-	static const T1 sc_Modi = 182;	//  #182
-	static const T1 sc_Mongolian = 183;	//  #183
-	static const T1 sc_Mro = 184;	//  #184
-	static const T1 sc_Multani = 185;	//  #185
-	static const T1 sc_Myanmar = 186;	//  #186
-	static const T1 sc_Nabataean = 187;	//  #187
-	static const T1 sc_Nandinagari = 188;	//  #188
-	static const T1 sc_New_Tai_Lue = 189;	//  #189
-	static const T1 sc_Newa = 190;	//  #190
-	static const T1 sc_Nko = 191;	//  #191
-	static const T1 sc_Nushu = 192;	//  #192
-	static const T1 sc_Nyiakeng_Puachue_Hmong = 193;	//  #193
-	static const T1 sc_Ogham = 194;	//  #194
-	static const T1 sc_Ol_Chiki = 195;	//  #195
-	static const T1 sc_Old_Hungarian = 196;	//  #196
-	static const T1 sc_Old_Italic = 197;	//  #197
-	static const T1 sc_Old_North_Arabian = 198;	//  #198
-	static const T1 sc_Old_Permic = 199;	//  #199
-	static const T1 sc_Old_Persian = 200;	//  #200
-	static const T1 sc_Old_Sogdian = 201;	//  #201
-	static const T1 sc_Old_South_Arabian = 202;	//  #202
-	static const T1 sc_Old_Turkic = 203;	//  #203
-	static const T1 sc_Old_Uyghur = 204;	//  #204
-	static const T1 sc_Oriya = 205;	//  #205
-	static const T1 sc_Osage = 206;	//  #206
-	static const T1 sc_Osmanya = 207;	//  #207
-	static const T1 sc_Pahawh_Hmong = 208;	//  #208
-	static const T1 sc_Palmyrene = 209;	//  #209
-	static const T1 sc_Pau_Cin_Hau = 210;	//  #210
-	static const T1 sc_Phags_Pa = 211;	//  #211
-	static const T1 sc_Phoenician = 212;	//  #212
-	static const T1 sc_Psalter_Pahlavi = 213;	//  #213
-	static const T1 sc_Rejang = 214;	//  #214
-	static const T1 sc_Runic = 215;	//  #215
-	static const T1 sc_Samaritan = 216;	//  #216
-	static const T1 sc_Saurashtra = 217;	//  #217
-	static const T1 sc_Sharada = 218;	//  #218
-	static const T1 sc_Shavian = 219;	//  #219
-	static const T1 sc_Siddham = 220;	//  #220
-	static const T1 sc_SignWriting = 221;	//  #221
-	static const T1 sc_Sinhala = 222;	//  #222
-	static const T1 sc_Sogdian = 223;	//  #223
-	static const T1 sc_Sora_Sompeng = 224;	//  #224
-	static const T1 sc_Soyombo = 225;	//  #225
-	static const T1 sc_Sundanese = 226;	//  #226
-	static const T1 sc_Syloti_Nagri = 227;	//  #227
-	static const T1 sc_Syriac = 228;	//  #228
-	static const T1 sc_Tagalog = 229;	//  #229
-	static const T1 sc_Tagbanwa = 230;	//  #230
-	static const T1 sc_Tai_Le = 231;	//  #231
-	static const T1 sc_Tai_Tham = 232;	//  #232
-	static const T1 sc_Tai_Viet = 233;	//  #233
-	static const T1 sc_Takri = 234;	//  #234
-	static const T1 sc_Tamil = 235;	//  #235
-	static const T1 sc_Tangsa = 236;	//  #236
-	static const T1 sc_Tangut = 237;	//  #237
-	static const T1 sc_Telugu = 238;	//  #238
-	static const T1 sc_Thaana = 239;	//  #239
-	static const T1 sc_Thai = 240;	//  #240
-	static const T1 sc_Tibetan = 241;	//  #241
-	static const T1 sc_Tifinagh = 242;	//  #242
-	static const T1 sc_Tirhuta = 243;	//  #243
-	static const T1 sc_Toto = 244;	//  #244
-	static const T1 sc_Ugaritic = 245;	//  #245
-	static const T1 sc_Vai = 246;	//  #246
-	static const T1 sc_Vithkuqi = 247;	//  #247
-	static const T1 sc_Wancho = 248;	//  #248
-	static const T1 sc_Warang_Citi = 249;	//  #249
-	static const T1 sc_Yezidi = 250;	//  #250
-	static const T1 sc_Yi = 251;	//  #251
-	static const T1 sc_Zanabazar_Square = 252;	//  #252
-	static const T1 scx_Adlam = 253;	//  #253
-	static const T1 scx_Ahom = 254;	//  #93
-	static const T1 scx_Anatolian_Hieroglyphs = 255;	//  #94
-	static const T1 scx_Arabic = 256;	//  #254
-	static const T1 scx_Armenian = 257;	//  #96
-	static const T1 scx_Avestan = 258;	//  #97
-	static const T1 scx_Balinese = 259;	//  #98
-	static const T1 scx_Bamum = 260;	//  #99
-	static const T1 scx_Bassa_Vah = 261;	//  #100
-	static const T1 scx_Batak = 262;	//  #101
-	static const T1 scx_Bengali = 263;	//  #255
-	static const T1 scx_Bhaiksuki = 264;	//  #103
-	static const T1 scx_Bopomofo = 265;	//  #256
-	static const T1 scx_Brahmi = 266;	//  #105
-	static const T1 scx_Braille = 267;	//  #106
-	static const T1 scx_Buginese = 268;	//  #257
-	static const T1 scx_Buhid = 269;	//  #258
-	static const T1 scx_Canadian_Aboriginal = 270;	//  #109
-	static const T1 scx_Carian = 271;	//  #110
-	static const T1 scx_Caucasian_Albanian = 272;	//  #111
-	static const T1 scx_Chakma = 273;	//  #259
-	static const T1 scx_Cham = 274;	//  #113
-	static const T1 scx_Cherokee = 275;	//  #114
-	static const T1 scx_Chorasmian = 276;	//  #115
-	static const T1 scx_Common = 277;	//  #260
-	static const T1 scx_Coptic = 278;	//  #261
-	static const T1 scx_Cypro_Minoan = 279;	//  #262
-	static const T1 scx_Cuneiform = 280;	//  #119
-	static const T1 scx_Cypriot = 281;	//  #263
-	static const T1 scx_Cyrillic = 282;	//  #264
-	static const T1 scx_Deseret = 283;	//  #122
-	static const T1 scx_Devanagari = 284;	//  #265
-	static const T1 scx_Dives_Akuru = 285;	//  #124
-	static const T1 scx_Dogra = 286;	//  #266
-	static const T1 scx_Duployan = 287;	//  #267
-	static const T1 scx_Egyptian_Hieroglyphs = 288;	//  #127
-	static const T1 scx_Elbasan = 289;	//  #128
-	static const T1 scx_Elymaic = 290;	//  #129
-	static const T1 scx_Ethiopic = 291;	//  #130
-	static const T1 scx_Georgian = 292;	//  #268
-	static const T1 scx_Glagolitic = 293;	//  #269
-	static const T1 scx_Gothic = 294;	//  #133
-	static const T1 scx_Grantha = 295;	//  #270
-	static const T1 scx_Greek = 296;	//  #271
-	static const T1 scx_Gujarati = 297;	//  #272
-	static const T1 scx_Gunjala_Gondi = 298;	//  #273
-	static const T1 scx_Gurmukhi = 299;	//  #274
-	static const T1 scx_Han = 300;	//  #275
-	static const T1 scx_Hangul = 301;	//  #276
-	static const T1 scx_Hanifi_Rohingya = 302;	//  #277
-	static const T1 scx_Hanunoo = 303;	//  #278
-	static const T1 scx_Hatran = 304;	//  #143
-	static const T1 scx_Hebrew = 305;	//  #144
-	static const T1 scx_Hiragana = 306;	//  #279
-	static const T1 scx_Imperial_Aramaic = 307;	//  #146
-	static const T1 scx_Inherited = 308;	//  #280
-	static const T1 scx_Inscriptional_Pahlavi = 309;	//  #148
-	static const T1 scx_Inscriptional_Parthian = 310;	//  #149
-	static const T1 scx_Javanese = 311;	//  #281
-	static const T1 scx_Kaithi = 312;	//  #282
-	static const T1 scx_Kannada = 313;	//  #283
-	static const T1 scx_Katakana = 314;	//  #284
-	static const T1 scx_Kayah_Li = 315;	//  #285
-	static const T1 scx_Kharoshthi = 316;	//  #155
-	static const T1 scx_Khitan_Small_Script = 317;	//  #156
-	static const T1 scx_Khmer = 318;	//  #157
-	static const T1 scx_Khojki = 319;	//  #286
-	static const T1 scx_Khudawadi = 320;	//  #287
-	static const T1 scx_Lao = 321;	//  #160
-	static const T1 scx_Latin = 322;	//  #288
-	static const T1 scx_Lepcha = 323;	//  #162
-	static const T1 scx_Limbu = 324;	//  #289
-	static const T1 scx_Linear_A = 325;	//  #290
-	static const T1 scx_Linear_B = 326;	//  #291
-	static const T1 scx_Lisu = 327;	//  #166
-	static const T1 scx_Lycian = 328;	//  #167
-	static const T1 scx_Lydian = 329;	//  #168
-	static const T1 scx_Mahajani = 330;	//  #292
-	static const T1 scx_Makasar = 331;	//  #170
-	static const T1 scx_Malayalam = 332;	//  #293
-	static const T1 scx_Mandaic = 333;	//  #294
-	static const T1 scx_Manichaean = 334;	//  #295
-	static const T1 scx_Marchen = 335;	//  #174
-	static const T1 scx_Masaram_Gondi = 336;	//  #296
-	static const T1 scx_Medefaidrin = 337;	//  #176
-	static const T1 scx_Meetei_Mayek = 338;	//  #177
-	static const T1 scx_Mende_Kikakui = 339;	//  #178
-	static const T1 scx_Meroitic_Cursive = 340;	//  #179
-	static const T1 scx_Meroitic_Hieroglyphs = 341;	//  #180
-	static const T1 scx_Miao = 342;	//  #181
-	static const T1 scx_Modi = 343;	//  #297
-	static const T1 scx_Mongolian = 344;	//  #298
-	static const T1 scx_Mro = 345;	//  #184
-	static const T1 scx_Multani = 346;	//  #299
-	static const T1 scx_Myanmar = 347;	//  #300
-	static const T1 scx_Nabataean = 348;	//  #187
-	static const T1 scx_Nandinagari = 349;	//  #301
-	static const T1 scx_New_Tai_Lue = 350;	//  #189
-	static const T1 scx_Newa = 351;	//  #190
-	static const T1 scx_Nko = 352;	//  #302
-	static const T1 scx_Nushu = 353;	//  #192
-	static const T1 scx_Nyiakeng_Puachue_Hmong = 354;	//  #193
-	static const T1 scx_Ogham = 355;	//  #194
-	static const T1 scx_Ol_Chiki = 356;	//  #195
-	static const T1 scx_Old_Hungarian = 357;	//  #196
-	static const T1 scx_Old_Italic = 358;	//  #197
-	static const T1 scx_Old_North_Arabian = 359;	//  #198
-	static const T1 scx_Old_Permic = 360;	//  #303
-	static const T1 scx_Old_Persian = 361;	//  #200
-	static const T1 scx_Old_Sogdian = 362;	//  #201
-	static const T1 scx_Old_South_Arabian = 363;	//  #202
-	static const T1 scx_Old_Turkic = 364;	//  #203
-	static const T1 scx_Old_Uyghur = 365;	//  #304
-	static const T1 scx_Oriya = 366;	//  #305
-	static const T1 scx_Osage = 367;	//  #206
-	static const T1 scx_Osmanya = 368;	//  #207
-	static const T1 scx_Pahawh_Hmong = 369;	//  #208
-	static const T1 scx_Palmyrene = 370;	//  #209
-	static const T1 scx_Pau_Cin_Hau = 371;	//  #210
-	static const T1 scx_Phags_Pa = 372;	//  #306
-	static const T1 scx_Phoenician = 373;	//  #212
-	static const T1 scx_Psalter_Pahlavi = 374;	//  #307
-	static const T1 scx_Rejang = 375;	//  #214
-	static const T1 scx_Runic = 376;	//  #215
-	static const T1 scx_Samaritan = 377;	//  #216
-	static const T1 scx_Saurashtra = 378;	//  #217
-	static const T1 scx_Sharada = 379;	//  #308
-	static const T1 scx_Shavian = 380;	//  #219
-	static const T1 scx_Siddham = 381;	//  #220
-	static const T1 scx_SignWriting = 382;	//  #221
-	static const T1 scx_Sinhala = 383;	//  #309
-	static const T1 scx_Sogdian = 384;	//  #310
-	static const T1 scx_Sora_Sompeng = 385;	//  #224
-	static const T1 scx_Soyombo = 386;	//  #225
-	static const T1 scx_Sundanese = 387;	//  #226
-	static const T1 scx_Syloti_Nagri = 388;	//  #311
-	static const T1 scx_Syriac = 389;	//  #312
-	static const T1 scx_Tagalog = 390;	//  #313
-	static const T1 scx_Tagbanwa = 391;	//  #314
-	static const T1 scx_Tai_Le = 392;	//  #315
-	static const T1 scx_Tai_Tham = 393;	//  #232
-	static const T1 scx_Tai_Viet = 394;	//  #233
-	static const T1 scx_Takri = 395;	//  #316
-	static const T1 scx_Tamil = 396;	//  #317
-	static const T1 scx_Tangsa = 397;	//  #236
-	static const T1 scx_Tangut = 398;	//  #237
-	static const T1 scx_Telugu = 399;	//  #318
-	static const T1 scx_Thaana = 400;	//  #319
-	static const T1 scx_Thai = 401;	//  #240
-	static const T1 scx_Tibetan = 402;	//  #241
-	static const T1 scx_Tifinagh = 403;	//  #242
-	static const T1 scx_Tirhuta = 404;	//  #320
-	static const T1 scx_Toto = 405;	//  #244
-	static const T1 scx_Ugaritic = 406;	//  #245
-	static const T1 scx_Vai = 407;	//  #246
-	static const T1 scx_Vithkuqi = 408;	//  #247
-	static const T1 scx_Wancho = 409;	//  #248
-	static const T1 scx_Warang_Citi = 410;	//  #249
-	static const T1 scx_Yezidi = 411;	//  #321
-	static const T1 scx_Yi = 412;	//  #322
-	static const T1 scx_Zanabazar_Square = 413;	//  #252
-	static const T1 last_property_number = 322;
-	struct ptype
-	{
-		static const T2 unknown = 0;
-		static const T2 binary = 1;
-		static const T2 general_category = 2;
-		static const T2 script = 3;
-		static const T2 script_extensions = 4;
-	};
 	static const T3 propertynametable[];
 	static const T4 rangetable[];
 	static const T5 rangenumbertable[];
 	static const T6 positiontable[];
-
-	static const T3 *propertyname_table()
-	{
-		return propertynametable;
-	}
-	static const T4 *ranges()
-	{
-		return rangetable;
-	}
-	static const T5 *rangenumber_table()
-	{
-		return rangenumbertable;
-	}
-	static const T6 *position_table()
-	{
-		return positiontable;
-	}
 };
 
-template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-const T3 unicode_property_data<T1, T2, T3, T4, T5, T6>::propertynametable[] =
+template <typename T3, typename T4, typename T5, typename T6>
+const T3 unicode_property_data<T3, T4, T5, T6>::propertynametable[] =
 {
 	"*",	//  #0:unknown
 	"*",	//  #1:binary
@@ -4765,8 +4830,8 @@ const T3 unicode_property_data<T1, T2, T3, T4, T5, T6>::propertynametable[] =
 	""
 };
 
-template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-const T4 unicode_property_data<T1, T2, T3, T4, T5, T6>::rangetable[] =
+template <typename T3, typename T4, typename T5, typename T6>
+const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 {
 	//  #1 (0+725): gc=Other:C
 	//  Cc:2 + Cf:21 + Cn:698 + Co:3 + Cs:1
@@ -9516,430 +9581,3197 @@ const T4 unicode_property_data<T1, T2, T3, T4, T5, T6>::rangetable[] =
 	//  #322 (17115+7): scx=Yi:Yiii
 	0x3001, 0x3002, 0x3008, 0x3011, 0x3014, 0x301B, 0x30FB, 0x30FB,
 	0xA000, 0xA48C, 0xA490, 0xA4C6, 0xFF61, 0xFF65
+#if !defined(SRELL_NO_UNICODE_POS)
+	,
+	//  #323 (17122+12574/2): bp=RGI_Emoji
+	//  1310/2 + 48/2 + 1936/2 + 774/2 + 24/2 + 8482/2
+	//  #324 (17122+1310/2): bp=Basic_Emoji
+	1, 0x231A, 0x231B,
+	1, 0x23E9, 0x23EC,
+	2, 0x23F0,
+	2, 0x23F3,
+	1, 0x25FD, 0x25FE,
+	1, 0x2614, 0x2615,
+	1, 0x2648, 0x2653,
+	2, 0x267F,
+	2, 0x2693,
+	2, 0x26A1,
+	1, 0x26AA, 0x26AB,
+	1, 0x26BD, 0x26BE,
+	1, 0x26C4, 0x26C5,
+	2, 0x26CE,
+	2, 0x26D4,
+	2, 0x26EA,
+	1, 0x26F2, 0x26F3,
+	2, 0x26F5,
+	2, 0x26FA,
+	2, 0x26FD,
+	2, 0x2705,
+	1, 0x270A, 0x270B,
+	2, 0x2728,
+	2, 0x274C,
+	2, 0x274E,
+	1, 0x2753, 0x2755,
+	2, 0x2757,
+	1, 0x2795, 0x2797,
+	2, 0x27B0,
+	2, 0x27BF,
+	1, 0x2B1B, 0x2B1C,
+	2, 0x2B50,
+	2, 0x2B55,
+	2, 0x1F004,
+	2, 0x1F0CF,
+	2, 0x1F18E,
+	1, 0x1F191, 0x1F19A,
+	2, 0x1F201,
+	2, 0x1F21A,
+	2, 0x1F22F,
+	1, 0x1F232, 0x1F236,
+	1, 0x1F238, 0x1F23A,
+	1, 0x1F250, 0x1F251,
+	1, 0x1F300, 0x1F30C,
+	1, 0x1F30D, 0x1F30E,
+	2, 0x1F30F,
+	2, 0x1F310,
+	2, 0x1F311,
+	2, 0x1F312,
+	1, 0x1F313, 0x1F315,
+	1, 0x1F316, 0x1F318,
+	2, 0x1F319,
+	2, 0x1F31A,
+	2, 0x1F31B,
+	2, 0x1F31C,
+	1, 0x1F31D, 0x1F31E,
+	1, 0x1F31F, 0x1F320,
+	1, 0x1F32D, 0x1F32F,
+	1, 0x1F330, 0x1F331,
+	1, 0x1F332, 0x1F333,
+	1, 0x1F334, 0x1F335,
+	1, 0x1F337, 0x1F34A,
+	2, 0x1F34B,
+	1, 0x1F34C, 0x1F34F,
+	2, 0x1F350,
+	1, 0x1F351, 0x1F37B,
+	2, 0x1F37C,
+	1, 0x1F37E, 0x1F37F,
+	1, 0x1F380, 0x1F393,
+	1, 0x1F3A0, 0x1F3C4,
+	2, 0x1F3C5,
+	2, 0x1F3C6,
+	2, 0x1F3C7,
+	2, 0x1F3C8,
+	2, 0x1F3C9,
+	2, 0x1F3CA,
+	1, 0x1F3CF, 0x1F3D3,
+	1, 0x1F3E0, 0x1F3E3,
+	2, 0x1F3E4,
+	1, 0x1F3E5, 0x1F3F0,
+	2, 0x1F3F4,
+	1, 0x1F3F8, 0x1F407,
+	2, 0x1F408,
+	1, 0x1F409, 0x1F40B,
+	1, 0x1F40C, 0x1F40E,
+	1, 0x1F40F, 0x1F410,
+	1, 0x1F411, 0x1F412,
+	2, 0x1F413,
+	2, 0x1F414,
+	2, 0x1F415,
+	2, 0x1F416,
+	1, 0x1F417, 0x1F429,
+	2, 0x1F42A,
+	1, 0x1F42B, 0x1F43E,
+	2, 0x1F440,
+	1, 0x1F442, 0x1F464,
+	2, 0x1F465,
+	1, 0x1F466, 0x1F46B,
+	1, 0x1F46C, 0x1F46D,
+	1, 0x1F46E, 0x1F4AC,
+	2, 0x1F4AD,
+	1, 0x1F4AE, 0x1F4B5,
+	1, 0x1F4B6, 0x1F4B7,
+	1, 0x1F4B8, 0x1F4EB,
+	1, 0x1F4EC, 0x1F4ED,
+	2, 0x1F4EE,
+	2, 0x1F4EF,
+	1, 0x1F4F0, 0x1F4F4,
+	2, 0x1F4F5,
+	1, 0x1F4F6, 0x1F4F7,
+	2, 0x1F4F8,
+	1, 0x1F4F9, 0x1F4FC,
+	1, 0x1F4FF, 0x1F502,
+	2, 0x1F503,
+	1, 0x1F504, 0x1F507,
+	2, 0x1F508,
+	2, 0x1F509,
+	1, 0x1F50A, 0x1F514,
+	2, 0x1F515,
+	1, 0x1F516, 0x1F52B,
+	1, 0x1F52C, 0x1F52D,
+	1, 0x1F52E, 0x1F53D,
+	1, 0x1F54B, 0x1F54E,
+	1, 0x1F550, 0x1F55B,
+	1, 0x1F55C, 0x1F567,
+	2, 0x1F57A,
+	1, 0x1F595, 0x1F596,
+	2, 0x1F5A4,
+	1, 0x1F5FB, 0x1F5FF,
+	2, 0x1F600,
+	1, 0x1F601, 0x1F606,
+	1, 0x1F607, 0x1F608,
+	1, 0x1F609, 0x1F60D,
+	2, 0x1F60E,
+	2, 0x1F60F,
+	2, 0x1F610,
+	2, 0x1F611,
+	1, 0x1F612, 0x1F614,
+	2, 0x1F615,
+	2, 0x1F616,
+	2, 0x1F617,
+	2, 0x1F618,
+	2, 0x1F619,
+	2, 0x1F61A,
+	2, 0x1F61B,
+	1, 0x1F61C, 0x1F61E,
+	2, 0x1F61F,
+	1, 0x1F620, 0x1F625,
+	1, 0x1F626, 0x1F627,
+	1, 0x1F628, 0x1F62B,
+	2, 0x1F62C,
+	2, 0x1F62D,
+	1, 0x1F62E, 0x1F62F,
+	1, 0x1F630, 0x1F633,
+	2, 0x1F634,
+	2, 0x1F635,
+	2, 0x1F636,
+	1, 0x1F637, 0x1F640,
+	1, 0x1F641, 0x1F644,
+	1, 0x1F645, 0x1F64F,
+	2, 0x1F680,
+	1, 0x1F681, 0x1F682,
+	1, 0x1F683, 0x1F685,
+	2, 0x1F686,
+	2, 0x1F687,
+	2, 0x1F688,
+	2, 0x1F689,
+	1, 0x1F68A, 0x1F68B,
+	2, 0x1F68C,
+	2, 0x1F68D,
+	2, 0x1F68E,
+	2, 0x1F68F,
+	2, 0x1F690,
+	1, 0x1F691, 0x1F693,
+	2, 0x1F694,
+	2, 0x1F695,
+	2, 0x1F696,
+	2, 0x1F697,
+	2, 0x1F698,
+	1, 0x1F699, 0x1F69A,
+	1, 0x1F69B, 0x1F6A1,
+	2, 0x1F6A2,
+	2, 0x1F6A3,
+	1, 0x1F6A4, 0x1F6A5,
+	2, 0x1F6A6,
+	1, 0x1F6A7, 0x1F6AD,
+	1, 0x1F6AE, 0x1F6B1,
+	2, 0x1F6B2,
+	1, 0x1F6B3, 0x1F6B5,
+	2, 0x1F6B6,
+	1, 0x1F6B7, 0x1F6B8,
+	1, 0x1F6B9, 0x1F6BE,
+	2, 0x1F6BF,
+	2, 0x1F6C0,
+	1, 0x1F6C1, 0x1F6C5,
+	2, 0x1F6CC,
+	2, 0x1F6D0,
+	1, 0x1F6D1, 0x1F6D2,
+	2, 0x1F6D5,
+	1, 0x1F6D6, 0x1F6D7,
+	1, 0x1F6DD, 0x1F6DF,
+	1, 0x1F6EB, 0x1F6EC,
+	1, 0x1F6F4, 0x1F6F6,
+	1, 0x1F6F7, 0x1F6F8,
+	2, 0x1F6F9,
+	2, 0x1F6FA,
+	1, 0x1F6FB, 0x1F6FC,
+	1, 0x1F7E0, 0x1F7EB,
+	2, 0x1F7F0,
+	2, 0x1F90C,
+	1, 0x1F90D, 0x1F90F,
+	1, 0x1F910, 0x1F918,
+	1, 0x1F919, 0x1F91E,
+	2, 0x1F91F,
+	1, 0x1F920, 0x1F927,
+	1, 0x1F928, 0x1F92F,
+	2, 0x1F930,
+	1, 0x1F931, 0x1F932,
+	1, 0x1F933, 0x1F93A,
+	1, 0x1F93C, 0x1F93E,
+	2, 0x1F93F,
+	1, 0x1F940, 0x1F945,
+	1, 0x1F947, 0x1F94B,
+	2, 0x1F94C,
+	1, 0x1F94D, 0x1F94F,
+	1, 0x1F950, 0x1F95E,
+	1, 0x1F95F, 0x1F96B,
+	1, 0x1F96C, 0x1F970,
+	2, 0x1F971,
+	2, 0x1F972,
+	1, 0x1F973, 0x1F976,
+	1, 0x1F977, 0x1F978,
+	2, 0x1F979,
+	2, 0x1F97A,
+	2, 0x1F97B,
+	1, 0x1F97C, 0x1F97F,
+	1, 0x1F980, 0x1F984,
+	1, 0x1F985, 0x1F991,
+	1, 0x1F992, 0x1F997,
+	1, 0x1F998, 0x1F9A2,
+	1, 0x1F9A3, 0x1F9A4,
+	1, 0x1F9A5, 0x1F9AA,
+	1, 0x1F9AB, 0x1F9AD,
+	1, 0x1F9AE, 0x1F9AF,
+	1, 0x1F9B0, 0x1F9B9,
+	1, 0x1F9BA, 0x1F9BF,
+	2, 0x1F9C0,
+	1, 0x1F9C1, 0x1F9C2,
+	1, 0x1F9C3, 0x1F9CA,
+	2, 0x1F9CB,
+	2, 0x1F9CC,
+	1, 0x1F9CD, 0x1F9CF,
+	1, 0x1F9D0, 0x1F9E6,
+	1, 0x1F9E7, 0x1F9FF,
+	1, 0x1FA70, 0x1FA73,
+	2, 0x1FA74,
+	1, 0x1FA78, 0x1FA7A,
+	1, 0x1FA7B, 0x1FA7C,
+	1, 0x1FA80, 0x1FA82,
+	1, 0x1FA83, 0x1FA86,
+	1, 0x1FA90, 0x1FA95,
+	1, 0x1FA96, 0x1FAA8,
+	1, 0x1FAA9, 0x1FAAC,
+	1, 0x1FAB0, 0x1FAB6,
+	1, 0x1FAB7, 0x1FABA,
+	1, 0x1FAC0, 0x1FAC2,
+	1, 0x1FAC3, 0x1FAC5,
+	1, 0x1FAD0, 0x1FAD6,
+	1, 0x1FAD7, 0x1FAD9,
+	1, 0x1FAE0, 0x1FAE7,
+	1, 0x1FAF0, 0x1FAF6,
+	3, 0x00A9, 0xFE0F,
+	3, 0x00AE, 0xFE0F,
+	3, 0x203C, 0xFE0F,
+	3, 0x2049, 0xFE0F,
+	3, 0x2122, 0xFE0F,
+	3, 0x2139, 0xFE0F,
+	3, 0x2194, 0xFE0F,
+	3, 0x2195, 0xFE0F,
+	3, 0x2196, 0xFE0F,
+	3, 0x2197, 0xFE0F,
+	3, 0x2198, 0xFE0F,
+	3, 0x2199, 0xFE0F,
+	3, 0x21A9, 0xFE0F,
+	3, 0x21AA, 0xFE0F,
+	3, 0x2328, 0xFE0F,
+	3, 0x23CF, 0xFE0F,
+	3, 0x23ED, 0xFE0F,
+	3, 0x23EE, 0xFE0F,
+	3, 0x23EF, 0xFE0F,
+	3, 0x23F1, 0xFE0F,
+	3, 0x23F2, 0xFE0F,
+	3, 0x23F8, 0xFE0F,
+	3, 0x23F9, 0xFE0F,
+	3, 0x23FA, 0xFE0F,
+	3, 0x24C2, 0xFE0F,
+	3, 0x25AA, 0xFE0F,
+	3, 0x25AB, 0xFE0F,
+	3, 0x25B6, 0xFE0F,
+	3, 0x25C0, 0xFE0F,
+	3, 0x25FB, 0xFE0F,
+	3, 0x25FC, 0xFE0F,
+	3, 0x2600, 0xFE0F,
+	3, 0x2601, 0xFE0F,
+	3, 0x2602, 0xFE0F,
+	3, 0x2603, 0xFE0F,
+	3, 0x2604, 0xFE0F,
+	3, 0x260E, 0xFE0F,
+	3, 0x2611, 0xFE0F,
+	3, 0x2618, 0xFE0F,
+	3, 0x261D, 0xFE0F,
+	3, 0x2620, 0xFE0F,
+	3, 0x2622, 0xFE0F,
+	3, 0x2623, 0xFE0F,
+	3, 0x2626, 0xFE0F,
+	3, 0x262A, 0xFE0F,
+	3, 0x262E, 0xFE0F,
+	3, 0x262F, 0xFE0F,
+	3, 0x2638, 0xFE0F,
+	3, 0x2639, 0xFE0F,
+	3, 0x263A, 0xFE0F,
+	3, 0x2640, 0xFE0F,
+	3, 0x2642, 0xFE0F,
+	3, 0x265F, 0xFE0F,
+	3, 0x2660, 0xFE0F,
+	3, 0x2663, 0xFE0F,
+	3, 0x2665, 0xFE0F,
+	3, 0x2666, 0xFE0F,
+	3, 0x2668, 0xFE0F,
+	3, 0x267B, 0xFE0F,
+	3, 0x267E, 0xFE0F,
+	3, 0x2692, 0xFE0F,
+	3, 0x2694, 0xFE0F,
+	3, 0x2695, 0xFE0F,
+	3, 0x2696, 0xFE0F,
+	3, 0x2697, 0xFE0F,
+	3, 0x2699, 0xFE0F,
+	3, 0x269B, 0xFE0F,
+	3, 0x269C, 0xFE0F,
+	3, 0x26A0, 0xFE0F,
+	3, 0x26A7, 0xFE0F,
+	3, 0x26B0, 0xFE0F,
+	3, 0x26B1, 0xFE0F,
+	3, 0x26C8, 0xFE0F,
+	3, 0x26CF, 0xFE0F,
+	3, 0x26D1, 0xFE0F,
+	3, 0x26D3, 0xFE0F,
+	3, 0x26E9, 0xFE0F,
+	3, 0x26F0, 0xFE0F,
+	3, 0x26F1, 0xFE0F,
+	3, 0x26F4, 0xFE0F,
+	3, 0x26F7, 0xFE0F,
+	3, 0x26F8, 0xFE0F,
+	3, 0x26F9, 0xFE0F,
+	3, 0x2702, 0xFE0F,
+	3, 0x2708, 0xFE0F,
+	3, 0x2709, 0xFE0F,
+	3, 0x270C, 0xFE0F,
+	3, 0x270D, 0xFE0F,
+	3, 0x270F, 0xFE0F,
+	3, 0x2712, 0xFE0F,
+	3, 0x2714, 0xFE0F,
+	3, 0x2716, 0xFE0F,
+	3, 0x271D, 0xFE0F,
+	3, 0x2721, 0xFE0F,
+	3, 0x2733, 0xFE0F,
+	3, 0x2734, 0xFE0F,
+	3, 0x2744, 0xFE0F,
+	3, 0x2747, 0xFE0F,
+	3, 0x2763, 0xFE0F,
+	3, 0x2764, 0xFE0F,
+	3, 0x27A1, 0xFE0F,
+	3, 0x2934, 0xFE0F,
+	3, 0x2935, 0xFE0F,
+	3, 0x2B05, 0xFE0F,
+	3, 0x2B06, 0xFE0F,
+	3, 0x2B07, 0xFE0F,
+	3, 0x3030, 0xFE0F,
+	3, 0x303D, 0xFE0F,
+	3, 0x3297, 0xFE0F,
+	3, 0x3299, 0xFE0F,
+	3, 0x1F170, 0xFE0F,
+	3, 0x1F171, 0xFE0F,
+	3, 0x1F17E, 0xFE0F,
+	3, 0x1F17F, 0xFE0F,
+	3, 0x1F202, 0xFE0F,
+	3, 0x1F237, 0xFE0F,
+	3, 0x1F321, 0xFE0F,
+	3, 0x1F324, 0xFE0F,
+	3, 0x1F325, 0xFE0F,
+	3, 0x1F326, 0xFE0F,
+	3, 0x1F327, 0xFE0F,
+	3, 0x1F328, 0xFE0F,
+	3, 0x1F329, 0xFE0F,
+	3, 0x1F32A, 0xFE0F,
+	3, 0x1F32B, 0xFE0F,
+	3, 0x1F32C, 0xFE0F,
+	3, 0x1F336, 0xFE0F,
+	3, 0x1F37D, 0xFE0F,
+	3, 0x1F396, 0xFE0F,
+	3, 0x1F397, 0xFE0F,
+	3, 0x1F399, 0xFE0F,
+	3, 0x1F39A, 0xFE0F,
+	3, 0x1F39B, 0xFE0F,
+	3, 0x1F39E, 0xFE0F,
+	3, 0x1F39F, 0xFE0F,
+	3, 0x1F3CB, 0xFE0F,
+	3, 0x1F3CC, 0xFE0F,
+	3, 0x1F3CD, 0xFE0F,
+	3, 0x1F3CE, 0xFE0F,
+	3, 0x1F3D4, 0xFE0F,
+	3, 0x1F3D5, 0xFE0F,
+	3, 0x1F3D6, 0xFE0F,
+	3, 0x1F3D7, 0xFE0F,
+	3, 0x1F3D8, 0xFE0F,
+	3, 0x1F3D9, 0xFE0F,
+	3, 0x1F3DA, 0xFE0F,
+	3, 0x1F3DB, 0xFE0F,
+	3, 0x1F3DC, 0xFE0F,
+	3, 0x1F3DD, 0xFE0F,
+	3, 0x1F3DE, 0xFE0F,
+	3, 0x1F3DF, 0xFE0F,
+	3, 0x1F3F3, 0xFE0F,
+	3, 0x1F3F5, 0xFE0F,
+	3, 0x1F3F7, 0xFE0F,
+	3, 0x1F43F, 0xFE0F,
+	3, 0x1F441, 0xFE0F,
+	3, 0x1F4FD, 0xFE0F,
+	3, 0x1F549, 0xFE0F,
+	3, 0x1F54A, 0xFE0F,
+	3, 0x1F56F, 0xFE0F,
+	3, 0x1F570, 0xFE0F,
+	3, 0x1F573, 0xFE0F,
+	3, 0x1F574, 0xFE0F,
+	3, 0x1F575, 0xFE0F,
+	3, 0x1F576, 0xFE0F,
+	3, 0x1F577, 0xFE0F,
+	3, 0x1F578, 0xFE0F,
+	3, 0x1F579, 0xFE0F,
+	3, 0x1F587, 0xFE0F,
+	3, 0x1F58A, 0xFE0F,
+	3, 0x1F58B, 0xFE0F,
+	3, 0x1F58C, 0xFE0F,
+	3, 0x1F58D, 0xFE0F,
+	3, 0x1F590, 0xFE0F,
+	3, 0x1F5A5, 0xFE0F,
+	3, 0x1F5A8, 0xFE0F,
+	3, 0x1F5B1, 0xFE0F,
+	3, 0x1F5B2, 0xFE0F,
+	3, 0x1F5BC, 0xFE0F,
+	3, 0x1F5C2, 0xFE0F,
+	3, 0x1F5C3, 0xFE0F,
+	3, 0x1F5C4, 0xFE0F,
+	3, 0x1F5D1, 0xFE0F,
+	3, 0x1F5D2, 0xFE0F,
+	3, 0x1F5D3, 0xFE0F,
+	3, 0x1F5DC, 0xFE0F,
+	3, 0x1F5DD, 0xFE0F,
+	3, 0x1F5DE, 0xFE0F,
+	3, 0x1F5E1, 0xFE0F,
+	3, 0x1F5E3, 0xFE0F,
+	3, 0x1F5E8, 0xFE0F,
+	3, 0x1F5EF, 0xFE0F,
+	3, 0x1F5F3, 0xFE0F,
+	3, 0x1F5FA, 0xFE0F,
+	3, 0x1F6CB, 0xFE0F,
+	3, 0x1F6CD, 0xFE0F,
+	3, 0x1F6CE, 0xFE0F,
+	3, 0x1F6CF, 0xFE0F,
+	3, 0x1F6E0, 0xFE0F,
+	3, 0x1F6E1, 0xFE0F,
+	3, 0x1F6E2, 0xFE0F,
+	3, 0x1F6E3, 0xFE0F,
+	3, 0x1F6E4, 0xFE0F,
+	3, 0x1F6E5, 0xFE0F,
+	3, 0x1F6E9, 0xFE0F,
+	3, 0x1F6F0, 0xFE0F,
+	3, 0x1F6F3, 0xFE0F,
+	//  #325 (17777+48/2): bp=Emoji_Keycap_Sequence
+	4, 0x0023, 0xFE0F, 0x20E3,
+	4, 0x002A, 0xFE0F, 0x20E3,
+	4, 0x0030, 0xFE0F, 0x20E3,
+	4, 0x0031, 0xFE0F, 0x20E3,
+	4, 0x0032, 0xFE0F, 0x20E3,
+	4, 0x0033, 0xFE0F, 0x20E3,
+	4, 0x0034, 0xFE0F, 0x20E3,
+	4, 0x0035, 0xFE0F, 0x20E3,
+	4, 0x0036, 0xFE0F, 0x20E3,
+	4, 0x0037, 0xFE0F, 0x20E3,
+	4, 0x0038, 0xFE0F, 0x20E3,
+	4, 0x0039, 0xFE0F, 0x20E3,
+	//  #326 (17801+1936/2): bp=RGI_Emoji_Modifier_Sequence
+	3, 0x261D, 0x1F3FB,
+	3, 0x261D, 0x1F3FC,
+	3, 0x261D, 0x1F3FD,
+	3, 0x261D, 0x1F3FE,
+	3, 0x261D, 0x1F3FF,
+	3, 0x26F9, 0x1F3FB,
+	3, 0x26F9, 0x1F3FC,
+	3, 0x26F9, 0x1F3FD,
+	3, 0x26F9, 0x1F3FE,
+	3, 0x26F9, 0x1F3FF,
+	3, 0x270A, 0x1F3FB,
+	3, 0x270A, 0x1F3FC,
+	3, 0x270A, 0x1F3FD,
+	3, 0x270A, 0x1F3FE,
+	3, 0x270A, 0x1F3FF,
+	3, 0x270B, 0x1F3FB,
+	3, 0x270B, 0x1F3FC,
+	3, 0x270B, 0x1F3FD,
+	3, 0x270B, 0x1F3FE,
+	3, 0x270B, 0x1F3FF,
+	3, 0x270C, 0x1F3FB,
+	3, 0x270C, 0x1F3FC,
+	3, 0x270C, 0x1F3FD,
+	3, 0x270C, 0x1F3FE,
+	3, 0x270C, 0x1F3FF,
+	3, 0x270D, 0x1F3FB,
+	3, 0x270D, 0x1F3FC,
+	3, 0x270D, 0x1F3FD,
+	3, 0x270D, 0x1F3FE,
+	3, 0x270D, 0x1F3FF,
+	3, 0x1F385, 0x1F3FB,
+	3, 0x1F385, 0x1F3FC,
+	3, 0x1F385, 0x1F3FD,
+	3, 0x1F385, 0x1F3FE,
+	3, 0x1F385, 0x1F3FF,
+	3, 0x1F3C2, 0x1F3FB,
+	3, 0x1F3C2, 0x1F3FC,
+	3, 0x1F3C2, 0x1F3FD,
+	3, 0x1F3C2, 0x1F3FE,
+	3, 0x1F3C2, 0x1F3FF,
+	3, 0x1F3C3, 0x1F3FB,
+	3, 0x1F3C3, 0x1F3FC,
+	3, 0x1F3C3, 0x1F3FD,
+	3, 0x1F3C3, 0x1F3FE,
+	3, 0x1F3C3, 0x1F3FF,
+	3, 0x1F3C4, 0x1F3FB,
+	3, 0x1F3C4, 0x1F3FC,
+	3, 0x1F3C4, 0x1F3FD,
+	3, 0x1F3C4, 0x1F3FE,
+	3, 0x1F3C4, 0x1F3FF,
+	3, 0x1F3C7, 0x1F3FB,
+	3, 0x1F3C7, 0x1F3FC,
+	3, 0x1F3C7, 0x1F3FD,
+	3, 0x1F3C7, 0x1F3FE,
+	3, 0x1F3C7, 0x1F3FF,
+	3, 0x1F3CA, 0x1F3FB,
+	3, 0x1F3CA, 0x1F3FC,
+	3, 0x1F3CA, 0x1F3FD,
+	3, 0x1F3CA, 0x1F3FE,
+	3, 0x1F3CA, 0x1F3FF,
+	3, 0x1F3CB, 0x1F3FB,
+	3, 0x1F3CB, 0x1F3FC,
+	3, 0x1F3CB, 0x1F3FD,
+	3, 0x1F3CB, 0x1F3FE,
+	3, 0x1F3CB, 0x1F3FF,
+	3, 0x1F3CC, 0x1F3FB,
+	3, 0x1F3CC, 0x1F3FC,
+	3, 0x1F3CC, 0x1F3FD,
+	3, 0x1F3CC, 0x1F3FE,
+	3, 0x1F3CC, 0x1F3FF,
+	3, 0x1F442, 0x1F3FB,
+	3, 0x1F442, 0x1F3FC,
+	3, 0x1F442, 0x1F3FD,
+	3, 0x1F442, 0x1F3FE,
+	3, 0x1F442, 0x1F3FF,
+	3, 0x1F443, 0x1F3FB,
+	3, 0x1F443, 0x1F3FC,
+	3, 0x1F443, 0x1F3FD,
+	3, 0x1F443, 0x1F3FE,
+	3, 0x1F443, 0x1F3FF,
+	3, 0x1F446, 0x1F3FB,
+	3, 0x1F446, 0x1F3FC,
+	3, 0x1F446, 0x1F3FD,
+	3, 0x1F446, 0x1F3FE,
+	3, 0x1F446, 0x1F3FF,
+	3, 0x1F447, 0x1F3FB,
+	3, 0x1F447, 0x1F3FC,
+	3, 0x1F447, 0x1F3FD,
+	3, 0x1F447, 0x1F3FE,
+	3, 0x1F447, 0x1F3FF,
+	3, 0x1F448, 0x1F3FB,
+	3, 0x1F448, 0x1F3FC,
+	3, 0x1F448, 0x1F3FD,
+	3, 0x1F448, 0x1F3FE,
+	3, 0x1F448, 0x1F3FF,
+	3, 0x1F449, 0x1F3FB,
+	3, 0x1F449, 0x1F3FC,
+	3, 0x1F449, 0x1F3FD,
+	3, 0x1F449, 0x1F3FE,
+	3, 0x1F449, 0x1F3FF,
+	3, 0x1F44A, 0x1F3FB,
+	3, 0x1F44A, 0x1F3FC,
+	3, 0x1F44A, 0x1F3FD,
+	3, 0x1F44A, 0x1F3FE,
+	3, 0x1F44A, 0x1F3FF,
+	3, 0x1F44B, 0x1F3FB,
+	3, 0x1F44B, 0x1F3FC,
+	3, 0x1F44B, 0x1F3FD,
+	3, 0x1F44B, 0x1F3FE,
+	3, 0x1F44B, 0x1F3FF,
+	3, 0x1F44C, 0x1F3FB,
+	3, 0x1F44C, 0x1F3FC,
+	3, 0x1F44C, 0x1F3FD,
+	3, 0x1F44C, 0x1F3FE,
+	3, 0x1F44C, 0x1F3FF,
+	3, 0x1F44D, 0x1F3FB,
+	3, 0x1F44D, 0x1F3FC,
+	3, 0x1F44D, 0x1F3FD,
+	3, 0x1F44D, 0x1F3FE,
+	3, 0x1F44D, 0x1F3FF,
+	3, 0x1F44E, 0x1F3FB,
+	3, 0x1F44E, 0x1F3FC,
+	3, 0x1F44E, 0x1F3FD,
+	3, 0x1F44E, 0x1F3FE,
+	3, 0x1F44E, 0x1F3FF,
+	3, 0x1F44F, 0x1F3FB,
+	3, 0x1F44F, 0x1F3FC,
+	3, 0x1F44F, 0x1F3FD,
+	3, 0x1F44F, 0x1F3FE,
+	3, 0x1F44F, 0x1F3FF,
+	3, 0x1F450, 0x1F3FB,
+	3, 0x1F450, 0x1F3FC,
+	3, 0x1F450, 0x1F3FD,
+	3, 0x1F450, 0x1F3FE,
+	3, 0x1F450, 0x1F3FF,
+	3, 0x1F466, 0x1F3FB,
+	3, 0x1F466, 0x1F3FC,
+	3, 0x1F466, 0x1F3FD,
+	3, 0x1F466, 0x1F3FE,
+	3, 0x1F466, 0x1F3FF,
+	3, 0x1F467, 0x1F3FB,
+	3, 0x1F467, 0x1F3FC,
+	3, 0x1F467, 0x1F3FD,
+	3, 0x1F467, 0x1F3FE,
+	3, 0x1F467, 0x1F3FF,
+	3, 0x1F468, 0x1F3FB,
+	3, 0x1F468, 0x1F3FC,
+	3, 0x1F468, 0x1F3FD,
+	3, 0x1F468, 0x1F3FE,
+	3, 0x1F468, 0x1F3FF,
+	3, 0x1F469, 0x1F3FB,
+	3, 0x1F469, 0x1F3FC,
+	3, 0x1F469, 0x1F3FD,
+	3, 0x1F469, 0x1F3FE,
+	3, 0x1F469, 0x1F3FF,
+	3, 0x1F46B, 0x1F3FB,
+	3, 0x1F46B, 0x1F3FC,
+	3, 0x1F46B, 0x1F3FD,
+	3, 0x1F46B, 0x1F3FE,
+	3, 0x1F46B, 0x1F3FF,
+	3, 0x1F46C, 0x1F3FB,
+	3, 0x1F46C, 0x1F3FC,
+	3, 0x1F46C, 0x1F3FD,
+	3, 0x1F46C, 0x1F3FE,
+	3, 0x1F46C, 0x1F3FF,
+	3, 0x1F46D, 0x1F3FB,
+	3, 0x1F46D, 0x1F3FC,
+	3, 0x1F46D, 0x1F3FD,
+	3, 0x1F46D, 0x1F3FE,
+	3, 0x1F46D, 0x1F3FF,
+	3, 0x1F46E, 0x1F3FB,
+	3, 0x1F46E, 0x1F3FC,
+	3, 0x1F46E, 0x1F3FD,
+	3, 0x1F46E, 0x1F3FE,
+	3, 0x1F46E, 0x1F3FF,
+	3, 0x1F470, 0x1F3FB,
+	3, 0x1F470, 0x1F3FC,
+	3, 0x1F470, 0x1F3FD,
+	3, 0x1F470, 0x1F3FE,
+	3, 0x1F470, 0x1F3FF,
+	3, 0x1F471, 0x1F3FB,
+	3, 0x1F471, 0x1F3FC,
+	3, 0x1F471, 0x1F3FD,
+	3, 0x1F471, 0x1F3FE,
+	3, 0x1F471, 0x1F3FF,
+	3, 0x1F472, 0x1F3FB,
+	3, 0x1F472, 0x1F3FC,
+	3, 0x1F472, 0x1F3FD,
+	3, 0x1F472, 0x1F3FE,
+	3, 0x1F472, 0x1F3FF,
+	3, 0x1F473, 0x1F3FB,
+	3, 0x1F473, 0x1F3FC,
+	3, 0x1F473, 0x1F3FD,
+	3, 0x1F473, 0x1F3FE,
+	3, 0x1F473, 0x1F3FF,
+	3, 0x1F474, 0x1F3FB,
+	3, 0x1F474, 0x1F3FC,
+	3, 0x1F474, 0x1F3FD,
+	3, 0x1F474, 0x1F3FE,
+	3, 0x1F474, 0x1F3FF,
+	3, 0x1F475, 0x1F3FB,
+	3, 0x1F475, 0x1F3FC,
+	3, 0x1F475, 0x1F3FD,
+	3, 0x1F475, 0x1F3FE,
+	3, 0x1F475, 0x1F3FF,
+	3, 0x1F476, 0x1F3FB,
+	3, 0x1F476, 0x1F3FC,
+	3, 0x1F476, 0x1F3FD,
+	3, 0x1F476, 0x1F3FE,
+	3, 0x1F476, 0x1F3FF,
+	3, 0x1F477, 0x1F3FB,
+	3, 0x1F477, 0x1F3FC,
+	3, 0x1F477, 0x1F3FD,
+	3, 0x1F477, 0x1F3FE,
+	3, 0x1F477, 0x1F3FF,
+	3, 0x1F478, 0x1F3FB,
+	3, 0x1F478, 0x1F3FC,
+	3, 0x1F478, 0x1F3FD,
+	3, 0x1F478, 0x1F3FE,
+	3, 0x1F478, 0x1F3FF,
+	3, 0x1F47C, 0x1F3FB,
+	3, 0x1F47C, 0x1F3FC,
+	3, 0x1F47C, 0x1F3FD,
+	3, 0x1F47C, 0x1F3FE,
+	3, 0x1F47C, 0x1F3FF,
+	3, 0x1F481, 0x1F3FB,
+	3, 0x1F481, 0x1F3FC,
+	3, 0x1F481, 0x1F3FD,
+	3, 0x1F481, 0x1F3FE,
+	3, 0x1F481, 0x1F3FF,
+	3, 0x1F482, 0x1F3FB,
+	3, 0x1F482, 0x1F3FC,
+	3, 0x1F482, 0x1F3FD,
+	3, 0x1F482, 0x1F3FE,
+	3, 0x1F482, 0x1F3FF,
+	3, 0x1F483, 0x1F3FB,
+	3, 0x1F483, 0x1F3FC,
+	3, 0x1F483, 0x1F3FD,
+	3, 0x1F483, 0x1F3FE,
+	3, 0x1F483, 0x1F3FF,
+	3, 0x1F485, 0x1F3FB,
+	3, 0x1F485, 0x1F3FC,
+	3, 0x1F485, 0x1F3FD,
+	3, 0x1F485, 0x1F3FE,
+	3, 0x1F485, 0x1F3FF,
+	3, 0x1F486, 0x1F3FB,
+	3, 0x1F486, 0x1F3FC,
+	3, 0x1F486, 0x1F3FD,
+	3, 0x1F486, 0x1F3FE,
+	3, 0x1F486, 0x1F3FF,
+	3, 0x1F487, 0x1F3FB,
+	3, 0x1F487, 0x1F3FC,
+	3, 0x1F487, 0x1F3FD,
+	3, 0x1F487, 0x1F3FE,
+	3, 0x1F487, 0x1F3FF,
+	3, 0x1F48F, 0x1F3FB,
+	3, 0x1F48F, 0x1F3FC,
+	3, 0x1F48F, 0x1F3FD,
+	3, 0x1F48F, 0x1F3FE,
+	3, 0x1F48F, 0x1F3FF,
+	3, 0x1F491, 0x1F3FB,
+	3, 0x1F491, 0x1F3FC,
+	3, 0x1F491, 0x1F3FD,
+	3, 0x1F491, 0x1F3FE,
+	3, 0x1F491, 0x1F3FF,
+	3, 0x1F4AA, 0x1F3FB,
+	3, 0x1F4AA, 0x1F3FC,
+	3, 0x1F4AA, 0x1F3FD,
+	3, 0x1F4AA, 0x1F3FE,
+	3, 0x1F4AA, 0x1F3FF,
+	3, 0x1F574, 0x1F3FB,
+	3, 0x1F574, 0x1F3FC,
+	3, 0x1F574, 0x1F3FD,
+	3, 0x1F574, 0x1F3FE,
+	3, 0x1F574, 0x1F3FF,
+	3, 0x1F575, 0x1F3FB,
+	3, 0x1F575, 0x1F3FC,
+	3, 0x1F575, 0x1F3FD,
+	3, 0x1F575, 0x1F3FE,
+	3, 0x1F575, 0x1F3FF,
+	3, 0x1F57A, 0x1F3FB,
+	3, 0x1F57A, 0x1F3FC,
+	3, 0x1F57A, 0x1F3FD,
+	3, 0x1F57A, 0x1F3FE,
+	3, 0x1F57A, 0x1F3FF,
+	3, 0x1F590, 0x1F3FB,
+	3, 0x1F590, 0x1F3FC,
+	3, 0x1F590, 0x1F3FD,
+	3, 0x1F590, 0x1F3FE,
+	3, 0x1F590, 0x1F3FF,
+	3, 0x1F595, 0x1F3FB,
+	3, 0x1F595, 0x1F3FC,
+	3, 0x1F595, 0x1F3FD,
+	3, 0x1F595, 0x1F3FE,
+	3, 0x1F595, 0x1F3FF,
+	3, 0x1F596, 0x1F3FB,
+	3, 0x1F596, 0x1F3FC,
+	3, 0x1F596, 0x1F3FD,
+	3, 0x1F596, 0x1F3FE,
+	3, 0x1F596, 0x1F3FF,
+	3, 0x1F645, 0x1F3FB,
+	3, 0x1F645, 0x1F3FC,
+	3, 0x1F645, 0x1F3FD,
+	3, 0x1F645, 0x1F3FE,
+	3, 0x1F645, 0x1F3FF,
+	3, 0x1F646, 0x1F3FB,
+	3, 0x1F646, 0x1F3FC,
+	3, 0x1F646, 0x1F3FD,
+	3, 0x1F646, 0x1F3FE,
+	3, 0x1F646, 0x1F3FF,
+	3, 0x1F647, 0x1F3FB,
+	3, 0x1F647, 0x1F3FC,
+	3, 0x1F647, 0x1F3FD,
+	3, 0x1F647, 0x1F3FE,
+	3, 0x1F647, 0x1F3FF,
+	3, 0x1F64B, 0x1F3FB,
+	3, 0x1F64B, 0x1F3FC,
+	3, 0x1F64B, 0x1F3FD,
+	3, 0x1F64B, 0x1F3FE,
+	3, 0x1F64B, 0x1F3FF,
+	3, 0x1F64C, 0x1F3FB,
+	3, 0x1F64C, 0x1F3FC,
+	3, 0x1F64C, 0x1F3FD,
+	3, 0x1F64C, 0x1F3FE,
+	3, 0x1F64C, 0x1F3FF,
+	3, 0x1F64D, 0x1F3FB,
+	3, 0x1F64D, 0x1F3FC,
+	3, 0x1F64D, 0x1F3FD,
+	3, 0x1F64D, 0x1F3FE,
+	3, 0x1F64D, 0x1F3FF,
+	3, 0x1F64E, 0x1F3FB,
+	3, 0x1F64E, 0x1F3FC,
+	3, 0x1F64E, 0x1F3FD,
+	3, 0x1F64E, 0x1F3FE,
+	3, 0x1F64E, 0x1F3FF,
+	3, 0x1F64F, 0x1F3FB,
+	3, 0x1F64F, 0x1F3FC,
+	3, 0x1F64F, 0x1F3FD,
+	3, 0x1F64F, 0x1F3FE,
+	3, 0x1F64F, 0x1F3FF,
+	3, 0x1F6A3, 0x1F3FB,
+	3, 0x1F6A3, 0x1F3FC,
+	3, 0x1F6A3, 0x1F3FD,
+	3, 0x1F6A3, 0x1F3FE,
+	3, 0x1F6A3, 0x1F3FF,
+	3, 0x1F6B4, 0x1F3FB,
+	3, 0x1F6B4, 0x1F3FC,
+	3, 0x1F6B4, 0x1F3FD,
+	3, 0x1F6B4, 0x1F3FE,
+	3, 0x1F6B4, 0x1F3FF,
+	3, 0x1F6B5, 0x1F3FB,
+	3, 0x1F6B5, 0x1F3FC,
+	3, 0x1F6B5, 0x1F3FD,
+	3, 0x1F6B5, 0x1F3FE,
+	3, 0x1F6B5, 0x1F3FF,
+	3, 0x1F6B6, 0x1F3FB,
+	3, 0x1F6B6, 0x1F3FC,
+	3, 0x1F6B6, 0x1F3FD,
+	3, 0x1F6B6, 0x1F3FE,
+	3, 0x1F6B6, 0x1F3FF,
+	3, 0x1F6C0, 0x1F3FB,
+	3, 0x1F6C0, 0x1F3FC,
+	3, 0x1F6C0, 0x1F3FD,
+	3, 0x1F6C0, 0x1F3FE,
+	3, 0x1F6C0, 0x1F3FF,
+	3, 0x1F6CC, 0x1F3FB,
+	3, 0x1F6CC, 0x1F3FC,
+	3, 0x1F6CC, 0x1F3FD,
+	3, 0x1F6CC, 0x1F3FE,
+	3, 0x1F6CC, 0x1F3FF,
+	3, 0x1F90C, 0x1F3FB,
+	3, 0x1F90C, 0x1F3FC,
+	3, 0x1F90C, 0x1F3FD,
+	3, 0x1F90C, 0x1F3FE,
+	3, 0x1F90C, 0x1F3FF,
+	3, 0x1F90F, 0x1F3FB,
+	3, 0x1F90F, 0x1F3FC,
+	3, 0x1F90F, 0x1F3FD,
+	3, 0x1F90F, 0x1F3FE,
+	3, 0x1F90F, 0x1F3FF,
+	3, 0x1F918, 0x1F3FB,
+	3, 0x1F918, 0x1F3FC,
+	3, 0x1F918, 0x1F3FD,
+	3, 0x1F918, 0x1F3FE,
+	3, 0x1F918, 0x1F3FF,
+	3, 0x1F919, 0x1F3FB,
+	3, 0x1F919, 0x1F3FC,
+	3, 0x1F919, 0x1F3FD,
+	3, 0x1F919, 0x1F3FE,
+	3, 0x1F919, 0x1F3FF,
+	3, 0x1F91A, 0x1F3FB,
+	3, 0x1F91A, 0x1F3FC,
+	3, 0x1F91A, 0x1F3FD,
+	3, 0x1F91A, 0x1F3FE,
+	3, 0x1F91A, 0x1F3FF,
+	3, 0x1F91B, 0x1F3FB,
+	3, 0x1F91B, 0x1F3FC,
+	3, 0x1F91B, 0x1F3FD,
+	3, 0x1F91B, 0x1F3FE,
+	3, 0x1F91B, 0x1F3FF,
+	3, 0x1F91C, 0x1F3FB,
+	3, 0x1F91C, 0x1F3FC,
+	3, 0x1F91C, 0x1F3FD,
+	3, 0x1F91C, 0x1F3FE,
+	3, 0x1F91C, 0x1F3FF,
+	3, 0x1F91D, 0x1F3FB,
+	3, 0x1F91D, 0x1F3FC,
+	3, 0x1F91D, 0x1F3FD,
+	3, 0x1F91D, 0x1F3FE,
+	3, 0x1F91D, 0x1F3FF,
+	3, 0x1F91E, 0x1F3FB,
+	3, 0x1F91E, 0x1F3FC,
+	3, 0x1F91E, 0x1F3FD,
+	3, 0x1F91E, 0x1F3FE,
+	3, 0x1F91E, 0x1F3FF,
+	3, 0x1F91F, 0x1F3FB,
+	3, 0x1F91F, 0x1F3FC,
+	3, 0x1F91F, 0x1F3FD,
+	3, 0x1F91F, 0x1F3FE,
+	3, 0x1F91F, 0x1F3FF,
+	3, 0x1F926, 0x1F3FB,
+	3, 0x1F926, 0x1F3FC,
+	3, 0x1F926, 0x1F3FD,
+	3, 0x1F926, 0x1F3FE,
+	3, 0x1F926, 0x1F3FF,
+	3, 0x1F930, 0x1F3FB,
+	3, 0x1F930, 0x1F3FC,
+	3, 0x1F930, 0x1F3FD,
+	3, 0x1F930, 0x1F3FE,
+	3, 0x1F930, 0x1F3FF,
+	3, 0x1F931, 0x1F3FB,
+	3, 0x1F931, 0x1F3FC,
+	3, 0x1F931, 0x1F3FD,
+	3, 0x1F931, 0x1F3FE,
+	3, 0x1F931, 0x1F3FF,
+	3, 0x1F932, 0x1F3FB,
+	3, 0x1F932, 0x1F3FC,
+	3, 0x1F932, 0x1F3FD,
+	3, 0x1F932, 0x1F3FE,
+	3, 0x1F932, 0x1F3FF,
+	3, 0x1F933, 0x1F3FB,
+	3, 0x1F933, 0x1F3FC,
+	3, 0x1F933, 0x1F3FD,
+	3, 0x1F933, 0x1F3FE,
+	3, 0x1F933, 0x1F3FF,
+	3, 0x1F934, 0x1F3FB,
+	3, 0x1F934, 0x1F3FC,
+	3, 0x1F934, 0x1F3FD,
+	3, 0x1F934, 0x1F3FE,
+	3, 0x1F934, 0x1F3FF,
+	3, 0x1F935, 0x1F3FB,
+	3, 0x1F935, 0x1F3FC,
+	3, 0x1F935, 0x1F3FD,
+	3, 0x1F935, 0x1F3FE,
+	3, 0x1F935, 0x1F3FF,
+	3, 0x1F936, 0x1F3FB,
+	3, 0x1F936, 0x1F3FC,
+	3, 0x1F936, 0x1F3FD,
+	3, 0x1F936, 0x1F3FE,
+	3, 0x1F936, 0x1F3FF,
+	3, 0x1F937, 0x1F3FB,
+	3, 0x1F937, 0x1F3FC,
+	3, 0x1F937, 0x1F3FD,
+	3, 0x1F937, 0x1F3FE,
+	3, 0x1F937, 0x1F3FF,
+	3, 0x1F938, 0x1F3FB,
+	3, 0x1F938, 0x1F3FC,
+	3, 0x1F938, 0x1F3FD,
+	3, 0x1F938, 0x1F3FE,
+	3, 0x1F938, 0x1F3FF,
+	3, 0x1F939, 0x1F3FB,
+	3, 0x1F939, 0x1F3FC,
+	3, 0x1F939, 0x1F3FD,
+	3, 0x1F939, 0x1F3FE,
+	3, 0x1F939, 0x1F3FF,
+	3, 0x1F93D, 0x1F3FB,
+	3, 0x1F93D, 0x1F3FC,
+	3, 0x1F93D, 0x1F3FD,
+	3, 0x1F93D, 0x1F3FE,
+	3, 0x1F93D, 0x1F3FF,
+	3, 0x1F93E, 0x1F3FB,
+	3, 0x1F93E, 0x1F3FC,
+	3, 0x1F93E, 0x1F3FD,
+	3, 0x1F93E, 0x1F3FE,
+	3, 0x1F93E, 0x1F3FF,
+	3, 0x1F977, 0x1F3FB,
+	3, 0x1F977, 0x1F3FC,
+	3, 0x1F977, 0x1F3FD,
+	3, 0x1F977, 0x1F3FE,
+	3, 0x1F977, 0x1F3FF,
+	3, 0x1F9B5, 0x1F3FB,
+	3, 0x1F9B5, 0x1F3FC,
+	3, 0x1F9B5, 0x1F3FD,
+	3, 0x1F9B5, 0x1F3FE,
+	3, 0x1F9B5, 0x1F3FF,
+	3, 0x1F9B6, 0x1F3FB,
+	3, 0x1F9B6, 0x1F3FC,
+	3, 0x1F9B6, 0x1F3FD,
+	3, 0x1F9B6, 0x1F3FE,
+	3, 0x1F9B6, 0x1F3FF,
+	3, 0x1F9B8, 0x1F3FB,
+	3, 0x1F9B8, 0x1F3FC,
+	3, 0x1F9B8, 0x1F3FD,
+	3, 0x1F9B8, 0x1F3FE,
+	3, 0x1F9B8, 0x1F3FF,
+	3, 0x1F9B9, 0x1F3FB,
+	3, 0x1F9B9, 0x1F3FC,
+	3, 0x1F9B9, 0x1F3FD,
+	3, 0x1F9B9, 0x1F3FE,
+	3, 0x1F9B9, 0x1F3FF,
+	3, 0x1F9BB, 0x1F3FB,
+	3, 0x1F9BB, 0x1F3FC,
+	3, 0x1F9BB, 0x1F3FD,
+	3, 0x1F9BB, 0x1F3FE,
+	3, 0x1F9BB, 0x1F3FF,
+	3, 0x1F9CD, 0x1F3FB,
+	3, 0x1F9CD, 0x1F3FC,
+	3, 0x1F9CD, 0x1F3FD,
+	3, 0x1F9CD, 0x1F3FE,
+	3, 0x1F9CD, 0x1F3FF,
+	3, 0x1F9CE, 0x1F3FB,
+	3, 0x1F9CE, 0x1F3FC,
+	3, 0x1F9CE, 0x1F3FD,
+	3, 0x1F9CE, 0x1F3FE,
+	3, 0x1F9CE, 0x1F3FF,
+	3, 0x1F9CF, 0x1F3FB,
+	3, 0x1F9CF, 0x1F3FC,
+	3, 0x1F9CF, 0x1F3FD,
+	3, 0x1F9CF, 0x1F3FE,
+	3, 0x1F9CF, 0x1F3FF,
+	3, 0x1F9D1, 0x1F3FB,
+	3, 0x1F9D1, 0x1F3FC,
+	3, 0x1F9D1, 0x1F3FD,
+	3, 0x1F9D1, 0x1F3FE,
+	3, 0x1F9D1, 0x1F3FF,
+	3, 0x1F9D2, 0x1F3FB,
+	3, 0x1F9D2, 0x1F3FC,
+	3, 0x1F9D2, 0x1F3FD,
+	3, 0x1F9D2, 0x1F3FE,
+	3, 0x1F9D2, 0x1F3FF,
+	3, 0x1F9D3, 0x1F3FB,
+	3, 0x1F9D3, 0x1F3FC,
+	3, 0x1F9D3, 0x1F3FD,
+	3, 0x1F9D3, 0x1F3FE,
+	3, 0x1F9D3, 0x1F3FF,
+	3, 0x1F9D4, 0x1F3FB,
+	3, 0x1F9D4, 0x1F3FC,
+	3, 0x1F9D4, 0x1F3FD,
+	3, 0x1F9D4, 0x1F3FE,
+	3, 0x1F9D4, 0x1F3FF,
+	3, 0x1F9D5, 0x1F3FB,
+	3, 0x1F9D5, 0x1F3FC,
+	3, 0x1F9D5, 0x1F3FD,
+	3, 0x1F9D5, 0x1F3FE,
+	3, 0x1F9D5, 0x1F3FF,
+	3, 0x1F9D6, 0x1F3FB,
+	3, 0x1F9D6, 0x1F3FC,
+	3, 0x1F9D6, 0x1F3FD,
+	3, 0x1F9D6, 0x1F3FE,
+	3, 0x1F9D6, 0x1F3FF,
+	3, 0x1F9D7, 0x1F3FB,
+	3, 0x1F9D7, 0x1F3FC,
+	3, 0x1F9D7, 0x1F3FD,
+	3, 0x1F9D7, 0x1F3FE,
+	3, 0x1F9D7, 0x1F3FF,
+	3, 0x1F9D8, 0x1F3FB,
+	3, 0x1F9D8, 0x1F3FC,
+	3, 0x1F9D8, 0x1F3FD,
+	3, 0x1F9D8, 0x1F3FE,
+	3, 0x1F9D8, 0x1F3FF,
+	3, 0x1F9D9, 0x1F3FB,
+	3, 0x1F9D9, 0x1F3FC,
+	3, 0x1F9D9, 0x1F3FD,
+	3, 0x1F9D9, 0x1F3FE,
+	3, 0x1F9D9, 0x1F3FF,
+	3, 0x1F9DA, 0x1F3FB,
+	3, 0x1F9DA, 0x1F3FC,
+	3, 0x1F9DA, 0x1F3FD,
+	3, 0x1F9DA, 0x1F3FE,
+	3, 0x1F9DA, 0x1F3FF,
+	3, 0x1F9DB, 0x1F3FB,
+	3, 0x1F9DB, 0x1F3FC,
+	3, 0x1F9DB, 0x1F3FD,
+	3, 0x1F9DB, 0x1F3FE,
+	3, 0x1F9DB, 0x1F3FF,
+	3, 0x1F9DC, 0x1F3FB,
+	3, 0x1F9DC, 0x1F3FC,
+	3, 0x1F9DC, 0x1F3FD,
+	3, 0x1F9DC, 0x1F3FE,
+	3, 0x1F9DC, 0x1F3FF,
+	3, 0x1F9DD, 0x1F3FB,
+	3, 0x1F9DD, 0x1F3FC,
+	3, 0x1F9DD, 0x1F3FD,
+	3, 0x1F9DD, 0x1F3FE,
+	3, 0x1F9DD, 0x1F3FF,
+	3, 0x1FAC3, 0x1F3FB,
+	3, 0x1FAC3, 0x1F3FC,
+	3, 0x1FAC3, 0x1F3FD,
+	3, 0x1FAC3, 0x1F3FE,
+	3, 0x1FAC3, 0x1F3FF,
+	3, 0x1FAC4, 0x1F3FB,
+	3, 0x1FAC4, 0x1F3FC,
+	3, 0x1FAC4, 0x1F3FD,
+	3, 0x1FAC4, 0x1F3FE,
+	3, 0x1FAC4, 0x1F3FF,
+	3, 0x1FAC5, 0x1F3FB,
+	3, 0x1FAC5, 0x1F3FC,
+	3, 0x1FAC5, 0x1F3FD,
+	3, 0x1FAC5, 0x1F3FE,
+	3, 0x1FAC5, 0x1F3FF,
+	3, 0x1FAF0, 0x1F3FB,
+	3, 0x1FAF0, 0x1F3FC,
+	3, 0x1FAF0, 0x1F3FD,
+	3, 0x1FAF0, 0x1F3FE,
+	3, 0x1FAF0, 0x1F3FF,
+	3, 0x1FAF1, 0x1F3FB,
+	3, 0x1FAF1, 0x1F3FC,
+	3, 0x1FAF1, 0x1F3FD,
+	3, 0x1FAF1, 0x1F3FE,
+	3, 0x1FAF1, 0x1F3FF,
+	3, 0x1FAF2, 0x1F3FB,
+	3, 0x1FAF2, 0x1F3FC,
+	3, 0x1FAF2, 0x1F3FD,
+	3, 0x1FAF2, 0x1F3FE,
+	3, 0x1FAF2, 0x1F3FF,
+	3, 0x1FAF3, 0x1F3FB,
+	3, 0x1FAF3, 0x1F3FC,
+	3, 0x1FAF3, 0x1F3FD,
+	3, 0x1FAF3, 0x1F3FE,
+	3, 0x1FAF3, 0x1F3FF,
+	3, 0x1FAF4, 0x1F3FB,
+	3, 0x1FAF4, 0x1F3FC,
+	3, 0x1FAF4, 0x1F3FD,
+	3, 0x1FAF4, 0x1F3FE,
+	3, 0x1FAF4, 0x1F3FF,
+	3, 0x1FAF5, 0x1F3FB,
+	3, 0x1FAF5, 0x1F3FC,
+	3, 0x1FAF5, 0x1F3FD,
+	3, 0x1FAF5, 0x1F3FE,
+	3, 0x1FAF5, 0x1F3FF,
+	3, 0x1FAF6, 0x1F3FB,
+	3, 0x1FAF6, 0x1F3FC,
+	3, 0x1FAF6, 0x1F3FD,
+	3, 0x1FAF6, 0x1F3FE,
+	3, 0x1FAF6, 0x1F3FF,
+	0,	//  Padding.
+	//  #327 (18769+774/2): bp=RGI_Emoji_Flag_Sequence
+	3, 0x1F1E6, 0x1F1E8,
+	3, 0x1F1E6, 0x1F1E9,
+	3, 0x1F1E6, 0x1F1EA,
+	3, 0x1F1E6, 0x1F1EB,
+	3, 0x1F1E6, 0x1F1EC,
+	3, 0x1F1E6, 0x1F1EE,
+	3, 0x1F1E6, 0x1F1F1,
+	3, 0x1F1E6, 0x1F1F2,
+	3, 0x1F1E6, 0x1F1F4,
+	3, 0x1F1E6, 0x1F1F6,
+	3, 0x1F1E6, 0x1F1F7,
+	3, 0x1F1E6, 0x1F1F8,
+	3, 0x1F1E6, 0x1F1F9,
+	3, 0x1F1E6, 0x1F1FA,
+	3, 0x1F1E6, 0x1F1FC,
+	3, 0x1F1E6, 0x1F1FD,
+	3, 0x1F1E6, 0x1F1FF,
+	3, 0x1F1E7, 0x1F1E6,
+	3, 0x1F1E7, 0x1F1E7,
+	3, 0x1F1E7, 0x1F1E9,
+	3, 0x1F1E7, 0x1F1EA,
+	3, 0x1F1E7, 0x1F1EB,
+	3, 0x1F1E7, 0x1F1EC,
+	3, 0x1F1E7, 0x1F1ED,
+	3, 0x1F1E7, 0x1F1EE,
+	3, 0x1F1E7, 0x1F1EF,
+	3, 0x1F1E7, 0x1F1F1,
+	3, 0x1F1E7, 0x1F1F2,
+	3, 0x1F1E7, 0x1F1F3,
+	3, 0x1F1E7, 0x1F1F4,
+	3, 0x1F1E7, 0x1F1F6,
+	3, 0x1F1E7, 0x1F1F7,
+	3, 0x1F1E7, 0x1F1F8,
+	3, 0x1F1E7, 0x1F1F9,
+	3, 0x1F1E7, 0x1F1FB,
+	3, 0x1F1E7, 0x1F1FC,
+	3, 0x1F1E7, 0x1F1FE,
+	3, 0x1F1E7, 0x1F1FF,
+	3, 0x1F1E8, 0x1F1E6,
+	3, 0x1F1E8, 0x1F1E8,
+	3, 0x1F1E8, 0x1F1E9,
+	3, 0x1F1E8, 0x1F1EB,
+	3, 0x1F1E8, 0x1F1EC,
+	3, 0x1F1E8, 0x1F1ED,
+	3, 0x1F1E8, 0x1F1EE,
+	3, 0x1F1E8, 0x1F1F0,
+	3, 0x1F1E8, 0x1F1F1,
+	3, 0x1F1E8, 0x1F1F2,
+	3, 0x1F1E8, 0x1F1F3,
+	3, 0x1F1E8, 0x1F1F4,
+	3, 0x1F1E8, 0x1F1F5,
+	3, 0x1F1E8, 0x1F1F7,
+	3, 0x1F1E8, 0x1F1FA,
+	3, 0x1F1E8, 0x1F1FB,
+	3, 0x1F1E8, 0x1F1FC,
+	3, 0x1F1E8, 0x1F1FD,
+	3, 0x1F1E8, 0x1F1FE,
+	3, 0x1F1E8, 0x1F1FF,
+	3, 0x1F1E9, 0x1F1EA,
+	3, 0x1F1E9, 0x1F1EC,
+	3, 0x1F1E9, 0x1F1EF,
+	3, 0x1F1E9, 0x1F1F0,
+	3, 0x1F1E9, 0x1F1F2,
+	3, 0x1F1E9, 0x1F1F4,
+	3, 0x1F1E9, 0x1F1FF,
+	3, 0x1F1EA, 0x1F1E6,
+	3, 0x1F1EA, 0x1F1E8,
+	3, 0x1F1EA, 0x1F1EA,
+	3, 0x1F1EA, 0x1F1EC,
+	3, 0x1F1EA, 0x1F1ED,
+	3, 0x1F1EA, 0x1F1F7,
+	3, 0x1F1EA, 0x1F1F8,
+	3, 0x1F1EA, 0x1F1F9,
+	3, 0x1F1EA, 0x1F1FA,
+	3, 0x1F1EB, 0x1F1EE,
+	3, 0x1F1EB, 0x1F1EF,
+	3, 0x1F1EB, 0x1F1F0,
+	3, 0x1F1EB, 0x1F1F2,
+	3, 0x1F1EB, 0x1F1F4,
+	3, 0x1F1EB, 0x1F1F7,
+	3, 0x1F1EC, 0x1F1E6,
+	3, 0x1F1EC, 0x1F1E7,
+	3, 0x1F1EC, 0x1F1E9,
+	3, 0x1F1EC, 0x1F1EA,
+	3, 0x1F1EC, 0x1F1EB,
+	3, 0x1F1EC, 0x1F1EC,
+	3, 0x1F1EC, 0x1F1ED,
+	3, 0x1F1EC, 0x1F1EE,
+	3, 0x1F1EC, 0x1F1F1,
+	3, 0x1F1EC, 0x1F1F2,
+	3, 0x1F1EC, 0x1F1F3,
+	3, 0x1F1EC, 0x1F1F5,
+	3, 0x1F1EC, 0x1F1F6,
+	3, 0x1F1EC, 0x1F1F7,
+	3, 0x1F1EC, 0x1F1F8,
+	3, 0x1F1EC, 0x1F1F9,
+	3, 0x1F1EC, 0x1F1FA,
+	3, 0x1F1EC, 0x1F1FC,
+	3, 0x1F1EC, 0x1F1FE,
+	3, 0x1F1ED, 0x1F1F0,
+	3, 0x1F1ED, 0x1F1F2,
+	3, 0x1F1ED, 0x1F1F3,
+	3, 0x1F1ED, 0x1F1F7,
+	3, 0x1F1ED, 0x1F1F9,
+	3, 0x1F1ED, 0x1F1FA,
+	3, 0x1F1EE, 0x1F1E8,
+	3, 0x1F1EE, 0x1F1E9,
+	3, 0x1F1EE, 0x1F1EA,
+	3, 0x1F1EE, 0x1F1F1,
+	3, 0x1F1EE, 0x1F1F2,
+	3, 0x1F1EE, 0x1F1F3,
+	3, 0x1F1EE, 0x1F1F4,
+	3, 0x1F1EE, 0x1F1F6,
+	3, 0x1F1EE, 0x1F1F7,
+	3, 0x1F1EE, 0x1F1F8,
+	3, 0x1F1EE, 0x1F1F9,
+	3, 0x1F1EF, 0x1F1EA,
+	3, 0x1F1EF, 0x1F1F2,
+	3, 0x1F1EF, 0x1F1F4,
+	3, 0x1F1EF, 0x1F1F5,
+	3, 0x1F1F0, 0x1F1EA,
+	3, 0x1F1F0, 0x1F1EC,
+	3, 0x1F1F0, 0x1F1ED,
+	3, 0x1F1F0, 0x1F1EE,
+	3, 0x1F1F0, 0x1F1F2,
+	3, 0x1F1F0, 0x1F1F3,
+	3, 0x1F1F0, 0x1F1F5,
+	3, 0x1F1F0, 0x1F1F7,
+	3, 0x1F1F0, 0x1F1FC,
+	3, 0x1F1F0, 0x1F1FE,
+	3, 0x1F1F0, 0x1F1FF,
+	3, 0x1F1F1, 0x1F1E6,
+	3, 0x1F1F1, 0x1F1E7,
+	3, 0x1F1F1, 0x1F1E8,
+	3, 0x1F1F1, 0x1F1EE,
+	3, 0x1F1F1, 0x1F1F0,
+	3, 0x1F1F1, 0x1F1F7,
+	3, 0x1F1F1, 0x1F1F8,
+	3, 0x1F1F1, 0x1F1F9,
+	3, 0x1F1F1, 0x1F1FA,
+	3, 0x1F1F1, 0x1F1FB,
+	3, 0x1F1F1, 0x1F1FE,
+	3, 0x1F1F2, 0x1F1E6,
+	3, 0x1F1F2, 0x1F1E8,
+	3, 0x1F1F2, 0x1F1E9,
+	3, 0x1F1F2, 0x1F1EA,
+	3, 0x1F1F2, 0x1F1EB,
+	3, 0x1F1F2, 0x1F1EC,
+	3, 0x1F1F2, 0x1F1ED,
+	3, 0x1F1F2, 0x1F1F0,
+	3, 0x1F1F2, 0x1F1F1,
+	3, 0x1F1F2, 0x1F1F2,
+	3, 0x1F1F2, 0x1F1F3,
+	3, 0x1F1F2, 0x1F1F4,
+	3, 0x1F1F2, 0x1F1F5,
+	3, 0x1F1F2, 0x1F1F6,
+	3, 0x1F1F2, 0x1F1F7,
+	3, 0x1F1F2, 0x1F1F8,
+	3, 0x1F1F2, 0x1F1F9,
+	3, 0x1F1F2, 0x1F1FA,
+	3, 0x1F1F2, 0x1F1FB,
+	3, 0x1F1F2, 0x1F1FC,
+	3, 0x1F1F2, 0x1F1FD,
+	3, 0x1F1F2, 0x1F1FE,
+	3, 0x1F1F2, 0x1F1FF,
+	3, 0x1F1F3, 0x1F1E6,
+	3, 0x1F1F3, 0x1F1E8,
+	3, 0x1F1F3, 0x1F1EA,
+	3, 0x1F1F3, 0x1F1EB,
+	3, 0x1F1F3, 0x1F1EC,
+	3, 0x1F1F3, 0x1F1EE,
+	3, 0x1F1F3, 0x1F1F1,
+	3, 0x1F1F3, 0x1F1F4,
+	3, 0x1F1F3, 0x1F1F5,
+	3, 0x1F1F3, 0x1F1F7,
+	3, 0x1F1F3, 0x1F1FA,
+	3, 0x1F1F3, 0x1F1FF,
+	3, 0x1F1F4, 0x1F1F2,
+	3, 0x1F1F5, 0x1F1E6,
+	3, 0x1F1F5, 0x1F1EA,
+	3, 0x1F1F5, 0x1F1EB,
+	3, 0x1F1F5, 0x1F1EC,
+	3, 0x1F1F5, 0x1F1ED,
+	3, 0x1F1F5, 0x1F1F0,
+	3, 0x1F1F5, 0x1F1F1,
+	3, 0x1F1F5, 0x1F1F2,
+	3, 0x1F1F5, 0x1F1F3,
+	3, 0x1F1F5, 0x1F1F7,
+	3, 0x1F1F5, 0x1F1F8,
+	3, 0x1F1F5, 0x1F1F9,
+	3, 0x1F1F5, 0x1F1FC,
+	3, 0x1F1F5, 0x1F1FE,
+	3, 0x1F1F6, 0x1F1E6,
+	3, 0x1F1F7, 0x1F1EA,
+	3, 0x1F1F7, 0x1F1F4,
+	3, 0x1F1F7, 0x1F1F8,
+	3, 0x1F1F7, 0x1F1FA,
+	3, 0x1F1F7, 0x1F1FC,
+	3, 0x1F1F8, 0x1F1E6,
+	3, 0x1F1F8, 0x1F1E7,
+	3, 0x1F1F8, 0x1F1E8,
+	3, 0x1F1F8, 0x1F1E9,
+	3, 0x1F1F8, 0x1F1EA,
+	3, 0x1F1F8, 0x1F1EC,
+	3, 0x1F1F8, 0x1F1ED,
+	3, 0x1F1F8, 0x1F1EE,
+	3, 0x1F1F8, 0x1F1EF,
+	3, 0x1F1F8, 0x1F1F0,
+	3, 0x1F1F8, 0x1F1F1,
+	3, 0x1F1F8, 0x1F1F2,
+	3, 0x1F1F8, 0x1F1F3,
+	3, 0x1F1F8, 0x1F1F4,
+	3, 0x1F1F8, 0x1F1F7,
+	3, 0x1F1F8, 0x1F1F8,
+	3, 0x1F1F8, 0x1F1F9,
+	3, 0x1F1F8, 0x1F1FB,
+	3, 0x1F1F8, 0x1F1FD,
+	3, 0x1F1F8, 0x1F1FE,
+	3, 0x1F1F8, 0x1F1FF,
+	3, 0x1F1F9, 0x1F1E6,
+	3, 0x1F1F9, 0x1F1E8,
+	3, 0x1F1F9, 0x1F1E9,
+	3, 0x1F1F9, 0x1F1EB,
+	3, 0x1F1F9, 0x1F1EC,
+	3, 0x1F1F9, 0x1F1ED,
+	3, 0x1F1F9, 0x1F1EF,
+	3, 0x1F1F9, 0x1F1F0,
+	3, 0x1F1F9, 0x1F1F1,
+	3, 0x1F1F9, 0x1F1F2,
+	3, 0x1F1F9, 0x1F1F3,
+	3, 0x1F1F9, 0x1F1F4,
+	3, 0x1F1F9, 0x1F1F7,
+	3, 0x1F1F9, 0x1F1F9,
+	3, 0x1F1F9, 0x1F1FB,
+	3, 0x1F1F9, 0x1F1FC,
+	3, 0x1F1F9, 0x1F1FF,
+	3, 0x1F1FA, 0x1F1E6,
+	3, 0x1F1FA, 0x1F1EC,
+	3, 0x1F1FA, 0x1F1F2,
+	3, 0x1F1FA, 0x1F1F3,
+	3, 0x1F1FA, 0x1F1F8,
+	3, 0x1F1FA, 0x1F1FE,
+	3, 0x1F1FA, 0x1F1FF,
+	3, 0x1F1FB, 0x1F1E6,
+	3, 0x1F1FB, 0x1F1E8,
+	3, 0x1F1FB, 0x1F1EA,
+	3, 0x1F1FB, 0x1F1EC,
+	3, 0x1F1FB, 0x1F1EE,
+	3, 0x1F1FB, 0x1F1F3,
+	3, 0x1F1FB, 0x1F1FA,
+	3, 0x1F1FC, 0x1F1EB,
+	3, 0x1F1FC, 0x1F1F8,
+	3, 0x1F1FD, 0x1F1F0,
+	3, 0x1F1FE, 0x1F1EA,
+	3, 0x1F1FE, 0x1F1F9,
+	3, 0x1F1FF, 0x1F1E6,
+	3, 0x1F1FF, 0x1F1F2,
+	3, 0x1F1FF, 0x1F1FC,
+	//  #328 (19156+24/2): bp=RGI_Emoji_Tag_Sequence
+	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0065, 0xE006E, 0xE0067, 0xE007F,
+	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0073, 0xE0063, 0xE0074, 0xE007F,
+	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F,
+	//  #329 (19168+8482/2): bp=RGI_Emoji_ZWJ_Sequence
+	7, 0x1F468, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468,
+	9, 0x1F468, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468,
+	4, 0x1F468, 0x200D, 0x1F466,
+	6, 0x1F468, 0x200D, 0x1F466, 0x200D, 0x1F466,
+	4, 0x1F468, 0x200D, 0x1F467,
+	6, 0x1F468, 0x200D, 0x1F467, 0x200D, 0x1F466,
+	6, 0x1F468, 0x200D, 0x1F467, 0x200D, 0x1F467,
+	6, 0x1F468, 0x200D, 0x1F468, 0x200D, 0x1F466,
+	8, 0x1F468, 0x200D, 0x1F468, 0x200D, 0x1F466, 0x200D, 0x1F466,
+	6, 0x1F468, 0x200D, 0x1F468, 0x200D, 0x1F467,
+	8, 0x1F468, 0x200D, 0x1F468, 0x200D, 0x1F467, 0x200D, 0x1F466,
+	8, 0x1F468, 0x200D, 0x1F468, 0x200D, 0x1F467, 0x200D, 0x1F467,
+	6, 0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F466,
+	8, 0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F466, 0x200D, 0x1F466,
+	6, 0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467,
+	8, 0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F466,
+	8, 0x1F468, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467,
+	9, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F468, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F468, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F468, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F468, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F468, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	7, 0x1F469, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468,
+	7, 0x1F469, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469,
+	9, 0x1F469, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468,
+	9, 0x1F469, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469,
+	4, 0x1F469, 0x200D, 0x1F466,
+	6, 0x1F469, 0x200D, 0x1F466, 0x200D, 0x1F466,
+	4, 0x1F469, 0x200D, 0x1F467,
+	6, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F466,
+	6, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467,
+	6, 0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F466,
+	8, 0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F466, 0x200D, 0x1F466,
+	6, 0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467,
+	8, 0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F466,
+	8, 0x1F469, 0x200D, 0x1F469, 0x200D, 0x1F467, 0x200D, 0x1F467,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FB,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FC,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FD,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FE,
+	9, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FF,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FB,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FC,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FD,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FE,
+	11, 0x1F469, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FF,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FC,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FD,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FE,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FF,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FB,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FC,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FD,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FE,
+	9, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FF,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FB,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FC,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FD,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FE,
+	11, 0x1F469, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FF,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FB,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FD,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FE,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FF,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FB,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FC,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FD,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FE,
+	9, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FF,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FB,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FC,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FD,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FE,
+	11, 0x1F469, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FF,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FB,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FC,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FE,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FF,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FB,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FC,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FD,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FE,
+	9, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FF,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FB,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FC,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FD,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FE,
+	11, 0x1F469, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FF,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FF,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FB,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FC,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FD,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FF,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FB,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FC,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FD,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FE,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468, 0x1F3FF,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FB,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FC,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FD,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FE,
+	9, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F469, 0x1F3FF,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FB,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FC,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FD,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FE,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468, 0x1F3FF,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FB,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FC,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FD,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FE,
+	11, 0x1F469, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F469, 0x1F3FF,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FB,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FC,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FD,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F468, 0x1F3FE,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FB,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FC,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FD,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FE,
+	6, 0x1F9D1, 0x200D, 0x1F91D, 0x200D, 0x1F9D1,
+	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FC,
+	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FD,
+	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FE,
+	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FF,
+	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
+	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
+	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
+	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F384,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FE,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FF,
+	11, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FB,
+	11, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FD,
+	11, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FE,
+	11, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FF,
+	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FB,
+	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
+	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
+	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F384,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FE,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FF,
+	11, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FB,
+	11, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FC,
+	11, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FE,
+	11, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FF,
+	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FB,
+	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
+	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
+	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F384,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FE,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FF,
+	11, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FB,
+	11, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FC,
+	11, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FD,
+	11, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FF,
+	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FB,
+	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
+	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
+	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F384,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FE,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FF,
+	11, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FB,
+	11, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FC,
+	11, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FD,
+	11, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FE,
+	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FB,
+	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
+	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
+	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F384,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FE,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FF,
+	6, 0x1FAF1, 0x1F3FB, 0x200D, 0x1FAF2, 0x1F3FC,
+	6, 0x1FAF1, 0x1F3FB, 0x200D, 0x1FAF2, 0x1F3FD,
+	6, 0x1FAF1, 0x1F3FB, 0x200D, 0x1FAF2, 0x1F3FE,
+	6, 0x1FAF1, 0x1F3FB, 0x200D, 0x1FAF2, 0x1F3FF,
+	6, 0x1FAF1, 0x1F3FC, 0x200D, 0x1FAF2, 0x1F3FB,
+	6, 0x1FAF1, 0x1F3FC, 0x200D, 0x1FAF2, 0x1F3FD,
+	6, 0x1FAF1, 0x1F3FC, 0x200D, 0x1FAF2, 0x1F3FE,
+	6, 0x1FAF1, 0x1F3FC, 0x200D, 0x1FAF2, 0x1F3FF,
+	6, 0x1FAF1, 0x1F3FD, 0x200D, 0x1FAF2, 0x1F3FB,
+	6, 0x1FAF1, 0x1F3FD, 0x200D, 0x1FAF2, 0x1F3FC,
+	6, 0x1FAF1, 0x1F3FD, 0x200D, 0x1FAF2, 0x1F3FE,
+	6, 0x1FAF1, 0x1F3FD, 0x200D, 0x1FAF2, 0x1F3FF,
+	6, 0x1FAF1, 0x1F3FE, 0x200D, 0x1FAF2, 0x1F3FB,
+	6, 0x1FAF1, 0x1F3FE, 0x200D, 0x1FAF2, 0x1F3FC,
+	6, 0x1FAF1, 0x1F3FE, 0x200D, 0x1FAF2, 0x1F3FD,
+	6, 0x1FAF1, 0x1F3FE, 0x200D, 0x1FAF2, 0x1F3FF,
+	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FB,
+	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FC,
+	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FD,
+	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FE,
+	5, 0x1F468, 0x200D, 0x2695, 0xFE0F,
+	5, 0x1F468, 0x200D, 0x2696, 0xFE0F,
+	5, 0x1F468, 0x200D, 0x2708, 0xFE0F,
+	4, 0x1F468, 0x200D, 0x1F33E,
+	4, 0x1F468, 0x200D, 0x1F373,
+	4, 0x1F468, 0x200D, 0x1F37C,
+	4, 0x1F468, 0x200D, 0x1F393,
+	4, 0x1F468, 0x200D, 0x1F3A4,
+	4, 0x1F468, 0x200D, 0x1F3A8,
+	4, 0x1F468, 0x200D, 0x1F3EB,
+	4, 0x1F468, 0x200D, 0x1F3ED,
+	4, 0x1F468, 0x200D, 0x1F4BB,
+	4, 0x1F468, 0x200D, 0x1F4BC,
+	4, 0x1F468, 0x200D, 0x1F527,
+	4, 0x1F468, 0x200D, 0x1F52C,
+	4, 0x1F468, 0x200D, 0x1F680,
+	4, 0x1F468, 0x200D, 0x1F692,
+	4, 0x1F468, 0x200D, 0x1F9AF,
+	4, 0x1F468, 0x200D, 0x1F9BC,
+	4, 0x1F468, 0x200D, 0x1F9BD,
+	6, 0x1F468, 0x1F3FB, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F468, 0x1F3FB, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F468, 0x1F3FB, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F33E,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F373,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F37C,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F393,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F3A4,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F3A8,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F3EB,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F3ED,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F4BB,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F4BC,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F527,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F52C,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F680,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F692,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9AF,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9BC,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9BD,
+	6, 0x1F468, 0x1F3FC, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F468, 0x1F3FC, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F468, 0x1F3FC, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F33E,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F373,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F37C,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F393,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F3A4,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F3A8,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F3EB,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F3ED,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F4BB,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F4BC,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F527,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F52C,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F680,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F692,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9AF,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9BC,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9BD,
+	6, 0x1F468, 0x1F3FD, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F468, 0x1F3FD, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F468, 0x1F3FD, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F33E,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F373,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F37C,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F393,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F3A4,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F3A8,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F3EB,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F3ED,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F4BB,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F4BC,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F527,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F52C,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F680,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F692,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9AF,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9BC,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9BD,
+	6, 0x1F468, 0x1F3FE, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F468, 0x1F3FE, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F468, 0x1F3FE, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F33E,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F373,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F37C,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F393,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F3A4,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F3A8,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F3EB,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F3ED,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F4BB,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F4BC,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F527,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F52C,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F680,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F692,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9AF,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9BC,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9BD,
+	6, 0x1F468, 0x1F3FF, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F468, 0x1F3FF, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F468, 0x1F3FF, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F33E,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F373,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F37C,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F393,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F3A4,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F3A8,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F3EB,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F3ED,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F4BB,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F4BC,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F527,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F52C,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F680,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F692,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9AF,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9BC,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9BD,
+	5, 0x1F469, 0x200D, 0x2695, 0xFE0F,
+	5, 0x1F469, 0x200D, 0x2696, 0xFE0F,
+	5, 0x1F469, 0x200D, 0x2708, 0xFE0F,
+	4, 0x1F469, 0x200D, 0x1F33E,
+	4, 0x1F469, 0x200D, 0x1F373,
+	4, 0x1F469, 0x200D, 0x1F37C,
+	4, 0x1F469, 0x200D, 0x1F393,
+	4, 0x1F469, 0x200D, 0x1F3A4,
+	4, 0x1F469, 0x200D, 0x1F3A8,
+	4, 0x1F469, 0x200D, 0x1F3EB,
+	4, 0x1F469, 0x200D, 0x1F3ED,
+	4, 0x1F469, 0x200D, 0x1F4BB,
+	4, 0x1F469, 0x200D, 0x1F4BC,
+	4, 0x1F469, 0x200D, 0x1F527,
+	4, 0x1F469, 0x200D, 0x1F52C,
+	4, 0x1F469, 0x200D, 0x1F680,
+	4, 0x1F469, 0x200D, 0x1F692,
+	4, 0x1F469, 0x200D, 0x1F9AF,
+	4, 0x1F469, 0x200D, 0x1F9BC,
+	4, 0x1F469, 0x200D, 0x1F9BD,
+	6, 0x1F469, 0x1F3FB, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F469, 0x1F3FB, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F469, 0x1F3FB, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F33E,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F373,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F37C,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F393,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F3A4,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F3A8,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F3EB,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F3ED,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F4BB,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F4BC,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F527,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F52C,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F680,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F692,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9AF,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9BC,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9BD,
+	6, 0x1F469, 0x1F3FC, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F469, 0x1F3FC, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F469, 0x1F3FC, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F33E,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F373,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F37C,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F393,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F3A4,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F3A8,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F3EB,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F3ED,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F4BB,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F4BC,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F527,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F52C,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F680,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F692,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9AF,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9BC,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9BD,
+	6, 0x1F469, 0x1F3FD, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F469, 0x1F3FD, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F469, 0x1F3FD, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F33E,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F373,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F37C,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F393,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F3A4,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F3A8,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F3EB,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F3ED,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F4BB,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F4BC,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F527,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F52C,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F680,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F692,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9AF,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9BC,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9BD,
+	6, 0x1F469, 0x1F3FE, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F469, 0x1F3FE, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F469, 0x1F3FE, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F33E,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F373,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F37C,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F393,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F3A4,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F3A8,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F3EB,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F3ED,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F4BB,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F4BC,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F527,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F52C,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F680,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F692,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9AF,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9BC,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9BD,
+	6, 0x1F469, 0x1F3FF, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F469, 0x1F3FF, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F469, 0x1F3FF, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F33E,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F373,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F37C,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F393,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F3A4,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F3A8,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F3EB,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F3ED,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F4BB,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F4BC,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F527,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F52C,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F680,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F692,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9AF,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9BC,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9BD,
+	5, 0x1F9D1, 0x200D, 0x2695, 0xFE0F,
+	5, 0x1F9D1, 0x200D, 0x2696, 0xFE0F,
+	5, 0x1F9D1, 0x200D, 0x2708, 0xFE0F,
+	4, 0x1F9D1, 0x200D, 0x1F33E,
+	4, 0x1F9D1, 0x200D, 0x1F373,
+	4, 0x1F9D1, 0x200D, 0x1F37C,
+	4, 0x1F9D1, 0x200D, 0x1F393,
+	4, 0x1F9D1, 0x200D, 0x1F3A4,
+	4, 0x1F9D1, 0x200D, 0x1F3A8,
+	4, 0x1F9D1, 0x200D, 0x1F3EB,
+	4, 0x1F9D1, 0x200D, 0x1F3ED,
+	4, 0x1F9D1, 0x200D, 0x1F4BB,
+	4, 0x1F9D1, 0x200D, 0x1F4BC,
+	4, 0x1F9D1, 0x200D, 0x1F527,
+	4, 0x1F9D1, 0x200D, 0x1F52C,
+	4, 0x1F9D1, 0x200D, 0x1F680,
+	4, 0x1F9D1, 0x200D, 0x1F692,
+	4, 0x1F9D1, 0x200D, 0x1F9AF,
+	4, 0x1F9D1, 0x200D, 0x1F9BC,
+	4, 0x1F9D1, 0x200D, 0x1F9BD,
+	6, 0x1F9D1, 0x1F3FB, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FB, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FB, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F33E,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F373,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F393,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F3A4,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F3A8,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F3EB,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F3ED,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F4BB,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F4BC,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F527,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F52C,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F680,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F692,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9AF,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9BC,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9BD,
+	6, 0x1F9D1, 0x1F3FC, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FC, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FC, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F33E,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F373,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F393,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F3A4,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F3A8,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F3EB,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F3ED,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F4BB,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F4BC,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F527,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F52C,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F680,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F692,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9AF,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9BC,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9BD,
+	6, 0x1F9D1, 0x1F3FD, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FD, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FD, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F33E,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F373,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F393,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F3A4,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F3A8,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F3EB,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F3ED,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F4BB,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F4BC,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F527,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F52C,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F680,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F692,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9AF,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9BC,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9BD,
+	6, 0x1F9D1, 0x1F3FE, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FE, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FE, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F33E,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F373,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F393,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F3A4,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F3A8,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F3EB,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F3ED,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F4BB,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F4BC,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F527,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F52C,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F680,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F692,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9AF,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9BC,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9BD,
+	6, 0x1F9D1, 0x1F3FF, 0x200D, 0x2695, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FF, 0x200D, 0x2696, 0xFE0F,
+	6, 0x1F9D1, 0x1F3FF, 0x200D, 0x2708, 0xFE0F,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F33E,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F373,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F393,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F3A4,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F3A8,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F3EB,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F3ED,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F4BB,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F4BC,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F527,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F52C,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F680,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F692,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9AF,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9BC,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9BD,
+	6, 0x26F9, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x26F9, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x26F9, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x26F9, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x26F9, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x26F9, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x26F9, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x26F9, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x26F9, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x26F9, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x26F9, 0xFE0F, 0x200D, 0x2640, 0xFE0F,
+	6, 0x26F9, 0xFE0F, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F3C3, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F3C3, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F3C4, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F3C4, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3C4, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F3CA, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F3CA, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CA, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CB, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CB, 0xFE0F, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CB, 0xFE0F, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CC, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F3CC, 0xFE0F, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F3CC, 0xFE0F, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F46E, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F46E, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F46E, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F46E, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F46E, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F46E, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F46E, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F46E, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F46E, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F46E, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F46E, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F46E, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F46F, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F46F, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F470, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F470, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F470, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F470, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F470, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F470, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F470, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F470, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F470, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F470, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F470, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F470, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F471, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F471, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F471, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F471, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F471, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F471, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F471, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F471, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F471, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F471, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F471, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F471, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F473, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F473, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F473, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F473, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F473, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F473, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F473, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F473, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F473, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F473, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F473, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F473, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F477, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F477, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F477, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F477, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F477, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F477, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F477, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F477, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F477, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F477, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F477, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F477, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F481, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F481, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F481, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F481, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F481, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F481, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F481, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F481, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F481, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F481, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F481, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F481, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F482, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F482, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F482, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F482, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F482, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F482, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F482, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F482, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F482, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F482, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F482, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F482, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F486, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F486, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F486, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F486, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F486, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F486, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F486, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F486, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F486, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F486, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F486, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F486, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F487, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F487, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F487, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F487, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F487, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F487, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F487, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F487, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F487, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F487, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F487, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F487, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F575, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F575, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F575, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F575, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F575, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F575, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F575, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F575, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F575, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F575, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F575, 0xFE0F, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F575, 0xFE0F, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F645, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F645, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F645, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F645, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F645, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F645, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F645, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F645, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F645, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F645, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F645, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F645, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F646, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F646, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F646, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F646, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F646, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F646, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F646, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F646, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F646, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F646, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F646, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F646, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F647, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F647, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F647, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F647, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F647, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F647, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F647, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F647, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F647, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F647, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F647, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F647, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F64B, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F64B, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64B, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64B, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64B, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64B, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64B, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64B, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64B, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64B, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64B, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64B, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F64D, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F64D, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64D, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64D, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64D, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64D, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64D, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64D, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64D, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64D, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64D, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64D, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F64E, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F64E, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64E, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64E, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64E, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64E, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64E, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64E, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64E, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64E, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F64E, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F64E, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F6A3, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F6A3, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6A3, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F6B4, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F6B4, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B4, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F6B5, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F6B5, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B5, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F6B6, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F6B6, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F926, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F926, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F926, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F926, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F926, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F926, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F926, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F926, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F926, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F926, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F926, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F926, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F935, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F935, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F935, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F935, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F935, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F935, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F935, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F935, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F935, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F935, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F935, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F935, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F937, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F937, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F937, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F937, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F937, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F937, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F937, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F937, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F937, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F937, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F937, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F937, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F938, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F938, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F938, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F938, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F938, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F938, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F938, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F938, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F938, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F938, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F938, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F938, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F939, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F939, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F939, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F939, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F939, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F939, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F939, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F939, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F939, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F939, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F939, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F939, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F93C, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F93C, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F93D, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F93D, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93D, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93D, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93D, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93D, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93D, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93D, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93D, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93D, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93D, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93D, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F93E, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F93E, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93E, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93E, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93E, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93E, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93E, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93E, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93E, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93E, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F93E, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F93E, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9B8, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9B8, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B8, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9B9, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9B9, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9B9, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9CD, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9CD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CD, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9CE, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9CE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9CF, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9CF, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9CF, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9D4, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9D4, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D4, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9D6, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9D6, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D6, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9D7, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9D7, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D7, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9D8, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9D8, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D8, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9D9, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9D9, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9D9, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9DA, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9DA, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DA, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9DB, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9DB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DB, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9DC, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9DC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DC, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9DD, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9DD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	6, 0x1F9DD, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9DE, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9DE, 0x200D, 0x2642, 0xFE0F,
+	5, 0x1F9DF, 0x200D, 0x2640, 0xFE0F,
+	5, 0x1F9DF, 0x200D, 0x2642, 0xFE0F,
+	4, 0x1F468, 0x200D, 0x1F9B0,
+	4, 0x1F468, 0x200D, 0x1F9B1,
+	4, 0x1F468, 0x200D, 0x1F9B2,
+	4, 0x1F468, 0x200D, 0x1F9B3,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9B0,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9B1,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9B2,
+	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9B3,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9B0,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9B1,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9B2,
+	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9B3,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9B0,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9B1,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9B2,
+	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9B3,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9B0,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9B1,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9B2,
+	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9B3,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9B0,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9B1,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9B2,
+	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9B3,
+	4, 0x1F469, 0x200D, 0x1F9B0,
+	4, 0x1F469, 0x200D, 0x1F9B1,
+	4, 0x1F469, 0x200D, 0x1F9B2,
+	4, 0x1F469, 0x200D, 0x1F9B3,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9B0,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9B1,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9B2,
+	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9B3,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9B0,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9B1,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9B2,
+	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9B3,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9B0,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9B1,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9B2,
+	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9B3,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9B0,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9B1,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9B2,
+	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9B3,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9B0,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9B1,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9B2,
+	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9B3,
+	4, 0x1F9D1, 0x200D, 0x1F9B0,
+	4, 0x1F9D1, 0x200D, 0x1F9B1,
+	4, 0x1F9D1, 0x200D, 0x1F9B2,
+	4, 0x1F9D1, 0x200D, 0x1F9B3,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9B0,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9B1,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9B2,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9B3,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9B0,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9B1,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9B2,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9B3,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9B0,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9B1,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9B2,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9B3,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9B0,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9B1,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9B2,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9B3,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B0,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B1,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B2,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B3,
+	5, 0x2764, 0xFE0F, 0x200D, 0x1F525,
+	5, 0x2764, 0xFE0F, 0x200D, 0x1FA79,
+	6, 0x1F3F3, 0xFE0F, 0x200D, 0x26A7, 0xFE0F,
+	5, 0x1F3F3, 0xFE0F, 0x200D, 0x1F308,
+	5, 0x1F3F4, 0x200D, 0x2620, 0xFE0F,
+	4, 0x1F408, 0x200D, 0x2B1B,
+	4, 0x1F415, 0x200D, 0x1F9BA,
+	5, 0x1F43B, 0x200D, 0x2744, 0xFE0F,
+	6, 0x1F441, 0xFE0F, 0x200D, 0x1F5E8, 0xFE0F,
+	4, 0x1F62E, 0x200D, 0x1F4A8,
+	4, 0x1F635, 0x200D, 0x1F4AB,
+	5, 0x1F636, 0x200D, 0x1F32B, 0xFE0F,
+	4, 0x1F9D1, 0x200D, 0x1F384,
+	0	//  Padding.
+#endif	//  !defined(SRELL_NO_UNICODE_POS)
 };
 
-template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-const T5 unicode_property_data<T1, T2, T3, T4, T5, T6>::rangenumbertable[] =
+template <typename T3, typename T4, typename T5, typename T6>
+const T5 unicode_property_data<T3, T4, T5, T6>::rangenumbertable[] =
 {
-	{ ptype::unknown, "*", 0 },	//  #0
-	{ ptype::general_category, "Other:C", 1 },	//  #1
-	{ ptype::general_category, "Control:Cc:cntrl", 2 },	//  #2
-	{ ptype::general_category, "Format:Cf", 3 },	//  #3
-	{ ptype::general_category, "Unassigned:Cn", 4 },	//  #4
-	{ ptype::general_category, "Private_Use:Co", 5 },	//  #5
-	{ ptype::general_category, "Surrogate:Cs", 6 },	//  #6
-	{ ptype::general_category, "Letter:L", 7 },	//  #7
-	{ ptype::general_category, "Cased_Letter:LC", 8 },	//  #8
-	{ ptype::general_category, "Lowercase_Letter:Ll", 9 },	//  #9
-	{ ptype::general_category, "Titlecase_Letter:Lt", 10 },	//  #10
-	{ ptype::general_category, "Uppercase_Letter:Lu", 11 },	//  #11
-	{ ptype::general_category, "Modifier_Letter:Lm", 12 },	//  #12
-	{ ptype::general_category, "Other_Letter:Lo", 13 },	//  #13
-	{ ptype::general_category, "Mark:M:Combining_Mark", 14 },	//  #14
-	{ ptype::general_category, "Spacing_Mark:Mc", 15 },	//  #15
-	{ ptype::general_category, "Enclosing_Mark:Me", 16 },	//  #16
-	{ ptype::general_category, "Nonspacing_Mark:Mn", 17 },	//  #17
-	{ ptype::general_category, "Number:N", 18 },	//  #18
-	{ ptype::general_category, "Decimal_Number:Nd:digit", 19 },	//  #19
-	{ ptype::general_category, "Letter_Number:Nl", 20 },	//  #20
-	{ ptype::general_category, "Other_Number:No", 21 },	//  #21
-	{ ptype::general_category, "Punctuation:P:punct", 22 },	//  #22
-	{ ptype::general_category, "Connector_Punctuation:Pc", 23 },	//  #23
-	{ ptype::general_category, "Dash_Punctuation:Pd", 24 },	//  #24
-	{ ptype::general_category, "Close_Punctuation:Pe", 25 },	//  #25
-	{ ptype::general_category, "Final_Punctuation:Pf", 26 },	//  #26
-	{ ptype::general_category, "Initial_Punctuation:Pi", 27 },	//  #27
-	{ ptype::general_category, "Other_Punctuation:Po", 28 },	//  #28
-	{ ptype::general_category, "Open_Punctuation:Ps", 29 },	//  #29
-	{ ptype::general_category, "Symbol:S", 30 },	//  #30
-	{ ptype::general_category, "Currency_Symbol:Sc", 31 },	//  #31
-	{ ptype::general_category, "Modifier_Symbol:Sk", 32 },	//  #32
-	{ ptype::general_category, "Math_Symbol:Sm", 33 },	//  #33
-	{ ptype::general_category, "Other_Symbol:So", 34 },	//  #34
-	{ ptype::general_category, "Separator:Z", 35 },	//  #35
-	{ ptype::general_category, "Line_Separator:Zl", 36 },	//  #36
-	{ ptype::general_category, "Paragraph_Separator:Zp", 37 },	//  #37
-	{ ptype::general_category, "Space_Separator:Zs", 38 },	//  #38
-	{ ptype::binary, "ASCII", 39 },	//  #39
-	{ ptype::binary, "ASCII_Hex_Digit:AHex", 40 },	//  #40
-	{ ptype::binary, "Alphabetic:Alpha", 41 },	//  #41
-	{ ptype::binary, "Any", 42 },	//  #42
-	{ ptype::binary, "Assigned", 43 },	//  #43
-	{ ptype::binary, "Bidi_Control:Bidi_C", 44 },	//  #44
-	{ ptype::binary, "Bidi_Mirrored:Bidi_M", 45 },	//  #45
-	{ ptype::binary, "Case_Ignorable:CI", 46 },	//  #46
-	{ ptype::binary, "Cased", 47 },	//  #47
-	{ ptype::binary, "Changes_When_Casefolded:CWCF", 48 },	//  #48
-	{ ptype::binary, "Changes_When_Casemapped:CWCM", 49 },	//  #49
-	{ ptype::binary, "Changes_When_Lowercased:CWL", 50 },	//  #50
-	{ ptype::binary, "Changes_When_NFKC_Casefolded:CWKCF", 51 },	//  #51
-	{ ptype::binary, "Changes_When_Titlecased:CWT", 52 },	//  #52
-	{ ptype::binary, "Changes_When_Uppercased:CWU", 53 },	//  #53
-	{ ptype::binary, "Dash", 54 },	//  #54
-	{ ptype::binary, "Default_Ignorable_Code_Point:DI", 55 },	//  #55
-	{ ptype::binary, "Deprecated:Dep", 56 },	//  #56
-	{ ptype::binary, "Diacritic:Dia", 57 },	//  #57
-	{ ptype::binary, "Emoji", 58 },	//  #58
-	{ ptype::binary, "Emoji_Component:EComp", 59 },	//  #59
-	{ ptype::binary, "Emoji_Modifier:EMod", 60 },	//  #60
-	{ ptype::binary, "Emoji_Modifier_Base:EBase", 61 },	//  #61
-	{ ptype::binary, "Emoji_Presentation:EPres", 62 },	//  #62
-	{ ptype::binary, "Extended_Pictographic:ExtPict", 63 },	//  #63
-	{ ptype::binary, "Extender:Ext", 64 },	//  #64
-	{ ptype::binary, "Grapheme_Base:Gr_Base", 65 },	//  #65
-	{ ptype::binary, "Grapheme_Extend:Gr_Ext", 66 },	//  #66
-	{ ptype::binary, "Hex_Digit:Hex", 67 },	//  #67
-	{ ptype::binary, "IDS_Binary_Operator:IDSB", 68 },	//  #68
-	{ ptype::binary, "IDS_Trinary_Operator:IDST", 69 },	//  #69
-	{ ptype::binary, "ID_Continue:IDC", 70 },	//  #70
-	{ ptype::binary, "ID_Start:IDS", 71 },	//  #71
-	{ ptype::binary, "Ideographic:Ideo", 72 },	//  #72
-	{ ptype::binary, "Join_Control:Join_C", 73 },	//  #73
-	{ ptype::binary, "Logical_Order_Exception:LOE", 74 },	//  #74
-	{ ptype::binary, "Lowercase:Lower", 75 },	//  #75
-	{ ptype::binary, "Math", 76 },	//  #76
-	{ ptype::binary, "Noncharacter_Code_Point:NChar", 77 },	//  #77
-	{ ptype::binary, "Pattern_Syntax:Pat_Syn", 78 },	//  #78
-	{ ptype::binary, "Pattern_White_Space:Pat_WS", 79 },	//  #79
-	{ ptype::binary, "Quotation_Mark:QMark", 80 },	//  #80
-	{ ptype::binary, "Radical", 81 },	//  #81
-	{ ptype::binary, "Regional_Indicator:RI", 82 },	//  #82
-	{ ptype::binary, "Sentence_Terminal:STerm", 83 },	//  #83
-	{ ptype::binary, "Soft_Dotted:SD", 84 },	//  #84
-	{ ptype::binary, "Terminal_Punctuation:Term", 85 },	//  #85
-	{ ptype::binary, "Unified_Ideograph:UIdeo", 86 },	//  #86
-	{ ptype::binary, "Uppercase:Upper", 87 },	//  #87
-	{ ptype::binary, "Variation_Selector:VS", 88 },	//  #88
-	{ ptype::binary, "White_Space:space", 89 },	//  #89
-	{ ptype::binary, "XID_Continue:XIDC", 90 },	//  #90
-	{ ptype::binary, "XID_Start:XIDS", 91 },	//  #91
-	{ ptype::script, "Adlam:Adlm", 92 },	//  #92
-	{ ptype::script, "Ahom:Ahom", 93 },	//  #93
-	{ ptype::script, "Anatolian_Hieroglyphs:Hluw", 94 },	//  #94
-	{ ptype::script, "Arabic:Arab", 95 },	//  #95
-	{ ptype::script, "Armenian:Armn", 96 },	//  #96
-	{ ptype::script, "Avestan:Avst", 97 },	//  #97
-	{ ptype::script, "Balinese:Bali", 98 },	//  #98
-	{ ptype::script, "Bamum:Bamu", 99 },	//  #99
-	{ ptype::script, "Bassa_Vah:Bass", 100 },	//  #100
-	{ ptype::script, "Batak:Batk", 101 },	//  #101
-	{ ptype::script, "Bengali:Beng", 102 },	//  #102
-	{ ptype::script, "Bhaiksuki:Bhks", 103 },	//  #103
-	{ ptype::script, "Bopomofo:Bopo", 104 },	//  #104
-	{ ptype::script, "Brahmi:Brah", 105 },	//  #105
-	{ ptype::script, "Braille:Brai", 106 },	//  #106
-	{ ptype::script, "Buginese:Bugi", 107 },	//  #107
-	{ ptype::script, "Buhid:Buhd", 108 },	//  #108
-	{ ptype::script, "Canadian_Aboriginal:Cans", 109 },	//  #109
-	{ ptype::script, "Carian:Cari", 110 },	//  #110
-	{ ptype::script, "Caucasian_Albanian:Aghb", 111 },	//  #111
-	{ ptype::script, "Chakma:Cakm", 112 },	//  #112
-	{ ptype::script, "Cham:Cham", 113 },	//  #113
-	{ ptype::script, "Cherokee:Cher", 114 },	//  #114
-	{ ptype::script, "Chorasmian:Chrs", 115 },	//  #115
-	{ ptype::script, "Common:Zyyy", 116 },	//  #116
-	{ ptype::script, "Coptic:Copt:Qaac", 117 },	//  #117
-	{ ptype::script, "Cypro_Minoan:Cpmn", 118 },	//  #118
-	{ ptype::script, "Cuneiform:Xsux", 119 },	//  #119
-	{ ptype::script, "Cypriot:Cprt", 120 },	//  #120
-	{ ptype::script, "Cyrillic:Cyrl", 121 },	//  #121
-	{ ptype::script, "Deseret:Dsrt", 122 },	//  #122
-	{ ptype::script, "Devanagari:Deva", 123 },	//  #123
-	{ ptype::script, "Dives_Akuru:Diak", 124 },	//  #124
-	{ ptype::script, "Dogra:Dogr", 125 },	//  #125
-	{ ptype::script, "Duployan:Dupl", 126 },	//  #126
-	{ ptype::script, "Egyptian_Hieroglyphs:Egyp", 127 },	//  #127
-	{ ptype::script, "Elbasan:Elba", 128 },	//  #128
-	{ ptype::script, "Elymaic:Elym", 129 },	//  #129
-	{ ptype::script, "Ethiopic:Ethi", 130 },	//  #130
-	{ ptype::script, "Georgian:Geor", 131 },	//  #131
-	{ ptype::script, "Glagolitic:Glag", 132 },	//  #132
-	{ ptype::script, "Gothic:Goth", 133 },	//  #133
-	{ ptype::script, "Grantha:Gran", 134 },	//  #134
-	{ ptype::script, "Greek:Grek", 135 },	//  #135
-	{ ptype::script, "Gujarati:Gujr", 136 },	//  #136
-	{ ptype::script, "Gunjala_Gondi:Gong", 137 },	//  #137
-	{ ptype::script, "Gurmukhi:Guru", 138 },	//  #138
-	{ ptype::script, "Han:Hani", 139 },	//  #139
-	{ ptype::script, "Hangul:Hang", 140 },	//  #140
-	{ ptype::script, "Hanifi_Rohingya:Rohg", 141 },	//  #141
-	{ ptype::script, "Hanunoo:Hano", 142 },	//  #142
-	{ ptype::script, "Hatran:Hatr", 143 },	//  #143
-	{ ptype::script, "Hebrew:Hebr", 144 },	//  #144
-	{ ptype::script, "Hiragana:Hira", 145 },	//  #145
-	{ ptype::script, "Imperial_Aramaic:Armi", 146 },	//  #146
-	{ ptype::script, "Inherited:Zinh:Qaai", 147 },	//  #147
-	{ ptype::script, "Inscriptional_Pahlavi:Phli", 148 },	//  #148
-	{ ptype::script, "Inscriptional_Parthian:Prti", 149 },	//  #149
-	{ ptype::script, "Javanese:Java", 150 },	//  #150
-	{ ptype::script, "Kaithi:Kthi", 151 },	//  #151
-	{ ptype::script, "Kannada:Knda", 152 },	//  #152
-	{ ptype::script, "Katakana:Kana", 153 },	//  #153
-	{ ptype::script, "Kayah_Li:Kali", 154 },	//  #154
-	{ ptype::script, "Kharoshthi:Khar", 155 },	//  #155
-	{ ptype::script, "Khitan_Small_Script:Kits", 156 },	//  #156
-	{ ptype::script, "Khmer:Khmr", 157 },	//  #157
-	{ ptype::script, "Khojki:Khoj", 158 },	//  #158
-	{ ptype::script, "Khudawadi:Sind", 159 },	//  #159
-	{ ptype::script, "Lao:Laoo", 160 },	//  #160
-	{ ptype::script, "Latin:Latn", 161 },	//  #161
-	{ ptype::script, "Lepcha:Lepc", 162 },	//  #162
-	{ ptype::script, "Limbu:Limb", 163 },	//  #163
-	{ ptype::script, "Linear_A:Lina", 164 },	//  #164
-	{ ptype::script, "Linear_B:Linb", 165 },	//  #165
-	{ ptype::script, "Lisu:Lisu", 166 },	//  #166
-	{ ptype::script, "Lycian:Lyci", 167 },	//  #167
-	{ ptype::script, "Lydian:Lydi", 168 },	//  #168
-	{ ptype::script, "Mahajani:Mahj", 169 },	//  #169
-	{ ptype::script, "Makasar:Maka", 170 },	//  #170
-	{ ptype::script, "Malayalam:Mlym", 171 },	//  #171
-	{ ptype::script, "Mandaic:Mand", 172 },	//  #172
-	{ ptype::script, "Manichaean:Mani", 173 },	//  #173
-	{ ptype::script, "Marchen:Marc", 174 },	//  #174
-	{ ptype::script, "Masaram_Gondi:Gonm", 175 },	//  #175
-	{ ptype::script, "Medefaidrin:Medf", 176 },	//  #176
-	{ ptype::script, "Meetei_Mayek:Mtei", 177 },	//  #177
-	{ ptype::script, "Mende_Kikakui:Mend", 178 },	//  #178
-	{ ptype::script, "Meroitic_Cursive:Merc", 179 },	//  #179
-	{ ptype::script, "Meroitic_Hieroglyphs:Mero", 180 },	//  #180
-	{ ptype::script, "Miao:Plrd", 181 },	//  #181
-	{ ptype::script, "Modi:Modi", 182 },	//  #182
-	{ ptype::script, "Mongolian:Mong", 183 },	//  #183
-	{ ptype::script, "Mro:Mroo", 184 },	//  #184
-	{ ptype::script, "Multani:Mult", 185 },	//  #185
-	{ ptype::script, "Myanmar:Mymr", 186 },	//  #186
-	{ ptype::script, "Nabataean:Nbat", 187 },	//  #187
-	{ ptype::script, "Nandinagari:Nand", 188 },	//  #188
-	{ ptype::script, "New_Tai_Lue:Talu", 189 },	//  #189
-	{ ptype::script, "Newa:Newa", 190 },	//  #190
-	{ ptype::script, "Nko:Nkoo", 191 },	//  #191
-	{ ptype::script, "Nushu:Nshu", 192 },	//  #192
-	{ ptype::script, "Nyiakeng_Puachue_Hmong:Hmnp", 193 },	//  #193
-	{ ptype::script, "Ogham:Ogam", 194 },	//  #194
-	{ ptype::script, "Ol_Chiki:Olck", 195 },	//  #195
-	{ ptype::script, "Old_Hungarian:Hung", 196 },	//  #196
-	{ ptype::script, "Old_Italic:Ital", 197 },	//  #197
-	{ ptype::script, "Old_North_Arabian:Narb", 198 },	//  #198
-	{ ptype::script, "Old_Permic:Perm", 199 },	//  #199
-	{ ptype::script, "Old_Persian:Xpeo", 200 },	//  #200
-	{ ptype::script, "Old_Sogdian:Sogo", 201 },	//  #201
-	{ ptype::script, "Old_South_Arabian:Sarb", 202 },	//  #202
-	{ ptype::script, "Old_Turkic:Orkh", 203 },	//  #203
-	{ ptype::script, "Old_Uyghur:Ougr", 204 },	//  #204
-	{ ptype::script, "Oriya:Orya", 205 },	//  #205
-	{ ptype::script, "Osage:Osge", 206 },	//  #206
-	{ ptype::script, "Osmanya:Osma", 207 },	//  #207
-	{ ptype::script, "Pahawh_Hmong:Hmng", 208 },	//  #208
-	{ ptype::script, "Palmyrene:Palm", 209 },	//  #209
-	{ ptype::script, "Pau_Cin_Hau:Pauc", 210 },	//  #210
-	{ ptype::script, "Phags_Pa:Phag", 211 },	//  #211
-	{ ptype::script, "Phoenician:Phnx", 212 },	//  #212
-	{ ptype::script, "Psalter_Pahlavi:Phlp", 213 },	//  #213
-	{ ptype::script, "Rejang:Rjng", 214 },	//  #214
-	{ ptype::script, "Runic:Runr", 215 },	//  #215
-	{ ptype::script, "Samaritan:Samr", 216 },	//  #216
-	{ ptype::script, "Saurashtra:Saur", 217 },	//  #217
-	{ ptype::script, "Sharada:Shrd", 218 },	//  #218
-	{ ptype::script, "Shavian:Shaw", 219 },	//  #219
-	{ ptype::script, "Siddham:Sidd", 220 },	//  #220
-	{ ptype::script, "SignWriting:Sgnw", 221 },	//  #221
-	{ ptype::script, "Sinhala:Sinh", 222 },	//  #222
-	{ ptype::script, "Sogdian:Sogd", 223 },	//  #223
-	{ ptype::script, "Sora_Sompeng:Sora", 224 },	//  #224
-	{ ptype::script, "Soyombo:Soyo", 225 },	//  #225
-	{ ptype::script, "Sundanese:Sund", 226 },	//  #226
-	{ ptype::script, "Syloti_Nagri:Sylo", 227 },	//  #227
-	{ ptype::script, "Syriac:Syrc", 228 },	//  #228
-	{ ptype::script, "Tagalog:Tglg", 229 },	//  #229
-	{ ptype::script, "Tagbanwa:Tagb", 230 },	//  #230
-	{ ptype::script, "Tai_Le:Tale", 231 },	//  #231
-	{ ptype::script, "Tai_Tham:Lana", 232 },	//  #232
-	{ ptype::script, "Tai_Viet:Tavt", 233 },	//  #233
-	{ ptype::script, "Takri:Takr", 234 },	//  #234
-	{ ptype::script, "Tamil:Taml", 235 },	//  #235
-	{ ptype::script, "Tangsa:Tnsa", 236 },	//  #236
-	{ ptype::script, "Tangut:Tang", 237 },	//  #237
-	{ ptype::script, "Telugu:Telu", 238 },	//  #238
-	{ ptype::script, "Thaana:Thaa", 239 },	//  #239
-	{ ptype::script, "Thai:Thai", 240 },	//  #240
-	{ ptype::script, "Tibetan:Tibt", 241 },	//  #241
-	{ ptype::script, "Tifinagh:Tfng", 242 },	//  #242
-	{ ptype::script, "Tirhuta:Tirh", 243 },	//  #243
-	{ ptype::script, "Toto", 244 },	//  #244
-	{ ptype::script, "Ugaritic:Ugar", 245 },	//  #245
-	{ ptype::script, "Vai:Vaii", 246 },	//  #246
-	{ ptype::script, "Vithkuqi:Vith", 247 },	//  #247
-	{ ptype::script, "Wancho:Wcho", 248 },	//  #248
-	{ ptype::script, "Warang_Citi:Wara", 249 },	//  #249
-	{ ptype::script, "Yezidi:Yezi", 250 },	//  #250
-	{ ptype::script, "Yi:Yiii", 251 },	//  #251
-	{ ptype::script, "Zanabazar_Square:Zanb", 252 },	//  #252
-	{ ptype::script_extensions, "Adlam:Adlm", 253 },	//  #253
-	{ ptype::script_extensions, "Ahom:Ahom", 93 },	//  #254
-	{ ptype::script_extensions, "Anatolian_Hieroglyphs:Hluw", 94 },	//  #255
-	{ ptype::script_extensions, "Arabic:Arab", 254 },	//  #256
-	{ ptype::script_extensions, "Armenian:Armn", 96 },	//  #257
-	{ ptype::script_extensions, "Avestan:Avst", 97 },	//  #258
-	{ ptype::script_extensions, "Balinese:Bali", 98 },	//  #259
-	{ ptype::script_extensions, "Bamum:Bamu", 99 },	//  #260
-	{ ptype::script_extensions, "Bassa_Vah:Bass", 100 },	//  #261
-	{ ptype::script_extensions, "Batak:Batk", 101 },	//  #262
-	{ ptype::script_extensions, "Bengali:Beng", 255 },	//  #263
-	{ ptype::script_extensions, "Bhaiksuki:Bhks", 103 },	//  #264
-	{ ptype::script_extensions, "Bopomofo:Bopo", 256 },	//  #265
-	{ ptype::script_extensions, "Brahmi:Brah", 105 },	//  #266
-	{ ptype::script_extensions, "Braille:Brai", 106 },	//  #267
-	{ ptype::script_extensions, "Buginese:Bugi", 257 },	//  #268
-	{ ptype::script_extensions, "Buhid:Buhd", 258 },	//  #269
-	{ ptype::script_extensions, "Canadian_Aboriginal:Cans", 109 },	//  #270
-	{ ptype::script_extensions, "Carian:Cari", 110 },	//  #271
-	{ ptype::script_extensions, "Caucasian_Albanian:Aghb", 111 },	//  #272
-	{ ptype::script_extensions, "Chakma:Cakm", 259 },	//  #273
-	{ ptype::script_extensions, "Cham:Cham", 113 },	//  #274
-	{ ptype::script_extensions, "Cherokee:Cher", 114 },	//  #275
-	{ ptype::script_extensions, "Chorasmian:Chrs", 115 },	//  #276
-	{ ptype::script_extensions, "Common:Zyyy", 260 },	//  #277
-	{ ptype::script_extensions, "Coptic:Copt:Qaac", 261 },	//  #278
-	{ ptype::script_extensions, "Cypro_Minoan:Cpmn", 262 },	//  #279
-	{ ptype::script_extensions, "Cuneiform:Xsux", 119 },	//  #280
-	{ ptype::script_extensions, "Cypriot:Cprt", 263 },	//  #281
-	{ ptype::script_extensions, "Cyrillic:Cyrl", 264 },	//  #282
-	{ ptype::script_extensions, "Deseret:Dsrt", 122 },	//  #283
-	{ ptype::script_extensions, "Devanagari:Deva", 265 },	//  #284
-	{ ptype::script_extensions, "Dives_Akuru:Diak", 124 },	//  #285
-	{ ptype::script_extensions, "Dogra:Dogr", 266 },	//  #286
-	{ ptype::script_extensions, "Duployan:Dupl", 267 },	//  #287
-	{ ptype::script_extensions, "Egyptian_Hieroglyphs:Egyp", 127 },	//  #288
-	{ ptype::script_extensions, "Elbasan:Elba", 128 },	//  #289
-	{ ptype::script_extensions, "Elymaic:Elym", 129 },	//  #290
-	{ ptype::script_extensions, "Ethiopic:Ethi", 130 },	//  #291
-	{ ptype::script_extensions, "Georgian:Geor", 268 },	//  #292
-	{ ptype::script_extensions, "Glagolitic:Glag", 269 },	//  #293
-	{ ptype::script_extensions, "Gothic:Goth", 133 },	//  #294
-	{ ptype::script_extensions, "Grantha:Gran", 270 },	//  #295
-	{ ptype::script_extensions, "Greek:Grek", 271 },	//  #296
-	{ ptype::script_extensions, "Gujarati:Gujr", 272 },	//  #297
-	{ ptype::script_extensions, "Gunjala_Gondi:Gong", 273 },	//  #298
-	{ ptype::script_extensions, "Gurmukhi:Guru", 274 },	//  #299
-	{ ptype::script_extensions, "Han:Hani", 275 },	//  #300
-	{ ptype::script_extensions, "Hangul:Hang", 276 },	//  #301
-	{ ptype::script_extensions, "Hanifi_Rohingya:Rohg", 277 },	//  #302
-	{ ptype::script_extensions, "Hanunoo:Hano", 278 },	//  #303
-	{ ptype::script_extensions, "Hatran:Hatr", 143 },	//  #304
-	{ ptype::script_extensions, "Hebrew:Hebr", 144 },	//  #305
-	{ ptype::script_extensions, "Hiragana:Hira", 279 },	//  #306
-	{ ptype::script_extensions, "Imperial_Aramaic:Armi", 146 },	//  #307
-	{ ptype::script_extensions, "Inherited:Zinh:Qaai", 280 },	//  #308
-	{ ptype::script_extensions, "Inscriptional_Pahlavi:Phli", 148 },	//  #309
-	{ ptype::script_extensions, "Inscriptional_Parthian:Prti", 149 },	//  #310
-	{ ptype::script_extensions, "Javanese:Java", 281 },	//  #311
-	{ ptype::script_extensions, "Kaithi:Kthi", 282 },	//  #312
-	{ ptype::script_extensions, "Kannada:Knda", 283 },	//  #313
-	{ ptype::script_extensions, "Katakana:Kana", 284 },	//  #314
-	{ ptype::script_extensions, "Kayah_Li:Kali", 285 },	//  #315
-	{ ptype::script_extensions, "Kharoshthi:Khar", 155 },	//  #316
-	{ ptype::script_extensions, "Khitan_Small_Script:Kits", 156 },	//  #317
-	{ ptype::script_extensions, "Khmer:Khmr", 157 },	//  #318
-	{ ptype::script_extensions, "Khojki:Khoj", 286 },	//  #319
-	{ ptype::script_extensions, "Khudawadi:Sind", 287 },	//  #320
-	{ ptype::script_extensions, "Lao:Laoo", 160 },	//  #321
-	{ ptype::script_extensions, "Latin:Latn", 288 },	//  #322
-	{ ptype::script_extensions, "Lepcha:Lepc", 162 },	//  #323
-	{ ptype::script_extensions, "Limbu:Limb", 289 },	//  #324
-	{ ptype::script_extensions, "Linear_A:Lina", 290 },	//  #325
-	{ ptype::script_extensions, "Linear_B:Linb", 291 },	//  #326
-	{ ptype::script_extensions, "Lisu:Lisu", 166 },	//  #327
-	{ ptype::script_extensions, "Lycian:Lyci", 167 },	//  #328
-	{ ptype::script_extensions, "Lydian:Lydi", 168 },	//  #329
-	{ ptype::script_extensions, "Mahajani:Mahj", 292 },	//  #330
-	{ ptype::script_extensions, "Makasar:Maka", 170 },	//  #331
-	{ ptype::script_extensions, "Malayalam:Mlym", 293 },	//  #332
-	{ ptype::script_extensions, "Mandaic:Mand", 294 },	//  #333
-	{ ptype::script_extensions, "Manichaean:Mani", 295 },	//  #334
-	{ ptype::script_extensions, "Marchen:Marc", 174 },	//  #335
-	{ ptype::script_extensions, "Masaram_Gondi:Gonm", 296 },	//  #336
-	{ ptype::script_extensions, "Medefaidrin:Medf", 176 },	//  #337
-	{ ptype::script_extensions, "Meetei_Mayek:Mtei", 177 },	//  #338
-	{ ptype::script_extensions, "Mende_Kikakui:Mend", 178 },	//  #339
-	{ ptype::script_extensions, "Meroitic_Cursive:Merc", 179 },	//  #340
-	{ ptype::script_extensions, "Meroitic_Hieroglyphs:Mero", 180 },	//  #341
-	{ ptype::script_extensions, "Miao:Plrd", 181 },	//  #342
-	{ ptype::script_extensions, "Modi:Modi", 297 },	//  #343
-	{ ptype::script_extensions, "Mongolian:Mong", 298 },	//  #344
-	{ ptype::script_extensions, "Mro:Mroo", 184 },	//  #345
-	{ ptype::script_extensions, "Multani:Mult", 299 },	//  #346
-	{ ptype::script_extensions, "Myanmar:Mymr", 300 },	//  #347
-	{ ptype::script_extensions, "Nabataean:Nbat", 187 },	//  #348
-	{ ptype::script_extensions, "Nandinagari:Nand", 301 },	//  #349
-	{ ptype::script_extensions, "New_Tai_Lue:Talu", 189 },	//  #350
-	{ ptype::script_extensions, "Newa:Newa", 190 },	//  #351
-	{ ptype::script_extensions, "Nko:Nkoo", 302 },	//  #352
-	{ ptype::script_extensions, "Nushu:Nshu", 192 },	//  #353
-	{ ptype::script_extensions, "Nyiakeng_Puachue_Hmong:Hmnp", 193 },	//  #354
-	{ ptype::script_extensions, "Ogham:Ogam", 194 },	//  #355
-	{ ptype::script_extensions, "Ol_Chiki:Olck", 195 },	//  #356
-	{ ptype::script_extensions, "Old_Hungarian:Hung", 196 },	//  #357
-	{ ptype::script_extensions, "Old_Italic:Ital", 197 },	//  #358
-	{ ptype::script_extensions, "Old_North_Arabian:Narb", 198 },	//  #359
-	{ ptype::script_extensions, "Old_Permic:Perm", 303 },	//  #360
-	{ ptype::script_extensions, "Old_Persian:Xpeo", 200 },	//  #361
-	{ ptype::script_extensions, "Old_Sogdian:Sogo", 201 },	//  #362
-	{ ptype::script_extensions, "Old_South_Arabian:Sarb", 202 },	//  #363
-	{ ptype::script_extensions, "Old_Turkic:Orkh", 203 },	//  #364
-	{ ptype::script_extensions, "Old_Uyghur:Ougr", 304 },	//  #365
-	{ ptype::script_extensions, "Oriya:Orya", 305 },	//  #366
-	{ ptype::script_extensions, "Osage:Osge", 206 },	//  #367
-	{ ptype::script_extensions, "Osmanya:Osma", 207 },	//  #368
-	{ ptype::script_extensions, "Pahawh_Hmong:Hmng", 208 },	//  #369
-	{ ptype::script_extensions, "Palmyrene:Palm", 209 },	//  #370
-	{ ptype::script_extensions, "Pau_Cin_Hau:Pauc", 210 },	//  #371
-	{ ptype::script_extensions, "Phags_Pa:Phag", 306 },	//  #372
-	{ ptype::script_extensions, "Phoenician:Phnx", 212 },	//  #373
-	{ ptype::script_extensions, "Psalter_Pahlavi:Phlp", 307 },	//  #374
-	{ ptype::script_extensions, "Rejang:Rjng", 214 },	//  #375
-	{ ptype::script_extensions, "Runic:Runr", 215 },	//  #376
-	{ ptype::script_extensions, "Samaritan:Samr", 216 },	//  #377
-	{ ptype::script_extensions, "Saurashtra:Saur", 217 },	//  #378
-	{ ptype::script_extensions, "Sharada:Shrd", 308 },	//  #379
-	{ ptype::script_extensions, "Shavian:Shaw", 219 },	//  #380
-	{ ptype::script_extensions, "Siddham:Sidd", 220 },	//  #381
-	{ ptype::script_extensions, "SignWriting:Sgnw", 221 },	//  #382
-	{ ptype::script_extensions, "Sinhala:Sinh", 309 },	//  #383
-	{ ptype::script_extensions, "Sogdian:Sogd", 310 },	//  #384
-	{ ptype::script_extensions, "Sora_Sompeng:Sora", 224 },	//  #385
-	{ ptype::script_extensions, "Soyombo:Soyo", 225 },	//  #386
-	{ ptype::script_extensions, "Sundanese:Sund", 226 },	//  #387
-	{ ptype::script_extensions, "Syloti_Nagri:Sylo", 311 },	//  #388
-	{ ptype::script_extensions, "Syriac:Syrc", 312 },	//  #389
-	{ ptype::script_extensions, "Tagalog:Tglg", 313 },	//  #390
-	{ ptype::script_extensions, "Tagbanwa:Tagb", 314 },	//  #391
-	{ ptype::script_extensions, "Tai_Le:Tale", 315 },	//  #392
-	{ ptype::script_extensions, "Tai_Tham:Lana", 232 },	//  #393
-	{ ptype::script_extensions, "Tai_Viet:Tavt", 233 },	//  #394
-	{ ptype::script_extensions, "Takri:Takr", 316 },	//  #395
-	{ ptype::script_extensions, "Tamil:Taml", 317 },	//  #396
-	{ ptype::script_extensions, "Tangsa:Tnsa", 236 },	//  #397
-	{ ptype::script_extensions, "Tangut:Tang", 237 },	//  #398
-	{ ptype::script_extensions, "Telugu:Telu", 318 },	//  #399
-	{ ptype::script_extensions, "Thaana:Thaa", 319 },	//  #400
-	{ ptype::script_extensions, "Thai:Thai", 240 },	//  #401
-	{ ptype::script_extensions, "Tibetan:Tibt", 241 },	//  #402
-	{ ptype::script_extensions, "Tifinagh:Tfng", 242 },	//  #403
-	{ ptype::script_extensions, "Tirhuta:Tirh", 320 },	//  #404
-	{ ptype::script_extensions, "Toto", 244 },	//  #405
-	{ ptype::script_extensions, "Ugaritic:Ugar", 245 },	//  #406
-	{ ptype::script_extensions, "Vai:Vaii", 246 },	//  #407
-	{ ptype::script_extensions, "Vithkuqi:Vith", 247 },	//  #408
-	{ ptype::script_extensions, "Wancho:Wcho", 248 },	//  #409
-	{ ptype::script_extensions, "Warang_Citi:Wara", 249 },	//  #410
-	{ ptype::script_extensions, "Yezidi:Yezi", 321 },	//  #411
-	{ ptype::script_extensions, "Yi:Yiii", 322 },	//  #412
-	{ ptype::script_extensions, "Zanabazar_Square:Zanb", 252 },	//  #413
-	{ ptype::unknown, "", 0 }
+	{ uptype_unknown, 0, "*" },	//  #0
+	{ uptype_general_category, 1, "Other:C" },	//  #1
+	{ uptype_general_category, 2, "Control:Cc:cntrl" },	//  #2
+	{ uptype_general_category, 3, "Format:Cf" },	//  #3
+	{ uptype_general_category, 4, "Unassigned:Cn" },	//  #4
+	{ uptype_general_category, 5, "Private_Use:Co" },	//  #5
+	{ uptype_general_category, 6, "Surrogate:Cs" },	//  #6
+	{ uptype_general_category, 7, "Letter:L" },	//  #7
+	{ uptype_general_category, 8, "Cased_Letter:LC" },	//  #8
+	{ uptype_general_category, 9, "Lowercase_Letter:Ll" },	//  #9
+	{ uptype_general_category, 10, "Titlecase_Letter:Lt" },	//  #10
+	{ uptype_general_category, 11, "Uppercase_Letter:Lu" },	//  #11
+	{ uptype_general_category, 12, "Modifier_Letter:Lm" },	//  #12
+	{ uptype_general_category, 13, "Other_Letter:Lo" },	//  #13
+	{ uptype_general_category, 14, "Mark:M:Combining_Mark" },	//  #14
+	{ uptype_general_category, 15, "Spacing_Mark:Mc" },	//  #15
+	{ uptype_general_category, 16, "Enclosing_Mark:Me" },	//  #16
+	{ uptype_general_category, 17, "Nonspacing_Mark:Mn" },	//  #17
+	{ uptype_general_category, 18, "Number:N" },	//  #18
+	{ uptype_general_category, 19, "Decimal_Number:Nd:digit" },	//  #19
+	{ uptype_general_category, 20, "Letter_Number:Nl" },	//  #20
+	{ uptype_general_category, 21, "Other_Number:No" },	//  #21
+	{ uptype_general_category, 22, "Punctuation:P:punct" },	//  #22
+	{ uptype_general_category, 23, "Connector_Punctuation:Pc" },	//  #23
+	{ uptype_general_category, 24, "Dash_Punctuation:Pd" },	//  #24
+	{ uptype_general_category, 25, "Close_Punctuation:Pe" },	//  #25
+	{ uptype_general_category, 26, "Final_Punctuation:Pf" },	//  #26
+	{ uptype_general_category, 27, "Initial_Punctuation:Pi" },	//  #27
+	{ uptype_general_category, 28, "Other_Punctuation:Po" },	//  #28
+	{ uptype_general_category, 29, "Open_Punctuation:Ps" },	//  #29
+	{ uptype_general_category, 30, "Symbol:S" },	//  #30
+	{ uptype_general_category, 31, "Currency_Symbol:Sc" },	//  #31
+	{ uptype_general_category, 32, "Modifier_Symbol:Sk" },	//  #32
+	{ uptype_general_category, 33, "Math_Symbol:Sm" },	//  #33
+	{ uptype_general_category, 34, "Other_Symbol:So" },	//  #34
+	{ uptype_general_category, 35, "Separator:Z" },	//  #35
+	{ uptype_general_category, 36, "Line_Separator:Zl" },	//  #36
+	{ uptype_general_category, 37, "Paragraph_Separator:Zp" },	//  #37
+	{ uptype_general_category, 38, "Space_Separator:Zs" },	//  #38
+	{ uptype_binary, 39, "ASCII" },	//  #39
+	{ uptype_binary, 40, "ASCII_Hex_Digit:AHex" },	//  #40
+	{ uptype_binary, 41, "Alphabetic:Alpha" },	//  #41
+	{ uptype_binary, 42, "Any" },	//  #42
+	{ uptype_binary, 43, "Assigned" },	//  #43
+	{ uptype_binary, 44, "Bidi_Control:Bidi_C" },	//  #44
+	{ uptype_binary, 45, "Bidi_Mirrored:Bidi_M" },	//  #45
+	{ uptype_binary, 46, "Case_Ignorable:CI" },	//  #46
+	{ uptype_binary, 47, "Cased" },	//  #47
+	{ uptype_binary, 48, "Changes_When_Casefolded:CWCF" },	//  #48
+	{ uptype_binary, 49, "Changes_When_Casemapped:CWCM" },	//  #49
+	{ uptype_binary, 50, "Changes_When_Lowercased:CWL" },	//  #50
+	{ uptype_binary, 51, "Changes_When_NFKC_Casefolded:CWKCF" },	//  #51
+	{ uptype_binary, 52, "Changes_When_Titlecased:CWT" },	//  #52
+	{ uptype_binary, 53, "Changes_When_Uppercased:CWU" },	//  #53
+	{ uptype_binary, 54, "Dash" },	//  #54
+	{ uptype_binary, 55, "Default_Ignorable_Code_Point:DI" },	//  #55
+	{ uptype_binary, 56, "Deprecated:Dep" },	//  #56
+	{ uptype_binary, 57, "Diacritic:Dia" },	//  #57
+	{ uptype_binary, 58, "Emoji" },	//  #58
+	{ uptype_binary, 59, "Emoji_Component:EComp" },	//  #59
+	{ uptype_binary, 60, "Emoji_Modifier:EMod" },	//  #60
+	{ uptype_binary, 61, "Emoji_Modifier_Base:EBase" },	//  #61
+	{ uptype_binary, 62, "Emoji_Presentation:EPres" },	//  #62
+	{ uptype_binary, 63, "Extended_Pictographic:ExtPict" },	//  #63
+	{ uptype_binary, 64, "Extender:Ext" },	//  #64
+	{ uptype_binary, 65, "Grapheme_Base:Gr_Base" },	//  #65
+	{ uptype_binary, 66, "Grapheme_Extend:Gr_Ext" },	//  #66
+	{ uptype_binary, 67, "Hex_Digit:Hex" },	//  #67
+	{ uptype_binary, 68, "IDS_Binary_Operator:IDSB" },	//  #68
+	{ uptype_binary, 69, "IDS_Trinary_Operator:IDST" },	//  #69
+	{ uptype_binary, 70, "ID_Continue:IDC" },	//  #70
+	{ uptype_binary, 71, "ID_Start:IDS" },	//  #71
+	{ uptype_binary, 72, "Ideographic:Ideo" },	//  #72
+	{ uptype_binary, 73, "Join_Control:Join_C" },	//  #73
+	{ uptype_binary, 74, "Logical_Order_Exception:LOE" },	//  #74
+	{ uptype_binary, 75, "Lowercase:Lower" },	//  #75
+	{ uptype_binary, 76, "Math" },	//  #76
+	{ uptype_binary, 77, "Noncharacter_Code_Point:NChar" },	//  #77
+	{ uptype_binary, 78, "Pattern_Syntax:Pat_Syn" },	//  #78
+	{ uptype_binary, 79, "Pattern_White_Space:Pat_WS" },	//  #79
+	{ uptype_binary, 80, "Quotation_Mark:QMark" },	//  #80
+	{ uptype_binary, 81, "Radical" },	//  #81
+	{ uptype_binary, 82, "Regional_Indicator:RI" },	//  #82
+	{ uptype_binary, 83, "Sentence_Terminal:STerm" },	//  #83
+	{ uptype_binary, 84, "Soft_Dotted:SD" },	//  #84
+	{ uptype_binary, 85, "Terminal_Punctuation:Term" },	//  #85
+	{ uptype_binary, 86, "Unified_Ideograph:UIdeo" },	//  #86
+	{ uptype_binary, 87, "Uppercase:Upper" },	//  #87
+	{ uptype_binary, 88, "Variation_Selector:VS" },	//  #88
+	{ uptype_binary, 89, "White_Space:space" },	//  #89
+	{ uptype_binary, 90, "XID_Continue:XIDC" },	//  #90
+	{ uptype_binary, 91, "XID_Start:XIDS" },	//  #91
+	{ uptype_script, 92, "Adlam:Adlm" },	//  #92
+	{ uptype_script, 93, "Ahom:Ahom" },	//  #93
+	{ uptype_script, 94, "Anatolian_Hieroglyphs:Hluw" },	//  #94
+	{ uptype_script, 95, "Arabic:Arab" },	//  #95
+	{ uptype_script, 96, "Armenian:Armn" },	//  #96
+	{ uptype_script, 97, "Avestan:Avst" },	//  #97
+	{ uptype_script, 98, "Balinese:Bali" },	//  #98
+	{ uptype_script, 99, "Bamum:Bamu" },	//  #99
+	{ uptype_script, 100, "Bassa_Vah:Bass" },	//  #100
+	{ uptype_script, 101, "Batak:Batk" },	//  #101
+	{ uptype_script, 102, "Bengali:Beng" },	//  #102
+	{ uptype_script, 103, "Bhaiksuki:Bhks" },	//  #103
+	{ uptype_script, 104, "Bopomofo:Bopo" },	//  #104
+	{ uptype_script, 105, "Brahmi:Brah" },	//  #105
+	{ uptype_script, 106, "Braille:Brai" },	//  #106
+	{ uptype_script, 107, "Buginese:Bugi" },	//  #107
+	{ uptype_script, 108, "Buhid:Buhd" },	//  #108
+	{ uptype_script, 109, "Canadian_Aboriginal:Cans" },	//  #109
+	{ uptype_script, 110, "Carian:Cari" },	//  #110
+	{ uptype_script, 111, "Caucasian_Albanian:Aghb" },	//  #111
+	{ uptype_script, 112, "Chakma:Cakm" },	//  #112
+	{ uptype_script, 113, "Cham:Cham" },	//  #113
+	{ uptype_script, 114, "Cherokee:Cher" },	//  #114
+	{ uptype_script, 115, "Chorasmian:Chrs" },	//  #115
+	{ uptype_script, 116, "Common:Zyyy" },	//  #116
+	{ uptype_script, 117, "Coptic:Copt:Qaac" },	//  #117
+	{ uptype_script, 118, "Cypro_Minoan:Cpmn" },	//  #118
+	{ uptype_script, 119, "Cuneiform:Xsux" },	//  #119
+	{ uptype_script, 120, "Cypriot:Cprt" },	//  #120
+	{ uptype_script, 121, "Cyrillic:Cyrl" },	//  #121
+	{ uptype_script, 122, "Deseret:Dsrt" },	//  #122
+	{ uptype_script, 123, "Devanagari:Deva" },	//  #123
+	{ uptype_script, 124, "Dives_Akuru:Diak" },	//  #124
+	{ uptype_script, 125, "Dogra:Dogr" },	//  #125
+	{ uptype_script, 126, "Duployan:Dupl" },	//  #126
+	{ uptype_script, 127, "Egyptian_Hieroglyphs:Egyp" },	//  #127
+	{ uptype_script, 128, "Elbasan:Elba" },	//  #128
+	{ uptype_script, 129, "Elymaic:Elym" },	//  #129
+	{ uptype_script, 130, "Ethiopic:Ethi" },	//  #130
+	{ uptype_script, 131, "Georgian:Geor" },	//  #131
+	{ uptype_script, 132, "Glagolitic:Glag" },	//  #132
+	{ uptype_script, 133, "Gothic:Goth" },	//  #133
+	{ uptype_script, 134, "Grantha:Gran" },	//  #134
+	{ uptype_script, 135, "Greek:Grek" },	//  #135
+	{ uptype_script, 136, "Gujarati:Gujr" },	//  #136
+	{ uptype_script, 137, "Gunjala_Gondi:Gong" },	//  #137
+	{ uptype_script, 138, "Gurmukhi:Guru" },	//  #138
+	{ uptype_script, 139, "Han:Hani" },	//  #139
+	{ uptype_script, 140, "Hangul:Hang" },	//  #140
+	{ uptype_script, 141, "Hanifi_Rohingya:Rohg" },	//  #141
+	{ uptype_script, 142, "Hanunoo:Hano" },	//  #142
+	{ uptype_script, 143, "Hatran:Hatr" },	//  #143
+	{ uptype_script, 144, "Hebrew:Hebr" },	//  #144
+	{ uptype_script, 145, "Hiragana:Hira" },	//  #145
+	{ uptype_script, 146, "Imperial_Aramaic:Armi" },	//  #146
+	{ uptype_script, 147, "Inherited:Zinh:Qaai" },	//  #147
+	{ uptype_script, 148, "Inscriptional_Pahlavi:Phli" },	//  #148
+	{ uptype_script, 149, "Inscriptional_Parthian:Prti" },	//  #149
+	{ uptype_script, 150, "Javanese:Java" },	//  #150
+	{ uptype_script, 151, "Kaithi:Kthi" },	//  #151
+	{ uptype_script, 152, "Kannada:Knda" },	//  #152
+	{ uptype_script, 153, "Katakana:Kana" },	//  #153
+	{ uptype_script, 154, "Kayah_Li:Kali" },	//  #154
+	{ uptype_script, 155, "Kharoshthi:Khar" },	//  #155
+	{ uptype_script, 156, "Khitan_Small_Script:Kits" },	//  #156
+	{ uptype_script, 157, "Khmer:Khmr" },	//  #157
+	{ uptype_script, 158, "Khojki:Khoj" },	//  #158
+	{ uptype_script, 159, "Khudawadi:Sind" },	//  #159
+	{ uptype_script, 160, "Lao:Laoo" },	//  #160
+	{ uptype_script, 161, "Latin:Latn" },	//  #161
+	{ uptype_script, 162, "Lepcha:Lepc" },	//  #162
+	{ uptype_script, 163, "Limbu:Limb" },	//  #163
+	{ uptype_script, 164, "Linear_A:Lina" },	//  #164
+	{ uptype_script, 165, "Linear_B:Linb" },	//  #165
+	{ uptype_script, 166, "Lisu:Lisu" },	//  #166
+	{ uptype_script, 167, "Lycian:Lyci" },	//  #167
+	{ uptype_script, 168, "Lydian:Lydi" },	//  #168
+	{ uptype_script, 169, "Mahajani:Mahj" },	//  #169
+	{ uptype_script, 170, "Makasar:Maka" },	//  #170
+	{ uptype_script, 171, "Malayalam:Mlym" },	//  #171
+	{ uptype_script, 172, "Mandaic:Mand" },	//  #172
+	{ uptype_script, 173, "Manichaean:Mani" },	//  #173
+	{ uptype_script, 174, "Marchen:Marc" },	//  #174
+	{ uptype_script, 175, "Masaram_Gondi:Gonm" },	//  #175
+	{ uptype_script, 176, "Medefaidrin:Medf" },	//  #176
+	{ uptype_script, 177, "Meetei_Mayek:Mtei" },	//  #177
+	{ uptype_script, 178, "Mende_Kikakui:Mend" },	//  #178
+	{ uptype_script, 179, "Meroitic_Cursive:Merc" },	//  #179
+	{ uptype_script, 180, "Meroitic_Hieroglyphs:Mero" },	//  #180
+	{ uptype_script, 181, "Miao:Plrd" },	//  #181
+	{ uptype_script, 182, "Modi:Modi" },	//  #182
+	{ uptype_script, 183, "Mongolian:Mong" },	//  #183
+	{ uptype_script, 184, "Mro:Mroo" },	//  #184
+	{ uptype_script, 185, "Multani:Mult" },	//  #185
+	{ uptype_script, 186, "Myanmar:Mymr" },	//  #186
+	{ uptype_script, 187, "Nabataean:Nbat" },	//  #187
+	{ uptype_script, 188, "Nandinagari:Nand" },	//  #188
+	{ uptype_script, 189, "New_Tai_Lue:Talu" },	//  #189
+	{ uptype_script, 190, "Newa:Newa" },	//  #190
+	{ uptype_script, 191, "Nko:Nkoo" },	//  #191
+	{ uptype_script, 192, "Nushu:Nshu" },	//  #192
+	{ uptype_script, 193, "Nyiakeng_Puachue_Hmong:Hmnp" },	//  #193
+	{ uptype_script, 194, "Ogham:Ogam" },	//  #194
+	{ uptype_script, 195, "Ol_Chiki:Olck" },	//  #195
+	{ uptype_script, 196, "Old_Hungarian:Hung" },	//  #196
+	{ uptype_script, 197, "Old_Italic:Ital" },	//  #197
+	{ uptype_script, 198, "Old_North_Arabian:Narb" },	//  #198
+	{ uptype_script, 199, "Old_Permic:Perm" },	//  #199
+	{ uptype_script, 200, "Old_Persian:Xpeo" },	//  #200
+	{ uptype_script, 201, "Old_Sogdian:Sogo" },	//  #201
+	{ uptype_script, 202, "Old_South_Arabian:Sarb" },	//  #202
+	{ uptype_script, 203, "Old_Turkic:Orkh" },	//  #203
+	{ uptype_script, 204, "Old_Uyghur:Ougr" },	//  #204
+	{ uptype_script, 205, "Oriya:Orya" },	//  #205
+	{ uptype_script, 206, "Osage:Osge" },	//  #206
+	{ uptype_script, 207, "Osmanya:Osma" },	//  #207
+	{ uptype_script, 208, "Pahawh_Hmong:Hmng" },	//  #208
+	{ uptype_script, 209, "Palmyrene:Palm" },	//  #209
+	{ uptype_script, 210, "Pau_Cin_Hau:Pauc" },	//  #210
+	{ uptype_script, 211, "Phags_Pa:Phag" },	//  #211
+	{ uptype_script, 212, "Phoenician:Phnx" },	//  #212
+	{ uptype_script, 213, "Psalter_Pahlavi:Phlp" },	//  #213
+	{ uptype_script, 214, "Rejang:Rjng" },	//  #214
+	{ uptype_script, 215, "Runic:Runr" },	//  #215
+	{ uptype_script, 216, "Samaritan:Samr" },	//  #216
+	{ uptype_script, 217, "Saurashtra:Saur" },	//  #217
+	{ uptype_script, 218, "Sharada:Shrd" },	//  #218
+	{ uptype_script, 219, "Shavian:Shaw" },	//  #219
+	{ uptype_script, 220, "Siddham:Sidd" },	//  #220
+	{ uptype_script, 221, "SignWriting:Sgnw" },	//  #221
+	{ uptype_script, 222, "Sinhala:Sinh" },	//  #222
+	{ uptype_script, 223, "Sogdian:Sogd" },	//  #223
+	{ uptype_script, 224, "Sora_Sompeng:Sora" },	//  #224
+	{ uptype_script, 225, "Soyombo:Soyo" },	//  #225
+	{ uptype_script, 226, "Sundanese:Sund" },	//  #226
+	{ uptype_script, 227, "Syloti_Nagri:Sylo" },	//  #227
+	{ uptype_script, 228, "Syriac:Syrc" },	//  #228
+	{ uptype_script, 229, "Tagalog:Tglg" },	//  #229
+	{ uptype_script, 230, "Tagbanwa:Tagb" },	//  #230
+	{ uptype_script, 231, "Tai_Le:Tale" },	//  #231
+	{ uptype_script, 232, "Tai_Tham:Lana" },	//  #232
+	{ uptype_script, 233, "Tai_Viet:Tavt" },	//  #233
+	{ uptype_script, 234, "Takri:Takr" },	//  #234
+	{ uptype_script, 235, "Tamil:Taml" },	//  #235
+	{ uptype_script, 236, "Tangsa:Tnsa" },	//  #236
+	{ uptype_script, 237, "Tangut:Tang" },	//  #237
+	{ uptype_script, 238, "Telugu:Telu" },	//  #238
+	{ uptype_script, 239, "Thaana:Thaa" },	//  #239
+	{ uptype_script, 240, "Thai:Thai" },	//  #240
+	{ uptype_script, 241, "Tibetan:Tibt" },	//  #241
+	{ uptype_script, 242, "Tifinagh:Tfng" },	//  #242
+	{ uptype_script, 243, "Tirhuta:Tirh" },	//  #243
+	{ uptype_script, 244, "Toto" },	//  #244
+	{ uptype_script, 245, "Ugaritic:Ugar" },	//  #245
+	{ uptype_script, 246, "Vai:Vaii" },	//  #246
+	{ uptype_script, 247, "Vithkuqi:Vith" },	//  #247
+	{ uptype_script, 248, "Wancho:Wcho" },	//  #248
+	{ uptype_script, 249, "Warang_Citi:Wara" },	//  #249
+	{ uptype_script, 250, "Yezidi:Yezi" },	//  #250
+	{ uptype_script, 251, "Yi:Yiii" },	//  #251
+	{ uptype_script, 252, "Zanabazar_Square:Zanb" },	//  #252
+	{ uptype_script_extensions, 253, "Adlam:Adlm" },	//  #253
+	{ uptype_script_extensions, 93, "Ahom:Ahom" },	//  #254
+	{ uptype_script_extensions, 94, "Anatolian_Hieroglyphs:Hluw" },	//  #255
+	{ uptype_script_extensions, 254, "Arabic:Arab" },	//  #256
+	{ uptype_script_extensions, 96, "Armenian:Armn" },	//  #257
+	{ uptype_script_extensions, 97, "Avestan:Avst" },	//  #258
+	{ uptype_script_extensions, 98, "Balinese:Bali" },	//  #259
+	{ uptype_script_extensions, 99, "Bamum:Bamu" },	//  #260
+	{ uptype_script_extensions, 100, "Bassa_Vah:Bass" },	//  #261
+	{ uptype_script_extensions, 101, "Batak:Batk" },	//  #262
+	{ uptype_script_extensions, 255, "Bengali:Beng" },	//  #263
+	{ uptype_script_extensions, 103, "Bhaiksuki:Bhks" },	//  #264
+	{ uptype_script_extensions, 256, "Bopomofo:Bopo" },	//  #265
+	{ uptype_script_extensions, 105, "Brahmi:Brah" },	//  #266
+	{ uptype_script_extensions, 106, "Braille:Brai" },	//  #267
+	{ uptype_script_extensions, 257, "Buginese:Bugi" },	//  #268
+	{ uptype_script_extensions, 258, "Buhid:Buhd" },	//  #269
+	{ uptype_script_extensions, 109, "Canadian_Aboriginal:Cans" },	//  #270
+	{ uptype_script_extensions, 110, "Carian:Cari" },	//  #271
+	{ uptype_script_extensions, 111, "Caucasian_Albanian:Aghb" },	//  #272
+	{ uptype_script_extensions, 259, "Chakma:Cakm" },	//  #273
+	{ uptype_script_extensions, 113, "Cham:Cham" },	//  #274
+	{ uptype_script_extensions, 114, "Cherokee:Cher" },	//  #275
+	{ uptype_script_extensions, 115, "Chorasmian:Chrs" },	//  #276
+	{ uptype_script_extensions, 260, "Common:Zyyy" },	//  #277
+	{ uptype_script_extensions, 261, "Coptic:Copt:Qaac" },	//  #278
+	{ uptype_script_extensions, 262, "Cypro_Minoan:Cpmn" },	//  #279
+	{ uptype_script_extensions, 119, "Cuneiform:Xsux" },	//  #280
+	{ uptype_script_extensions, 263, "Cypriot:Cprt" },	//  #281
+	{ uptype_script_extensions, 264, "Cyrillic:Cyrl" },	//  #282
+	{ uptype_script_extensions, 122, "Deseret:Dsrt" },	//  #283
+	{ uptype_script_extensions, 265, "Devanagari:Deva" },	//  #284
+	{ uptype_script_extensions, 124, "Dives_Akuru:Diak" },	//  #285
+	{ uptype_script_extensions, 266, "Dogra:Dogr" },	//  #286
+	{ uptype_script_extensions, 267, "Duployan:Dupl" },	//  #287
+	{ uptype_script_extensions, 127, "Egyptian_Hieroglyphs:Egyp" },	//  #288
+	{ uptype_script_extensions, 128, "Elbasan:Elba" },	//  #289
+	{ uptype_script_extensions, 129, "Elymaic:Elym" },	//  #290
+	{ uptype_script_extensions, 130, "Ethiopic:Ethi" },	//  #291
+	{ uptype_script_extensions, 268, "Georgian:Geor" },	//  #292
+	{ uptype_script_extensions, 269, "Glagolitic:Glag" },	//  #293
+	{ uptype_script_extensions, 133, "Gothic:Goth" },	//  #294
+	{ uptype_script_extensions, 270, "Grantha:Gran" },	//  #295
+	{ uptype_script_extensions, 271, "Greek:Grek" },	//  #296
+	{ uptype_script_extensions, 272, "Gujarati:Gujr" },	//  #297
+	{ uptype_script_extensions, 273, "Gunjala_Gondi:Gong" },	//  #298
+	{ uptype_script_extensions, 274, "Gurmukhi:Guru" },	//  #299
+	{ uptype_script_extensions, 275, "Han:Hani" },	//  #300
+	{ uptype_script_extensions, 276, "Hangul:Hang" },	//  #301
+	{ uptype_script_extensions, 277, "Hanifi_Rohingya:Rohg" },	//  #302
+	{ uptype_script_extensions, 278, "Hanunoo:Hano" },	//  #303
+	{ uptype_script_extensions, 143, "Hatran:Hatr" },	//  #304
+	{ uptype_script_extensions, 144, "Hebrew:Hebr" },	//  #305
+	{ uptype_script_extensions, 279, "Hiragana:Hira" },	//  #306
+	{ uptype_script_extensions, 146, "Imperial_Aramaic:Armi" },	//  #307
+	{ uptype_script_extensions, 280, "Inherited:Zinh:Qaai" },	//  #308
+	{ uptype_script_extensions, 148, "Inscriptional_Pahlavi:Phli" },	//  #309
+	{ uptype_script_extensions, 149, "Inscriptional_Parthian:Prti" },	//  #310
+	{ uptype_script_extensions, 281, "Javanese:Java" },	//  #311
+	{ uptype_script_extensions, 282, "Kaithi:Kthi" },	//  #312
+	{ uptype_script_extensions, 283, "Kannada:Knda" },	//  #313
+	{ uptype_script_extensions, 284, "Katakana:Kana" },	//  #314
+	{ uptype_script_extensions, 285, "Kayah_Li:Kali" },	//  #315
+	{ uptype_script_extensions, 155, "Kharoshthi:Khar" },	//  #316
+	{ uptype_script_extensions, 156, "Khitan_Small_Script:Kits" },	//  #317
+	{ uptype_script_extensions, 157, "Khmer:Khmr" },	//  #318
+	{ uptype_script_extensions, 286, "Khojki:Khoj" },	//  #319
+	{ uptype_script_extensions, 287, "Khudawadi:Sind" },	//  #320
+	{ uptype_script_extensions, 160, "Lao:Laoo" },	//  #321
+	{ uptype_script_extensions, 288, "Latin:Latn" },	//  #322
+	{ uptype_script_extensions, 162, "Lepcha:Lepc" },	//  #323
+	{ uptype_script_extensions, 289, "Limbu:Limb" },	//  #324
+	{ uptype_script_extensions, 290, "Linear_A:Lina" },	//  #325
+	{ uptype_script_extensions, 291, "Linear_B:Linb" },	//  #326
+	{ uptype_script_extensions, 166, "Lisu:Lisu" },	//  #327
+	{ uptype_script_extensions, 167, "Lycian:Lyci" },	//  #328
+	{ uptype_script_extensions, 168, "Lydian:Lydi" },	//  #329
+	{ uptype_script_extensions, 292, "Mahajani:Mahj" },	//  #330
+	{ uptype_script_extensions, 170, "Makasar:Maka" },	//  #331
+	{ uptype_script_extensions, 293, "Malayalam:Mlym" },	//  #332
+	{ uptype_script_extensions, 294, "Mandaic:Mand" },	//  #333
+	{ uptype_script_extensions, 295, "Manichaean:Mani" },	//  #334
+	{ uptype_script_extensions, 174, "Marchen:Marc" },	//  #335
+	{ uptype_script_extensions, 296, "Masaram_Gondi:Gonm" },	//  #336
+	{ uptype_script_extensions, 176, "Medefaidrin:Medf" },	//  #337
+	{ uptype_script_extensions, 177, "Meetei_Mayek:Mtei" },	//  #338
+	{ uptype_script_extensions, 178, "Mende_Kikakui:Mend" },	//  #339
+	{ uptype_script_extensions, 179, "Meroitic_Cursive:Merc" },	//  #340
+	{ uptype_script_extensions, 180, "Meroitic_Hieroglyphs:Mero" },	//  #341
+	{ uptype_script_extensions, 181, "Miao:Plrd" },	//  #342
+	{ uptype_script_extensions, 297, "Modi:Modi" },	//  #343
+	{ uptype_script_extensions, 298, "Mongolian:Mong" },	//  #344
+	{ uptype_script_extensions, 184, "Mro:Mroo" },	//  #345
+	{ uptype_script_extensions, 299, "Multani:Mult" },	//  #346
+	{ uptype_script_extensions, 300, "Myanmar:Mymr" },	//  #347
+	{ uptype_script_extensions, 187, "Nabataean:Nbat" },	//  #348
+	{ uptype_script_extensions, 301, "Nandinagari:Nand" },	//  #349
+	{ uptype_script_extensions, 189, "New_Tai_Lue:Talu" },	//  #350
+	{ uptype_script_extensions, 190, "Newa:Newa" },	//  #351
+	{ uptype_script_extensions, 302, "Nko:Nkoo" },	//  #352
+	{ uptype_script_extensions, 192, "Nushu:Nshu" },	//  #353
+	{ uptype_script_extensions, 193, "Nyiakeng_Puachue_Hmong:Hmnp" },	//  #354
+	{ uptype_script_extensions, 194, "Ogham:Ogam" },	//  #355
+	{ uptype_script_extensions, 195, "Ol_Chiki:Olck" },	//  #356
+	{ uptype_script_extensions, 196, "Old_Hungarian:Hung" },	//  #357
+	{ uptype_script_extensions, 197, "Old_Italic:Ital" },	//  #358
+	{ uptype_script_extensions, 198, "Old_North_Arabian:Narb" },	//  #359
+	{ uptype_script_extensions, 303, "Old_Permic:Perm" },	//  #360
+	{ uptype_script_extensions, 200, "Old_Persian:Xpeo" },	//  #361
+	{ uptype_script_extensions, 201, "Old_Sogdian:Sogo" },	//  #362
+	{ uptype_script_extensions, 202, "Old_South_Arabian:Sarb" },	//  #363
+	{ uptype_script_extensions, 203, "Old_Turkic:Orkh" },	//  #364
+	{ uptype_script_extensions, 304, "Old_Uyghur:Ougr" },	//  #365
+	{ uptype_script_extensions, 305, "Oriya:Orya" },	//  #366
+	{ uptype_script_extensions, 206, "Osage:Osge" },	//  #367
+	{ uptype_script_extensions, 207, "Osmanya:Osma" },	//  #368
+	{ uptype_script_extensions, 208, "Pahawh_Hmong:Hmng" },	//  #369
+	{ uptype_script_extensions, 209, "Palmyrene:Palm" },	//  #370
+	{ uptype_script_extensions, 210, "Pau_Cin_Hau:Pauc" },	//  #371
+	{ uptype_script_extensions, 306, "Phags_Pa:Phag" },	//  #372
+	{ uptype_script_extensions, 212, "Phoenician:Phnx" },	//  #373
+	{ uptype_script_extensions, 307, "Psalter_Pahlavi:Phlp" },	//  #374
+	{ uptype_script_extensions, 214, "Rejang:Rjng" },	//  #375
+	{ uptype_script_extensions, 215, "Runic:Runr" },	//  #376
+	{ uptype_script_extensions, 216, "Samaritan:Samr" },	//  #377
+	{ uptype_script_extensions, 217, "Saurashtra:Saur" },	//  #378
+	{ uptype_script_extensions, 308, "Sharada:Shrd" },	//  #379
+	{ uptype_script_extensions, 219, "Shavian:Shaw" },	//  #380
+	{ uptype_script_extensions, 220, "Siddham:Sidd" },	//  #381
+	{ uptype_script_extensions, 221, "SignWriting:Sgnw" },	//  #382
+	{ uptype_script_extensions, 309, "Sinhala:Sinh" },	//  #383
+	{ uptype_script_extensions, 310, "Sogdian:Sogd" },	//  #384
+	{ uptype_script_extensions, 224, "Sora_Sompeng:Sora" },	//  #385
+	{ uptype_script_extensions, 225, "Soyombo:Soyo" },	//  #386
+	{ uptype_script_extensions, 226, "Sundanese:Sund" },	//  #387
+	{ uptype_script_extensions, 311, "Syloti_Nagri:Sylo" },	//  #388
+	{ uptype_script_extensions, 312, "Syriac:Syrc" },	//  #389
+	{ uptype_script_extensions, 313, "Tagalog:Tglg" },	//  #390
+	{ uptype_script_extensions, 314, "Tagbanwa:Tagb" },	//  #391
+	{ uptype_script_extensions, 315, "Tai_Le:Tale" },	//  #392
+	{ uptype_script_extensions, 232, "Tai_Tham:Lana" },	//  #393
+	{ uptype_script_extensions, 233, "Tai_Viet:Tavt" },	//  #394
+	{ uptype_script_extensions, 316, "Takri:Takr" },	//  #395
+	{ uptype_script_extensions, 317, "Tamil:Taml" },	//  #396
+	{ uptype_script_extensions, 236, "Tangsa:Tnsa" },	//  #397
+	{ uptype_script_extensions, 237, "Tangut:Tang" },	//  #398
+	{ uptype_script_extensions, 318, "Telugu:Telu" },	//  #399
+	{ uptype_script_extensions, 319, "Thaana:Thaa" },	//  #400
+	{ uptype_script_extensions, 240, "Thai:Thai" },	//  #401
+	{ uptype_script_extensions, 241, "Tibetan:Tibt" },	//  #402
+	{ uptype_script_extensions, 242, "Tifinagh:Tfng" },	//  #403
+	{ uptype_script_extensions, 320, "Tirhuta:Tirh" },	//  #404
+	{ uptype_script_extensions, 244, "Toto" },	//  #405
+	{ uptype_script_extensions, 245, "Ugaritic:Ugar" },	//  #406
+	{ uptype_script_extensions, 246, "Vai:Vaii" },	//  #407
+	{ uptype_script_extensions, 247, "Vithkuqi:Vith" },	//  #408
+	{ uptype_script_extensions, 248, "Wancho:Wcho" },	//  #409
+	{ uptype_script_extensions, 249, "Warang_Citi:Wara" },	//  #410
+	{ uptype_script_extensions, 321, "Yezidi:Yezi" },	//  #411
+	{ uptype_script_extensions, 322, "Yi:Yiii" },	//  #412
+	{ uptype_script_extensions, 252, "Zanabazar_Square:Zanb" },	//  #413
+#if !defined(SRELL_NO_UNICODE_POS)
+	{ uptype_binary, 323, "RGI_Emoji" },	//  #414
+	{ uptype_binary, 324, "Basic_Emoji" },	//  #415
+	{ uptype_binary, 325, "Emoji_Keycap_Sequence" },	//  #416
+	{ uptype_binary, 326, "RGI_Emoji_Modifier_Sequence" },	//  #417
+	{ uptype_binary, 327, "RGI_Emoji_Flag_Sequence" },	//  #418
+	{ uptype_binary, 328, "RGI_Emoji_Tag_Sequence" },	//  #419
+	{ uptype_binary, 329, "RGI_Emoji_ZWJ_Sequence" },	//  #420
+#endif	//  !defined(SRELL_NO_UNICODE_POS)
+	{ uptype_unknown, 0, "" }
 };
 
-template <typename T1, typename T2, typename T3, typename T4, typename T5, typename T6>
-const T6 unicode_property_data<T1, T2, T3, T4, T5, T6>::positiontable[] =
+template <typename T3, typename T4, typename T5, typename T6>
+const T6 unicode_property_data<T3, T4, T5, T6>::positiontable[] =
 {
 	{ 0, 0 },	//  #0 unknown
 	{ 0, 725 },	//  #1 gc=Other:C
@@ -10263,20 +13095,64 @@ const T6 unicode_property_data<T1, T2, T3, T4, T5, T6>::positiontable[] =
 	{ 17095, 7 },	//  #319 scx=Thaana:Thaa
 	{ 17102, 6 },	//  #320 scx=Tirhuta:Tirh
 	{ 17108, 7 },	//  #321 scx=Yezidi:Yezi
-	{ 17115, 7 }	//  #322 scx=Yi:Yiii
+	{ 17115, 7 },	//  #322 scx=Yi:Yiii
+	{ 17122, 6287 },	//  #323 bp=RGI_Emoji
+	{ 17122, 655 },	//  #324 bp=Basic_Emoji
+	{ 17777, 24 },	//  #325 bp=Emoji_Keycap_Sequence
+	{ 17801, 968 },	//  #326 bp=RGI_Emoji_Modifier_Sequence
+	{ 18769, 387 },	//  #327 bp=RGI_Emoji_Flag_Sequence
+	{ 19156, 12 },	//  #328 bp=RGI_Emoji_Tag_Sequence
+	{ 19168, 4241 }	//  #329 bp=RGI_Emoji_ZWJ_Sequence
 };
-#define SRELL_UPDATA_VERSION 110
-//  ... "srell_updata.hpp"]
+#define SRELL_UPDATA_VERSION 201
+//  ... "srell_updata2.hpp"]
+
+			static const uint_l32 error_property = static_cast<uint_l32>(-1);
+		}	//  namespace up_constants
+
+		namespace up_internal
+		{
+			typedef up_constants::up_type pname_type;
+			typedef const char *pname_string_type;
+
+#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
+			struct pvalue_type
+			{
+				pname_type pname;
+				uint_l32 pnumber;
+				pname_string_type csstrings;
+			};
+#else
+			struct pvalue_type
+			{
+				pname_type pname;
+				pname_string_type csstrings;
+				uint_l32 pnumber;
+			};
+#endif
+
+			struct offset_and_number
+			{
+				std::size_t offset;
+				std::size_t number_of_pairs;
+			};
+
+			typedef up_constants::unicode_property_data<
+				pname_string_type,
+				uchar32,
+				pvalue_type,
+				offset_and_number
+				>
+				updata;
+
+		}	//  namespace up_internal
 
 //template <typename PairType>
 class unicode_property
 {
 public:
 
-	typedef uint_l32 property_type;
 	typedef simple_array<char> pstring;
-
-	static const property_type error_property = static_cast<property_type>(-1);
 
 	unicode_property()
 	{
@@ -10294,21 +13170,22 @@ public:
 	}
 #endif
 
-	static property_type lookup_property(const pstring &name, const pstring &value)
+	static uint_l32 lookup_property(const pstring &name, const pstring &value)
 	{
-		pname_type ptype = name.size() ? lookup_property_name(name) : updata::ptype::general_category;
-		property_type property_number = lookup_property_value(ptype, value);
+		pname_type ptype = name.size() ? lookup_property_name(name) : up_constants::uptype_general_category;
+//		property_type property_number = lookup_property_value(ptype, value);
+		uint_l32 property_number = lookup_property_value(ptype, value);
 
-		if (property_number == updata::unknown && name.size() == 0)
+		if (property_number == static_cast<uint_l32>(up_constants::upid_unknown) && name.size() == 0)
 		{
-			ptype = updata::ptype::binary;
+			ptype = up_constants::uptype_binary;
 			property_number = lookup_property_value(ptype, value);
 		}
 
-		return property_number != updata::unknown ? property_number : error_property;
+		return property_number != static_cast<uint_l32>(up_constants::upid_unknown) ? property_number : up_constants::error_property;
 	}
 
-	static std::size_t ranges_offset(const property_type property_number)
+	static std::size_t ranges_offset(const uint_l32 property_number)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].offset;
@@ -10318,7 +13195,7 @@ public:
 #endif
 	}
 
-	static std::size_t number_of_ranges(const property_type property_number)
+	static std::size_t number_of_ranges(const uint_l32 property_number)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].number_of_pairs;
@@ -10328,7 +13205,7 @@ public:
 #endif
 	}
 
-	static const uchar32 *ranges_address(const property_type property_number)
+	static const uchar32 *ranges_address(const uint_l32 property_number)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		return &updata::rangetable[ranges_offset(property_number) << 1];
@@ -10338,41 +13215,23 @@ public:
 #endif
 	}
 
+	static bool is_valid_pno(const uint_l32 pno)
+	{
+		return pno != up_constants::error_property && pno <= max_property_number;
+	}
+
+	static bool is_pos(const uint_l32 pno)
+	{
+		return pno > max_property_number && pno <= max_pos_number;
+	}
+
 private:
 
-	typedef uint_l32 pname_type;
-	typedef const char *pname_string_type;
-
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-	struct pvalue_type
-	{
-		pname_type pname;
-		property_type pnumber;
-		pname_string_type csstrings;
-	};
-#else
-	struct pvalue_type
-	{
-		pname_type pname;
-		pname_string_type csstrings;
-		property_type pnumber;
-	};
-#endif
-
-	struct offset_and_number
-	{
-		std::size_t offset;
-		std::size_t number_of_pairs;
-	};
-
-	typedef unicode_property_data<property_type,
-		pname_type,
-		pname_string_type,
-		uchar32,
-		pvalue_type,
-		offset_and_number
-		>
-		updata;
+	typedef up_internal::pname_type pname_type;
+	typedef up_internal::pname_string_type pname_string_type;
+	typedef up_internal::pvalue_type pvalue_type;
+	typedef up_internal::offset_and_number offset_and_number;
+	typedef up_internal::updata updata;
 
 	static pname_type lookup_property_name(const pstring &name)
 	{
@@ -10391,7 +13250,7 @@ private:
 				return static_cast<pname_type>(pno);
 		}
 #endif
-		return updata::ptype::unknown;
+		return up_constants::uptype_unknown;
 	}
 
 	//  Checks if value is included in colon-separated strings.
@@ -10418,7 +13277,7 @@ private:
 		return false;
 	}
 
-	static property_type lookup_property_value(const pname_type ptype, const pstring &value)
+	static uint_l32 lookup_property_value(const pname_type ptype, const pstring &value)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		for (std::size_t pno = 0; *updata::rangenumbertable[pno].csstrings; ++pno)
@@ -10437,26 +13296,13 @@ private:
 				return pvalue.pnumber;
 		}
 #endif
-		return updata::unknown;
+		return static_cast<uint_l32>(up_constants::upid_unknown);
 	}
 
-public:
+private:
 
-	static const std::size_t number_of_properties = updata::last_property_number + 1;
-	static const std::size_t last_property_number = updata::last_property_number;
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-	static const std::size_t last_pos_number = updata::last_pos_number;
-#else
-	static const std::size_t last_pos_number = updata::last_property_number;
-#endif
-	static const property_type gc_Zs = updata::gc_Space_Separator;
-	static const property_type gc_Cn = updata::gc_Unassigned;
-	static const property_type bp_Assigned = updata::bp_Assigned;
-
-//  UnicodeIDStart::
-//  UnicodeIDContinue::
-	static const property_type bp_ID_Start = updata::bp_ID_Start;
-	static const property_type bp_ID_Continue = updata::bp_ID_Continue;
+	static const std::size_t max_property_number = static_cast<std::size_t>(up_constants::upid_max_property_number);
+	static const std::size_t max_pos_number = static_cast<std::size_t>(up_constants::upid_max_pos_number);
 };
 //  unicode_property
 
@@ -10749,7 +13595,7 @@ public:
 
 	void make_caseunfoldedcharset()
 	{
-		uchar32 table[unicode_case_folding::rev_maxset] = {};
+		uchar32 table[ucf_constants::rev_maxset] = {};
 		bitset<constants::unicode_max_codepoint + 1> bs;
 
 		for (size_type i = 0; i < rparray_.size(); ++i)
@@ -11103,8 +13949,8 @@ public:
 
 			//  For reg_exp_identifier_start.
 			{
-				const uchar32 *const IDs_address = unicode_property::ranges_address(unicode_property::bp_ID_Start);
-				const std::size_t IDs_number = unicode_property::number_of_ranges(unicode_property::bp_ID_Start);
+				const uchar32 *const IDs_address = unicode_property::ranges_address(upid_bp_ID_Start);
+				const std::size_t IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
 				ranges.load_from_memory(IDs_address, IDs_number);
 			}
 			ranges.load_from_memory(&additions[0], 2);
@@ -11113,8 +13959,8 @@ public:
 			//  For reg_exp_identifier_part.
 			ranges.clear();
 			{
-				const uchar32 *const IDc_address = unicode_property::ranges_address(unicode_property::bp_ID_Continue);
-				const std::size_t IDc_number = unicode_property::number_of_ranges(unicode_property::bp_ID_Continue);
+				const uchar32 *const IDc_address = unicode_property::ranges_address(upid_bp_ID_Continue);
+				const std::size_t IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
 				ranges.load_from_memory(IDc_address, IDc_number);
 			}
 			ranges.load_from_memory(&additions[0], 3);
@@ -11139,6 +13985,13 @@ private:
 
 	range_pairs char_class_;
 	range_pairs::array_type char_class_pos_;
+
+//  UnicodeIDStart::
+//    any Unicode code point with the Unicode property "ID_Start"
+//  UnicodeIDContinue::
+//    any Unicode code point with the Unicode property "ID_Continue"
+	static const uint_l32 upid_bp_ID_Start = static_cast<uint_l32>(up_constants::bp_ID_Start);
+	static const uint_l32 upid_bp_ID_Continue = static_cast<uint_l32>(up_constants::bp_ID_Continue);
 };
 //  identifier_charclass
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -11153,7 +14006,6 @@ public:
 		//                6
 		number_of_predefcls
 	};
-	static const uint_l32 error_property = static_cast<uint_l32>(-1);
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 	typedef unicode_property::pstring pstring;
@@ -11316,18 +14168,18 @@ public:
 	{
 		const uint_l32 pno = static_cast<uint_l32>(unicode_property::lookup_property(pname, pvalue));
 
-		return (pno != unicode_property::error_property) ? pno : error_property;
+		return (pno != up_constants::error_property) ? pno : up_constants::error_property;
 	}
 
 	bool load_upranges(range_pairs &newranges, const uint_l32 property_number) const
 	{
 		newranges.clear();
 
-		if (property_number != unicode_property::error_property && property_number <= unicode_property::last_property_number)
+		if (unicode_property::is_valid_pno(property_number))
 		{
-			if (property_number == unicode_property::bp_Assigned)
+			if (property_number == upid_bp_Assigned)
 			{
-				load_updata(newranges, unicode_property::gc_Cn);
+				load_updata(newranges, upid_gc_Cn);
 				newranges.negation();
 			}
 			else
@@ -11341,15 +14193,15 @@ public:
 	//  Properties of strings.
 	bool is_pos(const uint_l32 pno) const
 	{
-		return pno > unicode_property::last_property_number && pno <= unicode_property::last_pos_number;
+		return unicode_property::is_pos(pno);
 	}
 
 	bool get_prawdata(simple_array<uchar32> &seq, uint_l32 property_number)
 	{
-		if (property_number != unicode_property::error_property)
+		if (property_number != up_constants::error_property)
 		{
-			if (property_number == unicode_property::bp_Assigned)
-				property_number = unicode_property::gc_Cn;	//  plus negation.
+			if (property_number == upid_bp_Assigned)
+				property_number = upid_gc_Cn;
 
 			const uchar32 *const address = unicode_property::ranges_address(property_number);
 //			const std::size_t offset = unicode_property::ranges_offset(property_number);
@@ -11411,9 +14263,9 @@ private:
 	void setup_predefinedclass()
 	{
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-		const uchar32 *const Zs_address = unicode_property::ranges_address(unicode_property::gc_Zs);
-//		const std::size_t Zs_offset = unicode_property::ranges_offset(unicode_property::gc_Zs);
-		const std::size_t Zs_number = unicode_property::number_of_ranges(unicode_property::gc_Zs);
+		const uchar32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
+//		const std::size_t Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
+		const std::size_t Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
 #else
 		static const uchar32 Zs[] = {
 			0x1680, 0x1680, 0x2000, 0x200a,	// 0x2028, 0x2029,
@@ -11482,6 +14334,13 @@ private:
 
 #endif
 
+#if !defined(SRELL_NO_UNICODE_PROPERTY)
+	static const uint_l32 upid_gc_Zs = static_cast<uint_l32>(up_constants::gc_Space_Separator);
+	static const uint_l32 upid_gc_Cn = static_cast<uint_l32>(up_constants::gc_Unassigned);
+	static const uint_l32 upid_bp_Assigned = static_cast<uint_l32>(up_constants::bp_Assigned);
+
+#endif
+
 public:	//  For debug.
 
 	void print_classes(const int) const;
@@ -11498,32 +14357,32 @@ public:	//  For debug.
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
-template <typename charT, typename numberT>
-class groupname_and_backrefnumber_mapper
+template <typename charT>
+class groupname_mapper
 {
 public:
 
 	typedef simple_array<charT> gname_string;
 	typedef typename gname_string::size_type size_type;
-	static const numberT notfound = static_cast<numberT>(-1);
+	static const uint_l32 notfound = static_cast<uint_l32>(-1);
 
-	groupname_and_backrefnumber_mapper()
+	groupname_mapper()
 	{
 	}
 
-	groupname_and_backrefnumber_mapper(const groupname_and_backrefnumber_mapper &right)
+	groupname_mapper(const groupname_mapper &right)
 		: names_(right.names_), keysize_classno_(right.keysize_classno_)
 	{
 	}
 
 #if defined(SRELL_CPP11_MOVE_ENABLED)
-	groupname_and_backrefnumber_mapper(groupname_and_backrefnumber_mapper &&right) SRELL_NOEXCEPT
+	groupname_mapper(groupname_mapper &&right) SRELL_NOEXCEPT
 		: names_(std::move(right.names_)), keysize_classno_(std::move(right.keysize_classno_))
 	{
 	}
 #endif
 
-	groupname_and_backrefnumber_mapper &operator=(const groupname_and_backrefnumber_mapper &right)
+	groupname_mapper &operator=(const groupname_mapper &right)
 	{
 		if (this != &right)
 		{
@@ -11534,7 +14393,7 @@ public:
 	}
 
 #if defined(SRELL_CPP11_MOVE_ENABLED)
-	groupname_and_backrefnumber_mapper &operator=(groupname_and_backrefnumber_mapper &&right) SRELL_NOEXCEPT
+	groupname_mapper &operator=(groupname_mapper &&right) SRELL_NOEXCEPT
 	{
 		if (this != &right)
 		{
@@ -11551,14 +14410,14 @@ public:
 		keysize_classno_.clear();
 	}
 
-	numberT operator[](const gname_string &gname) const
+	uint_l32 operator[](const gname_string &gname) const
 	{
-		numberT pos = 0;
+		uint_l32 pos = 0;
 		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); i += 2)
 		{
-			const numberT keysize = keysize_classno_[i];
+			const uint_l32 keysize = keysize_classno_[i];
 
-			if (keysize == static_cast<numberT>(gname.size()) && sameseq(pos, gname))
+			if (keysize == static_cast<uint_l32>(gname.size()) && sameseq(pos, gname))
 				return keysize_classno_[++i];
 
 			pos += keysize;
@@ -11566,13 +14425,13 @@ public:
 		return notfound;
 	}
 
-	gname_string operator[](const numberT indexno) const
+	gname_string operator[](const uint_l32 indexno) const
 	{
-		numberT pos = 0;
+		uint_l32 pos = 0;
 		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); ++i)
 		{
-			const numberT keysize = keysize_classno_[i];
-			const numberT classno = keysize_classno_[++i];
+			const uint_l32 keysize = keysize_classno_[i];
+			const uint_l32 classno = keysize_classno_[++i];
 
 			if (classno == indexno)
 				return gname_string(names_, pos, keysize);
@@ -11587,21 +14446,21 @@ public:
 		return static_cast<size_type>(keysize_classno_.size() >> 1);
 	}
 
-	bool push_back(const gname_string &gname, const numberT class_number)
+	bool push_back(const gname_string &gname, const uint_l32 class_number)
 	{
-		const numberT num = operator[](gname);
+		const uint_l32 num = operator[](gname);
 
 		if (num == notfound)
 		{
 			names_.append(gname);
-			keysize_classno_.append(1, static_cast<numberT>(gname.size()));
+			keysize_classno_.append(1, static_cast<uint_l32>(gname.size()));
 			keysize_classno_.append(1, class_number);
 			return true;
 		}
 		return false;	//  Already exists.
 	}
 
-	void swap(groupname_and_backrefnumber_mapper &right)
+	void swap(groupname_mapper &right)
 	{
 		this->names_.swap(right.names_);
 		keysize_classno_.swap(right.keysize_classno_);
@@ -11619,18 +14478,15 @@ private:
 	}
 
 	gname_string names_;
-	simple_array<numberT> keysize_classno_;
+	simple_array<uint_l32> keysize_classno_;
 
 public:	//  For debug.
 
 	void print_mappings(const int) const;
 };
-//  groupname_and_backrefnumber_mapper
-
 template <typename charT>
-class groupname_mapper : public groupname_and_backrefnumber_mapper<charT, uint_l32>
-{
-};
+const uint_l32 groupname_mapper<charT>::notfound;
+//  groupname_mapper
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 
@@ -11644,8 +14500,6 @@ class groupname_mapper : public groupname_and_backrefnumber_mapper<charT, uint_l
 
 struct re_quantifier
 {
-	static const uint_l32 infinity = static_cast<uint_l32>(~0);
-
 	//  atleast and atmost: for check_counter.
 	//  offset and length: for charcter_class.
 	//  (Special case 1) in roundbracket_open and roundbracket_pop atleast and atmost represent
@@ -11705,12 +14559,12 @@ struct re_quantifier
 
 	void set_infinity()
 	{
-		atmost = infinity;
+		atmost = constants::infinity;
 	}
 
 	bool is_infinity() const
 	{
-		return atmost == infinity;
+		return atmost == constants::infinity;
 	}
 
 	bool is_same() const
@@ -11725,19 +14579,19 @@ struct re_quantifier
 
 	bool is_asterisk() const
 	{
-		return atleast == 0 && atmost == infinity;
+		return atleast == 0 && atmost == constants::infinity;
 	}
 	bool is_plus() const
 	{
-		return atleast == 1 && atmost == infinity;
+		return atleast == 1 && atmost == constants::infinity;
 	}
 	bool is_asterisk_or_plus() const
 	{
-		return atleast <= 1 && atmost == infinity;
+		return atleast <= 1 && atmost == constants::infinity;
 	}
 	bool is_question_or_asterisk() const
 	{
-		return atleast == 0 && (atmost == 1 || atmost == infinity);
+		return atleast == 0 && (atmost == 1 || atmost == constants::infinity);
 	}
 
 	bool has_simple_equivalence() const
@@ -11747,39 +14601,39 @@ struct re_quantifier
 
 	void multiply(const re_quantifier &q)
 	{
-		if (atleast != infinity)
+		if (atleast != constants::infinity)
 		{
-			if (q.atleast != infinity)
+			if (q.atleast != constants::infinity)
 				atleast *= q.atleast;
 			else
-				atleast = infinity;
+				atleast = constants::infinity;
 		}
 
-		if (atmost != infinity)
+		if (atmost != constants::infinity)
 		{
-			if (q.atmost != infinity)
+			if (q.atmost != constants::infinity)
 				atmost *= q.atmost;
 			else
-				atmost = infinity;
+				atmost = constants::infinity;
 		}
 	}
 
 	void add(const re_quantifier &q)
 	{
-		if (atleast != infinity)
+		if (atleast != constants::infinity)
 		{
-			if (q.atleast != infinity && (atleast + q.atleast) >= atleast)
+			if (q.atleast != constants::infinity && (atleast + q.atleast) >= atleast)
 				atleast += q.atleast;
 			else
-				atleast = infinity;
+				atleast = constants::infinity;
 		}
 
-		if (atmost != infinity)
+		if (atmost != constants::infinity)
 		{
-			if (q.atmost != infinity && (atmost + q.atmost) >= atmost)
+			if (q.atmost != constants::infinity && (atmost + q.atmost) >= atmost)
 				atmost += q.atmost;
 			else
-				atmost = infinity;
+				atmost = constants::infinity;
 		}
 	}
 };
@@ -12030,9 +14884,7 @@ struct re_state
 };
 //  re_state
 
-template <typename charT>
-//struct re_flags
-struct re_compiler_state
+struct re_flags
 {
 //	bool i;
 //	bool m;
@@ -12042,6 +14894,29 @@ struct re_compiler_state
 	bool back;
 #endif
 
+	void reset(const regex_constants::syntax_option_type /* flags */)
+	{
+//		i = (flags & regex_constants::icase) != 0;	//  Case-insensitive.
+//		m = (flags & regex_constants::multiline) != 0;
+//		s = (flags & regex_constants::dotall) != 0;
+
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+		back = false;
+#endif
+	}
+
+	void restore_from(const re_flags &backup)
+	{
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+		back = backup.back;
+#endif
+	}
+};
+//  re_flags
+
+template <typename charT>
+struct re_compiler_state : public re_flags
+{
 	bool backref_used;
 
 	simple_array<uint_l32> atleast_widths_of_brackets;
@@ -12053,15 +14928,9 @@ struct re_compiler_state
 	identifier_charclass idchecker;
 #endif
 
-	void reset(const regex_constants::syntax_option_type & /* flags */)
+	void reset(const regex_constants::syntax_option_type flags)
 	{
-//		i = (flags & regex_constants::icase) != 0;	//  Case-insensitive.
-//		m = (flags & regex_constants::multiline) != 0;
-//		s = (flags & regex_constants::dotall) != 0;
-
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		back = false;
-#endif
+		re_flags::reset(flags);
 
 		backref_used = false;
 		atleast_widths_of_brackets.clear();
@@ -12072,13 +14941,6 @@ struct re_compiler_state
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 //		idchecker.clear();	//  Keeps data once created.
-#endif
-	}
-
-	void restore_from(const re_compiler_state &backup)
-	{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		back = backup.back;
 #endif
 	}
 };
@@ -12672,7 +15534,7 @@ private:
 	void setup_for_icase()
 	{
 		charT mbstr[utf_traits::maxseqlen];
-		uchar32 u32table[unicode_case_folding::rev_maxset];
+		uchar32 u32table[ucf_constants::rev_maxset];
 		const std::size_t u32str_lastcharpos = static_cast<std::size_t>(u32string_.size() - 1);
 		simple_array<std::size_t> minlen(u32string_.size());
 		std::size_t cu_repseq_lastcharpos = 0;
@@ -12726,6 +15588,353 @@ private:
 	}	//  namespace regex_internal
 
 //  ... "rei_bmh.hpp"]
+//  ["rei_upos.hpp" ...
+
+	namespace regex_internal
+	{
+
+struct posdata_holder
+{
+	simple_array<uchar32> indices;
+	simple_array<uchar32> seqs;
+	range_pairs ranges;
+	range_pair length;
+
+	void clear()
+	{
+		indices.clear();
+		seqs.clear();
+		ranges.clear();
+		length.set(1);
+	}
+
+	bool has_empty() const
+	{
+		return (indices.size() >= 2 && indices[0] != indices[1]) ? true : false;
+	}
+
+	bool has_data() const
+	{
+		return ranges.size() > 0 || indices.size() > 0;
+	}
+
+	bool may_contain_strings() const
+	{
+		return indices.size() > 0;	//  >= 2;
+	}
+
+	void swap(posdata_holder &right)
+	{
+		indices.swap(right.indices);
+		seqs.swap(right.seqs);
+		ranges.swap(right.ranges);
+		length.swap(right.length);
+	}
+
+	void do_union(const posdata_holder &right)
+	{
+		simple_array<uchar32> curseq;
+
+		ranges.merge(right.ranges);
+
+		if (right.has_empty() && !has_empty())
+			register_emptystring();
+
+		for (uchar32 seqlen = 2; seqlen < static_cast<uchar32>(right.indices.size()); ++seqlen)
+		{
+			const uchar32 end = right.indices[seqlen - 1];
+			uchar32 begin = right.indices[seqlen];
+
+			if (begin != end)
+			{
+				const std::size_t complen = seqlen * sizeof (uchar32);
+
+				ensure_length(seqlen);
+				curseq.resize(seqlen);
+
+				for (; begin < end;)
+				{
+					const uchar32 inspos = find_seq(&right.seqs[begin], seqlen, complen);
+
+					if (inspos == indices[seqlen - 1])
+					{
+						for (uchar32 i = 0; i < seqlen; ++i, ++begin)
+							curseq[i] = right.seqs[begin];
+
+						seqs.insert(inspos, curseq);
+						for (uchar32 i = 0; i < seqlen; ++i)
+							indices[i] += seqlen;
+					}
+					else
+						begin += seqlen;
+				}
+			}
+		}
+		check_lengths();
+	}
+
+	void do_subtract(const posdata_holder &right)
+	{
+		const uchar32 maxlen = static_cast<uchar32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
+
+		{
+			range_pairs kept;
+			range_pairs removed;
+
+			ranges.split_ranges(kept, removed, right.ranges);
+			ranges.swap(kept);
+		}
+
+		if (right.has_empty() && has_empty())
+			unregister_emptystring();
+
+		for (uchar32 seqlen = 2; seqlen < maxlen; ++seqlen)
+		{
+			const uchar32 end = right.indices[seqlen - 1];
+			uchar32 begin = right.indices[seqlen];
+
+			if (begin != end)
+			{
+				const std::size_t complen = seqlen * sizeof (uchar32);
+
+				for (; begin < end;)
+				{
+					const uchar32 delpos = find_seq(&right.seqs[begin], seqlen, complen);
+
+					if (delpos < indices[seqlen - 1])
+					{
+						seqs.erase(delpos, seqlen);
+
+						for (uchar32 i = 0; i < seqlen; ++i)
+							indices[i] -= seqlen;
+					}
+					else
+						begin += seqlen;
+				}
+			}
+		}
+		check_lengths();
+	}
+
+	void do_and(const posdata_holder &right)
+	{
+		const uchar32 maxlen = static_cast<uchar32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
+		posdata_holder newpos;
+		simple_array<uchar32> curseq;
+
+		{
+			range_pairs kept;
+
+			ranges.split_ranges(kept, newpos.ranges, right.ranges);
+			ranges.swap(newpos.ranges);
+		}
+
+		if (has_empty() && right.has_empty())
+			newpos.register_emptystring();
+		else if (may_contain_strings() || right.may_contain_strings())
+			ensure_length(1);
+
+		for (uchar32 seqlen = 2; seqlen < maxlen; ++seqlen)
+		{
+			const uchar32 end = right.indices[seqlen - 1];
+			uchar32 begin = right.indices[seqlen];
+
+			if (begin != end)
+			{
+				const std::size_t complen = seqlen * sizeof (uchar32);
+				const uchar32 myend = indices[seqlen - 1];
+
+				curseq.resize(seqlen);
+
+				for (; begin < end; begin += seqlen)
+				{
+					const uchar32 srcpos = find_seq(&right.seqs[begin], seqlen, complen);
+
+					if (srcpos < myend)
+					{
+						newpos.ensure_length(seqlen);
+
+						const uchar32 inspos = newpos.find_seq(&right.seqs[begin], seqlen, complen);
+
+						if (inspos == newpos.indices[seqlen - 1])
+						{
+							for (uchar32 i = 0; i < seqlen; ++i)
+								curseq[i] = right.seqs[begin + i];
+
+							newpos.seqs.insert(inspos, curseq);
+							for (uchar32 i = 0; i < seqlen; ++i)
+								newpos.indices[i] += seqlen;
+						}
+					}
+				}
+			}
+		}
+		this->indices.swap(newpos.indices);
+		this->seqs.swap(newpos.seqs);
+		check_lengths();
+	}
+
+	void split_seqs_and_ranges(const simple_array<uchar32> &inseqs, const bool icase, const bool back)
+	{
+		const uchar32 max = static_cast<uchar32>(inseqs.size());
+		simple_array<uchar32> curseq;
+
+		clear();
+
+		for (uchar32 indx = 0; indx < max;)
+		{
+			const uchar32 elen = inseqs[indx++];
+
+			if (elen == 1)	//  Range.
+			{
+				ranges.join(range_pair_helper(inseqs[indx], inseqs[indx + 1]));
+				indx += 2;
+			}
+			else if (elen == 2)
+			{
+				const uchar32 ucpval = inseqs[indx++];
+
+				if (ucpval != constants::ccstr_empty)
+					ranges.join(range_pair_helper(ucpval));
+				else
+					register_emptystring();
+			}
+			else if (elen >= 3)
+			{
+				const uchar32 seqlen = elen - 1;
+
+				ensure_length(seqlen);
+
+				const uchar32 inspos = indices[seqlen - 1];
+
+				curseq.resize(seqlen);
+				if (!back)
+				{
+					for (uchar32 j = 0; j < seqlen; ++j, ++indx)
+						curseq[j] = inseqs[indx];
+				}
+				else
+				{
+					for (uchar32 j = seqlen; j; ++indx)
+						curseq[--j] = inseqs[indx];
+				}
+
+				if (icase)
+				{
+					for (simple_array<uchar32>::size_type i = 0; i < curseq.size(); ++i)
+						curseq[i] = unicode_case_folding::do_casefolding(curseq[i]);
+				}
+
+				const std::size_t complen = seqlen * sizeof (uchar32);
+
+				for (uchar32 i = indices[seqlen];; i += seqlen)
+				{
+					if (i == inspos)
+					{
+						seqs.insert(inspos, curseq);
+						for (uchar32 i = 0; i < seqlen; ++i)
+							indices[i] += seqlen;
+						break;
+					}
+
+					if (std::memcmp(&seqs[i], curseq.data(), complen) == 0)
+						break;
+				}
+
+			}
+			//elen == 0: Padding.
+		}
+
+//		if (this->is_icase())
+		if (icase)
+			ranges.make_caseunfoldedcharset();
+
+		check_lengths();
+
+	}
+
+private:
+
+	void register_emptystring()
+	{
+		if (indices.size() < 2)
+		{
+			indices.resize(2);
+			indices[1] = 0;
+			indices[0] = 1;
+		}
+		else if (indices[0] == indices[1])
+		{
+			++indices[0];
+		}
+		length.first = 0;
+	}
+
+	void unregister_emptystring()
+	{
+		if (indices.size() >= 2 && indices[0] != indices[1])
+			indices[0] = indices[1];
+	}
+
+	void ensure_length(const uchar32 seqlen)
+	{
+		uchar32 curlen = static_cast<uchar32>(indices.size());
+
+		if (seqlen >= curlen)
+		{
+			indices.resize(seqlen + 1);
+			for (; curlen <= seqlen; ++curlen)
+				indices[curlen] = 0;
+		}
+	}
+
+	uchar32 find_seq(const uchar32 *const seqbegin, const uchar32 seqlen, const std::size_t complen) const
+	{
+		const uchar32 end = indices[seqlen - 1];
+
+		for (uchar32 begin = indices[seqlen]; begin < end; begin += seqlen)
+		{
+			if (std::memcmp(seqbegin, &seqs[begin], complen) == 0)
+				return begin;
+		}
+		return end;
+	}
+
+	void check_lengths()
+	{
+		length.set(constants::max_u32value, 0);
+
+		for (uchar32 i = 2; i < static_cast<uchar32>(indices.size()); ++i)
+		{
+			if (indices[i] != indices[i - 1])
+			{
+				if (length.first > i)
+					length.first = i;
+				if (length.second < i)
+					length.second = i;
+			}
+		}
+
+		if (ranges.size())
+		{
+			if (length.first > 1)
+				length.first = 1;
+			if (length.second < 1)
+				length.second = 1;
+		}
+
+		if (has_empty())
+			length.first = 0;
+
+		if (length.second == 0)
+			length.first = 0;
+	}
+};
+//  posdata_holder
+
+	}	//  namespace regex_internal
+
+//  ... "rei_upos.hpp"]
 //  ["rei_compiler.hpp" ...
 
 	namespace regex_internal
@@ -13052,7 +16261,7 @@ protected:
 			const uchar32 u32c = utf_traits::codepoint_inc(begin, end);
 			if (u32c > constants::unicode_max_codepoint)
 				this->throw_error(regex_constants::error_utf8);
-			u32.push_back(u32c);
+			u32.push_backncr(u32c);
 		}
 
 		return compile_core(u32.data(), u32.data() + u32.size(), flags);
@@ -13085,6 +16294,16 @@ protected:
 	bool is_dotall() const
 	{
 		return (this->soflags & regex_constants::dotall) ? true : false;
+	}
+
+	bool is_vmode() const
+	{
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		return (this->soflags & regex_constants::unicodesets) ? true : false;
+#else
+		return false;
+#endif
+
 	}
 
 	bool is_optimize() const
@@ -13297,15 +16516,21 @@ private:
 			return get_piece_in_roundbrackets(piece, piecesize, curpos, end, cstate);
 
 		case meta_char::mc_sbraop:	//  '[':
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+			if (this->is_vmode())	//  vmode.
+				return parse_charclass_v(piece, piecesize, curpos, end, cstate);
+#endif
 			if (!register_character_class(atom, curpos, end, cstate))
 				return false;
 
 			break;
 
 		case meta_char::mc_escape:	//  '\\':
-			if (!translate_atom_escape(atom, curpos, end, cstate))
+			if (!translate_atom_escape(atom, piece, piecesize, curpos, end, cstate))
 				return false;
 
+			if (piece.size())
+				return true;
 			break;
 
 		case meta_char::mc_period:	//  '.':
@@ -13367,7 +16592,7 @@ private:
 
 	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
 	{
-		const re_compiler_state<charT> original_cstate(cstate);
+		const re_flags originalflags(cstate);
 		state_type atom;
 
 		if (curpos == end)
@@ -13399,7 +16624,7 @@ private:
 
 		++curpos;
 
-		cstate.restore_from(original_cstate);
+		cstate.restore_from(originalflags);
 
 		switch (atom.type)
 		{
@@ -13929,6 +17154,397 @@ private:
 		cls.merge(predefclass);
 	}
 
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
+	bool parse_charclass_v(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
+	{
+		posdata_holder pos;
+
+		parse_unicharset(pos, curpos, end, cstate);
+
+		if (!pos.may_contain_strings())
+		{
+			state_type atom;
+
+			atom.reset();
+			atom.character = pos.ranges.consists_of_one_character(this->is_icase());
+
+			if (atom.character == constants::invalid_u32value)
+			{
+				atom.type = st_character_class;
+				atom.number = this->character_class.register_newclass(pos.ranges);
+			}
+
+			piece.push_back(atom);
+			piecesize = atom.quantifier;
+		}
+		else
+		{
+			transform_seqdata(piece, pos);
+
+			piecesize.atleast = static_cast<uint_l32>(pos.length.first);
+			piecesize.atmost = static_cast<uint_l32>(pos.length.second);
+		}
+		return true;
+	}
+
+	void parse_unicharset(posdata_holder &basepos, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> &cstate)
+	{
+		enum operation_type
+		{
+			op_init, op_firstcc, op_union, op_intersection, op_subtraction
+		};
+		operation_type otype = op_init;
+		posdata_holder newpos;
+		range_pair code_range;
+		state_type ccatom;
+		bool invert;
+
+		if (curpos == end)
+			goto ERROR_NOT_CLOSED;
+
+		if (*curpos == meta_char::mc_caret)	//  '^'
+		{
+			invert = true;
+			++curpos;
+		}
+		else
+			invert = false;
+
+		//  ClassSetCharacter ::
+		//  \ CharacterEscape[+UnicodeMode]
+		//  \ ClassSetReservedPunctuator
+		//  \ b
+
+		for (;;)
+		{
+			if (curpos == end)
+				goto ERROR_NOT_CLOSED;
+
+			if (*curpos == meta_char::mc_sbracl)	//   ']'
+				break;
+
+			const uchar32 next2chars = check_doublepunctuators(curpos, end);
+
+			switch (otype)
+			{
+			case op_intersection:
+				if (next2chars != char_other::co_amp)
+					goto ERROR_DOUBLE_PUNCT;
+				curpos += 2;
+				break;
+
+			case op_subtraction:
+				if (next2chars != meta_char::mc_minus)
+					goto ERROR_DOUBLE_PUNCT;
+				curpos += 2;
+				break;
+
+			case op_firstcc:
+				if (next2chars == char_other::co_amp)
+					otype = op_intersection;
+				else if (next2chars == meta_char::mc_minus)
+					otype = op_subtraction;
+				else if (next2chars == constants::invalid_u32value)
+					break;
+				else
+					goto ERROR_DOUBLE_PUNCT;
+
+				curpos += 2;
+				break;
+
+//			case op_union:
+//			case op_init:
+			default:
+				if (next2chars != constants::invalid_u32value)
+					goto ERROR_DOUBLE_PUNCT;
+			}
+
+			AFTER_OPERATOR:
+
+			if (curpos == end)
+				goto ERROR_NOT_CLOSED;
+
+			ccatom.reset();
+
+			if (*curpos == meta_char::mc_sbraop)	//  '['
+			{
+				++curpos;
+				parse_unicharset(newpos, curpos, end, cstate);
+			}
+			else
+				get_character_in_class_vmode(newpos, ccatom, curpos, end, cstate, false);
+
+			if (otype == op_init)
+				otype = op_firstcc;
+			else if (otype == op_firstcc)
+				otype = op_union;
+
+			if (curpos == end)
+				goto ERROR_NOT_CLOSED;
+
+			if (ccatom.type == st_character_class)
+			{
+			}
+			else if (ccatom.type == st_character)
+			{
+				if (!newpos.has_data())
+				{
+					code_range.set(ccatom.character);
+
+					if (otype <= op_union)
+					{
+						if (*curpos == meta_char::mc_minus)	//  '-'
+						{
+							++curpos;
+
+							if (curpos == end)
+								goto ERROR_BROKEN_RANGE;
+
+							if (otype < op_union && *curpos == meta_char::mc_minus)		//  '-'
+							{
+								otype = op_subtraction;
+								++curpos;
+								basepos.ranges.join(code_range);
+								goto AFTER_OPERATOR;
+							}
+
+							get_character_in_class_vmode(newpos, ccatom, curpos, end, cstate, true);
+
+							otype = op_union;
+							code_range.second = ccatom.character;
+							if (!code_range.is_range_valid())
+								goto ERROR_BROKEN_RANGE;
+						}
+					}
+
+					newpos.ranges.join(code_range);
+					if (this->is_icase())
+						newpos.ranges.make_caseunfoldedcharset();
+				}
+			}
+
+			switch (otype)
+			{
+			case op_union:
+				basepos.do_union(newpos);
+				break;
+
+			case op_intersection:
+				basepos.do_and(newpos);
+				break;
+
+			case op_subtraction:
+				basepos.do_subtract(newpos);
+				break;
+
+			default:
+//			case op_firstcc:
+				basepos.swap(newpos);
+			}
+		}
+
+		//  *curpos == ']'
+		++curpos;
+
+		if (this->is_icase())
+			basepos.ranges.make_caseunfoldedcharset();
+
+		if (invert)
+		{
+			if (basepos.may_contain_strings())
+				goto ERROR_NOT_INVERTIBLE;
+
+			basepos.ranges.negation();
+		}
+
+		return;
+
+		ERROR_NOT_CLOSED:
+		this->throw_error(regex_constants::error_brack);
+
+		ERROR_BROKEN_RANGE:
+		this->throw_error(regex_constants::error_range);
+
+		ERROR_NOT_INVERTIBLE:
+		this->throw_error(regex_constants::error_complement);
+
+		ERROR_DOUBLE_PUNCT:
+		this->throw_error(regex_constants::error_operator);
+	}
+
+	uchar32 check_doublepunctuators(const uchar32 *curpos, const uchar32 *const end) const
+	{
+		const uchar32 firstchar = *curpos++;
+
+		if (curpos == end || *curpos != firstchar)
+			return constants::invalid_u32value;
+
+		switch (firstchar)
+		{
+		//  ClassSetReservedDoublePunctuator :: one of
+		//  && !! ## $$ %% ** ++ ,, .. :: ;; << == >> ?? @@ ^^ `` ~~
+		case char_other::co_amp:	//  '&'
+		case meta_char::mc_exclam:	//  '!'
+		case meta_char::mc_sharp:	//  '#'
+		case meta_char::mc_dollar:	//  '$'
+		case char_other::co_perc:	//  '%'
+		case meta_char::mc_astrsk:	//  '*'
+		case meta_char::mc_plus:	//  '+'
+		case meta_char::mc_comma:	//  ','
+		case meta_char::mc_period:	//  '.'
+		case meta_char::mc_colon:	//  ':'
+		case char_other::co_smcln:	//  ';'
+		case meta_char::mc_lt:		//  '<'
+		case meta_char::mc_eq:		//  '='
+		case meta_char::mc_gt:		//  '>'
+		case meta_char::mc_query:	//  '?'
+		case char_other::co_atmrk:	//  '@'
+		case meta_char::mc_caret:	//  '^'
+		case char_other::co_grav:	//  '`'
+		case char_other::co_tilde:	//  '~'
+		case meta_char::mc_minus:	//  '-'
+			return firstchar;
+
+		default:
+			return constants::invalid_u32value;
+		}
+	}
+
+	bool get_character_in_class_vmode(
+		posdata_holder &pos,
+		state_type &ccatom,
+		const uchar32 *&curpos,
+		const uchar32 *const end,
+		const re_compiler_state<charT> &cstate,
+		const bool no_ccesc
+	)
+	{
+		pos.clear();
+
+		ccatom.character = *curpos++;
+
+		switch (ccatom.character)
+		{
+		//  ClassSetSyntaxCharacter :: one of
+		//  ( ) [ ] { } / - \ |
+		case meta_char::mc_rbraop:	//  '('
+		case meta_char::mc_rbracl:	//  ')'
+		case meta_char::mc_sbraop:	//  '['
+		case meta_char::mc_sbracl:	//  ']'
+		case meta_char::mc_cbraop:	//  '{'
+		case meta_char::mc_cbracl:	//  '}'
+		case char_other::co_slash:	//  '/'
+		case meta_char::mc_minus:	//  '-'
+		case meta_char::mc_bar:		//  '|'
+			this->throw_error(regex_constants::error_noescape);
+			//@fallthrough@
+
+		case meta_char::mc_escape:	//  '\\'
+			break;
+
+		default:
+			return false;
+		}
+
+		if (curpos == end)
+			this->throw_error(regex_constants::error_escape);
+
+		ccatom.character = *curpos++;
+
+		if (!no_ccesc)
+		{
+			if (((ccatom.character | constants::asc_icase) == char_alnum::ch_p))
+			{
+				return parse_escape_p_vmode(pos, ccatom, curpos, end, cstate);
+			}
+			else if (ccatom.character == char_alnum::ch_q)
+			{
+				return parse_escape_q_vmode(pos, curpos, end, cstate);
+			}
+		}
+
+		switch (ccatom.character)
+		{
+		//  ClassSetReservedPunctuator :: one of
+		//  & - ! # % , : ; < = > @ ` ~
+		case char_other::co_amp:	//  '&'
+		case meta_char::mc_exclam:	//  '!'
+		case meta_char::mc_sharp:	//  '#'
+		case char_other::co_perc:	//  '%'
+		case meta_char::mc_comma:	//  ','
+		case meta_char::mc_colon:	//  ':'
+		case char_other::co_smcln:	//  ';'
+		case meta_char::mc_lt:		//  '<'
+		case meta_char::mc_eq:		//  '='
+		case meta_char::mc_gt:		//  '>'
+		case char_other::co_atmrk:	//  '@'
+		case char_other::co_grav:	//  '`'
+		case char_other::co_tilde:	//  '~'
+			return false;
+
+		default:;
+		}
+
+		translate_escseq_nocheck(&pos.ranges, ccatom, curpos, end, true, no_ccesc);
+		return false;
+	}
+
+	bool parse_escape_q_vmode(posdata_holder &pos, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> &cstate)
+	{
+		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
+			this->throw_error(regex_constants::error_escape);
+
+		simple_array<uchar32> seqs;
+		simple_array<uchar32> curseq;
+		posdata_holder dummypos;
+		state_type qatom;
+
+		++curpos;
+
+		for (;;)
+		{
+			if (curpos == end)
+				this->throw_error(regex_constants::error_escape);
+
+			if (*curpos == meta_char::mc_bar || *curpos == meta_char::mc_cbracl)	//  '|' or '}'.
+			{
+				const uint_l32 seqlen = static_cast<uint_l32>(curseq.size());
+
+				if (seqlen <= 1)
+				{
+					seqs.push_backncr(2);
+					seqs.push_backncr(seqlen != 0 ? curseq[0] : constants::ccstr_empty);
+				}
+				else	//  >= 2
+				{
+					seqs.push_backncr(seqlen + 1);
+					seqs.append(curseq);
+				}
+
+				if (*curpos == meta_char::mc_cbracl)	//  '}'
+					break;
+
+				curseq.clear();
+				++curpos;
+			}
+			else
+			{
+				qatom.reset();
+				get_character_in_class_vmode(dummypos, qatom, curpos, end, cstate, true);
+
+				curseq.push_backncr(qatom.character);
+			}
+		}
+
+		++curpos;
+		pos.split_seqs_and_ranges(seqs, this->is_icase(), cstate.back);
+
+		return true;
+	}
+
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
 	bool translate_escseq(range_pairs *const rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
 	{
 		if (curpos == end)
@@ -13939,7 +17555,17 @@ private:
 		return translate_escseq_nocheck(rp, atom, curpos, end, insidecharclass, false);
 	}
 
-	bool translate_character_class_escape(range_pairs *const rp, state_type &cceatom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
+	bool translate_character_class_escape(range_pairs *const rp, state_type &cceatom
+#if !defined(SRELL_NO_UNICODE_PROPERTY)
+		, const uchar32 *&curpos
+		, const uchar32 *const end
+		, const bool insidecharclass
+#else
+		, const uchar32 *&
+		, const uchar32 *const
+		, const bool
+#endif
+		)
 	{
 		//  Predefined classes.
 		switch (cceatom.character)
@@ -14163,7 +17789,7 @@ private:
 	{
 		const uint_l32 pnumber = lookup_propertynumber(curpos, end);
 
-		if (pnumber == re_character_class::error_property || this->character_class.is_pos(pnumber))
+		if (pnumber == up_constants::error_property || this->character_class.is_pos(pnumber))
 			this->throw_error(regex_constants::error_property);
 
 		this->character_class.load_upranges(pranges, pnumber);
@@ -14245,12 +17871,37 @@ private:
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool translate_atom_escape(state_type &escatom, const uchar32 *&curpos, const uchar32 *const end, /* const */ re_compiler_state<charT> &cstate)
+	bool translate_atom_escape(state_type &escatom
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		, state_array &piece
+		, re_quantifier &piecesize
+#else
+		, state_array &
+		, re_quantifier &
+#endif
+		, const uchar32 *&curpos, const uchar32 *const end, /* const */ re_compiler_state<charT> &cstate)
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
 		escatom.character = *curpos;
+
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		if (this->is_vmode() && ((escatom.character | constants::asc_icase) == char_alnum::ch_p))
+		{
+			posdata_holder pos;
+
+			parse_escape_p_vmode(pos, escatom, ++curpos, end, cstate);
+
+			if (escatom.type == st_character_class)
+				escatom.number = this->character_class.register_newclass(pos.ranges);
+			else
+				transform_seqdata(piece, pos);
+
+			piecesize.set(escatom.quantifier.atleast, escatom.quantifier.atmost);
+			return true;
+		}
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
 		switch (escatom.character)
 		{
@@ -14395,6 +18046,358 @@ private:
 		return groupname;
 	}
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
+
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
+	bool parse_escape_p_vmode(posdata_holder &pos, state_type &patom, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> &cstate)
+	{
+		if (curpos == end)
+			this->throw_error(regex_constants::error_escape);
+
+//		patom.is_not = (patom.character & constants::asc_icase) ? false : true;
+		if (patom.character == char_alnum::ch_P)	//  \P{...}
+			patom.is_not = true;
+
+		patom.number = lookup_propertynumber(curpos, end);
+
+		if (patom.number == up_constants::error_property)
+			this->throw_error(regex_constants::error_property);
+
+		if (!this->character_class.is_pos(patom.number))
+		{
+			pos.clear();
+
+			this->character_class.load_upranges(pos.ranges, patom.number);
+
+			if (this->is_icase() && patom.number >= static_cast<uint_l32>(re_character_class::number_of_predefcls))
+				pos.ranges.make_caseunfoldedcharset();
+
+			if (patom.is_not)
+			{
+				pos.ranges.negation();
+				patom.is_not = false;
+			}
+
+			patom.type = st_character_class;
+			patom.quantifier.reset(1);
+		}
+		else
+		{
+			simple_array<uchar32> sequences;
+
+			this->character_class.get_prawdata(sequences, patom.number);
+			pos.split_seqs_and_ranges(sequences, this->is_icase(), cstate.back);
+
+			patom.quantifier.set(pos.length.first, pos.length.second);
+
+			if (patom.is_not)
+				this->throw_error(regex_constants::error_complement);
+		}
+		return true;
+	}
+
+	uint_l32 transform_seqdata(state_array &piece, const posdata_holder &pos)
+	{
+		uchar32 seqlen = static_cast<uchar32>(pos.indices.size());
+		state_type ccatom;
+
+		ccatom.reset();
+		ccatom.type = st_character_class;
+		ccatom.number = this->character_class.register_newclass(pos.ranges);
+
+		if (seqlen > 0)
+		{
+			const bool has_empty = pos.has_empty();
+			state_size_type prevbranch_end = 0;
+			state_type branchatom;
+			state_type jumpatom;
+			state_array branch;
+
+			branch.resize(seqlen);
+			for (uchar32 i = 0; i < seqlen; ++i)
+				branch[i].reset();
+
+			branchatom.reset();
+			branchatom.type = st_epsilon;
+			branchatom.character = meta_char::mc_bar;	//  '|'
+
+			jumpatom.reset();
+			jumpatom.type = st_epsilon;
+
+			--seqlen;
+
+			for (; seqlen >= 2; --seqlen)
+			{
+				uchar32 offset = pos.indices[seqlen];
+				const uchar32 seqend = pos.indices[seqlen - 1];
+
+				if (offset != seqend)
+				{
+					branch.resize(seqlen + 1);
+					branch[seqlen] = jumpatom;
+
+					branchatom.quantifier.atleast = seqlen;
+
+					for (uchar32 count = 0; offset < seqend; ++offset)
+					{
+						branch[count++].character = pos.seqs[offset];
+
+						if (count == seqlen)
+						{
+							if (piece.size())
+							{
+								state_type &lastatom = piece[piece.size() - 1];
+
+								lastatom.next1 = seqlen + 2;
+								piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+							}
+							prevbranch_end = piece.size();
+							piece.push_back(branchatom);
+							piece.append(branch);
+							count = 0;
+						}
+					}
+				}
+			}
+
+			if (piece.size())
+			{
+				state_type &lastatom = piece[piece.size() - 1];
+
+				lastatom.next1 = has_empty ? 3 : 2;
+
+				piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+			}
+
+			branchatom.quantifier.atleast = 1;
+
+			if (has_empty)
+			{
+				branchatom.next2 = 2;
+				piece.push_back(branchatom);
+			}
+
+			piece.push_back(ccatom);
+
+			branchatom.character = meta_char::mc_colon;	//  ':'
+			branchatom.next1 = 1;
+			branchatom.next2 = 0;
+			branchatom.quantifier.set(1, 0);
+			piece.insert(0, branchatom);
+			++prevbranch_end;
+
+			branchatom.quantifier.atmost = 1;
+			piece.push_back(branchatom);
+
+			optimise_pos(piece, branchatom, has_empty);
+
+		}
+		return ccatom.number;
+	}
+
+	void optimise_pos(state_array &piece, state_type &branchatom, const bool has_empty) const
+	{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+
+		simple_array<uchar32> ins_bt;
+
+		branchatom.number = 0u;
+		branchatom.next1 = 0;
+
+		for (state_size_type srcbase = 1; srcbase < piece.size();)
+		{
+			state_type &srcbaseatom = piece[srcbase];
+
+			if (srcbaseatom.is_branch())
+			{
+				if (srcbaseatom.quantifier.atleast == 1)
+				{
+					break;
+				}
+
+				const state_size_type dstbaseinit = srcbase + srcbaseatom.next2;
+				const uint_l32 srcseqlen = srcbaseatom.quantifier.atleast;
+
+				for (uint_l32 complen = srcseqlen; complen;)
+				{
+					state_size_type dstbase = dstbaseinit;
+					bool modified = false;
+
+					--complen;
+
+					for (;;)
+					{
+						state_type &dstbaseatom = piece[dstbase];
+						const uint_l32 dstseqlen = dstbaseatom.quantifier.atleast;
+						state_size_type dstpos = dstbase + (dstbaseatom.type == st_epsilon ? 1 : 0);
+
+						if (piece[dstpos].type == st_character_class)
+						{
+							branchatom.next2 = static_cast<std::ptrdiff_t>(dstbase);
+							break;
+						}
+
+						if (dstseqlen >= complen)
+						{
+							state_size_type srcpos = srcbase + 1;
+
+							for (uint_l32 i = 0;; ++i)
+							{
+								state_type &srcref = piece[srcpos];
+								state_type &dstref = piece[dstpos];
+
+								if (i == complen)
+								{
+									if (dstref.type == st_epsilon)
+									{
+										if (complen)
+										{
+											uchar32 inspos = static_cast<uchar32>(ins_bt.size());
+
+											for (; !piece[srcpos].quantifier.is_greedy;)
+												srcpos = static_cast<uchar32>(piece[srcpos].quantifier.atmost);
+
+											for (; inspos >= 2 && (ins_bt[inspos - 2] > srcpos);)
+											{
+												inspos -= 2;
+											}
+
+											ins_bt.insert(inspos, dstpos);
+											ins_bt.insert(inspos, srcpos);
+										}
+									}
+									else if (dstref.type == st_character && srcref.character != dstref.character)
+									{
+										if (dstref.quantifier.is_greedy)
+										{
+											piece[srcpos].next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
+											dstref.quantifier.is_greedy = false;
+											dstref.quantifier.atmost = srcpos;
+										}
+										modified = true;
+									}
+
+									break;
+								}
+								else if (srcref.character == dstref.character && dstref.type == st_character)
+								{
+									++srcpos;
+									++dstpos;
+								}
+								else
+									break;
+							}
+
+							if (modified)
+								break;
+
+							if (dstbaseatom.type == st_epsilon && dstbaseatom.next2)
+							{
+								dstbase += dstbaseatom.next2;
+							}
+							else
+							{
+								break;
+							}
+						}
+						else
+							break;
+					}
+				}
+
+				if (branchatom.number == 0)
+				{
+					branchatom.next1 = static_cast<std::ptrdiff_t>(srcbase);
+				}
+				else
+				{
+					srcbaseatom.next2 = 0;
+					srcbaseatom.character = char_alnum::ch_s;
+				}
+
+				srcbase = dstbaseinit;
+
+				++branchatom.number;
+			}
+			else
+				break;
+//				++srcbase;
+		}
+
+		if (branchatom.next2 == 0)
+			++branchatom.next2;
+
+		if (branchatom.next1 != 0)
+			piece[branchatom.next1].next2 = static_cast<std::ptrdiff_t>(branchatom.next2 - branchatom.next1);
+
+		if (has_empty)
+		{
+			piece[branchatom.next2].next2 = 0;
+			piece[branchatom.next2 + 1].next2 = 1;
+		}
+
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+	}
+
+	void insert_btbranch(state_array &piece, const simple_array<uchar32> &ins_bt) const
+	{
+		state_type insstate;
+		simple_array<uchar32> reordering1;
+		simple_array<uchar32> reordering2;
+		uchar32 offset = 0;
+		uchar32 chainindex = 0;
+
+		insstate.reset();
+		insstate.type = st_epsilon;
+		insstate.character = meta_char::mc_bar;
+
+		reordering1.resize(piece.size() + 1);
+		reordering2.resize(piece.size() + 1);
+
+		for (uchar32 indx = 0; indx <= piece.size(); ++indx)
+		{
+			reordering1[indx] = indx + offset;
+
+			if (chainindex < ins_bt.size())
+			{
+				if (indx == ins_bt[chainindex])
+				{
+					++offset;
+					chainindex += 2;
+				}
+			}
+			reordering2[indx] = indx + offset;
+		}
+
+		for (uchar32 indx = 0; indx < piece.size(); ++indx)
+		{
+			state_type &st = piece[indx];
+
+			if (st.next1 != 0)
+			{
+				const uchar32 newn1 = reordering1[indx + st.next1];
+				st.next1 = static_cast<std::ptrdiff_t>(newn1 - reordering2[indx]);
+			}
+
+			if (st.next2 != 0)
+			{
+				const uchar32 newn2 = reordering1[indx + st.next2];
+				st.next2 = static_cast<std::ptrdiff_t>(newn2 - reordering2[indx]);
+			}
+		}
+
+		for (uchar32 indx = 0; indx < ins_bt.size();)
+		{
+			const uchar32 srcpos = reordering1[ins_bt[indx++]];
+			const uchar32 dstpos = reordering1[ins_bt[indx++]];
+
+			piece.insert(srcpos, insstate);
+			state_type &insst = piece[srcpos];
+			insst.next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
+		}
+	}
+
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
 	bool get_quantifier(re_quantifier &quantifier, const uchar32 *&curpos, const uchar32 *const end)
 	{
@@ -14670,7 +18673,7 @@ private:
 				}
 				else
 				{
-					uchar32 table[unicode_case_folding::rev_maxset] = {};
+					uchar32 table[ucf_constants::rev_maxset] = {};
 					const uchar32 setnum = unicode_case_folding::casefoldedcharset(table, state.character);
 
 					for (uchar32 j = 0; j < setnum; ++j)
@@ -15270,7 +19273,7 @@ private:
 #if !defined(SRELL_NO_ICASE)
 	bool check_if_really_needs_icase_search()
 	{
-		uchar32 u32chars[unicode_case_folding::rev_maxset];
+		uchar32 u32chars[ucf_constants::rev_maxset];
 
 		for (typename state_array::size_type i = 0; i < this->NFA_states.size(); ++i)
 		{
@@ -15299,7 +19302,7 @@ private:
 			const state_type &state = this->NFA_states[i];
 
 			if (state.type == st_character)
-				u32s.push_back(state.character);
+				u32s.push_backncr(state.character);
 			else
 			{
 				u32s.clear();
@@ -17164,7 +21167,7 @@ private:
 				{
 					const submatch_type &bracket = sstate.bracket[current_NFA.number];
 
-					if (!bracket.counter)	//  Undefined.
+					if (bracket.counter == 0)	//  Undefined.
 					{
 						ESCAPE_FROM_ZERO_WIDTH_MATCH:
 						sstate.nth.in_NFA_states = current_NFA.next_state2;
@@ -17479,6 +21482,7 @@ public:
 	static const regex_constants::syntax_option_type multiline = regex_constants::multiline;
 
 	static const regex_constants::syntax_option_type dotall = regex_constants::dotall;
+	static const regex_constants::syntax_option_type unicodesets = regex_constants::unicodesets;
 
 	//  28.8.2, construct/copy/destroy:
 	//  [7.8.2] construct/copy/destroy
@@ -17642,6 +21646,33 @@ public:
 		regex_internal::re_object_core<charT, traits>::swap(e);
 	}
 };
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::icase;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::nosubs;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::optimize;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::collate;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::ECMAScript;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::basic;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::extended;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::awk;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::grep;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::egrep;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::multiline;
+
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::dotall;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::unicodesets;
 
 //  28.8.6, basic_regex swap:
 template <class charT, class traits>

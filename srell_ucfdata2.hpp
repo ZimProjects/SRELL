@@ -20,28 +20,21 @@ struct unicode_casefolding
 	static const T3 rev_indextable[];
 	static const T3 rev_segmenttable[];
 	static const T2 rev_charsettable[];
-
-	static const T2 *ucf_deltatable_ptr()
-	{
-		return ucf_deltatable;
-	}
-	static const T3 *ucf_segmenttable_ptr()
-	{
-		return ucf_segmenttable;
-	}
-	static const T3 *rev_indextable_ptr()
-	{
-		return rev_indextable;
-	}
-	static const T3 *rev_segmenttable_ptr()
-	{
-		return rev_segmenttable;
-	}
-	static const T2 *rev_charsettable_ptr()
-	{
-		return rev_charsettable;
-	}
 };
+template <typename T2, typename T3>
+	const T2 unicode_casefolding<T2, T3>::ucf_maxcodepoint;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::ucf_deltatablesize;
+template <typename T2, typename T3>
+	const T2 unicode_casefolding<T2, T3>::rev_maxcodepoint;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::rev_indextablesize;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::rev_charsettablesize;
+template <typename T2, typename T3>
+	const T3 unicode_casefolding<T2, T3>::rev_maxset;
+template <typename T2, typename T3>
+	const T2 unicode_casefolding<T2, T3>::eos;
 
 template <typename T2, typename T3>
 const T2 unicode_casefolding<T2, T3>::ucf_deltatable[] =
@@ -2488,4 +2481,4 @@ const T2 unicode_casefolding<T2, T3>::rev_charsettable[] =
 	0x1E942, 0x1E920, eos,
 	0x1E943, 0x1E921, eos	//  4300
 };
-#define SRELL_UCFDATA_VERSION 200
+#define SRELL_UCFDATA_VERSION 201

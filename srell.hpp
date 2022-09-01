@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 3.010
+**  SRELL (std::regex-like library) version 4.000
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -111,6 +111,9 @@
 #ifndef SRELL_NO_UNICODE_PROPERTY
 #define SRELL_NO_UNICODE_PROPERTY
 #endif
+#ifndef SRELL_NO_VMODE
+#define SRELL_NO_VMODE
+#endif
 #define SRELL_NO_NAMEDCAPTURE
 #define SRELL_NO_SINGLELINE
 #define SRELL_FIXEDWIDTHLOOKBEHIND
@@ -137,7 +140,8 @@ namespace srell
 			multiline  = 1 << 10,
 
 			//  SRELL's extension.
-			dotall     = 1 << 11	//  singleline.
+			dotall      = 1 << 11,	//  singleline.
+			unicodesets = 1 << 12
 		};
 
 		inline syntax_option_type operator&(const syntax_option_type left, const syntax_option_type right)
@@ -267,6 +271,9 @@ namespace srell
 		static const error_type error_complement = 117;
 			//  (Only in v-mode) \P or a negated character class contained a property of strings.
 
+		static const error_type error_modifier   = 118;
+			//  A specific flag modifier appears more then once.
+
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		static const error_type error_lookbehind = 200;
 #endif
@@ -378,6 +385,7 @@ private:
 			static const uchar32 max_u32value = static_cast<uchar32>(-2);
 			static const uchar32 asc_icase = 0x20;
 			static const uchar32 ccstr_empty = static_cast<uchar32>(-1);
+			static const uint_l32 infinity = static_cast<uint_l32>(~0);
 		}
 		//  constants
 
@@ -547,7 +555,18 @@ public:
 	{
 		return begin != end;
 	}
-};	//  utf_traits_core
+};
+template <typename charT>
+	 const std::size_t utf_traits_core<charT>::maxseqlen;
+template <typename charT>
+	 const int utf_traits_core<charT>::utftype;
+template <typename charT>
+	 const std::size_t utf_traits_core<charT>::bitsetsize;
+template <typename charT>
+	 const uchar32 utf_traits_core<charT>::bitsetmask;
+template <typename charT>
+	 const uchar32 utf_traits_core<charT>::cumask;
+//  utf_traits_core
 
 //  common and utf-32.
 template <typename charT>
@@ -558,7 +577,16 @@ struct utf_traits : public utf_traits_core<charT>
 	static const std::size_t bitsetsize = 0x10000;
 	static const uchar32 bitsetmask = 0xffff;
 	static const uchar32 cumask = 0x1fffff;
-};	//  utf_traits
+};
+template <typename charT>
+	 const int utf_traits<charT>::utftype;
+template <typename charT>
+	 const std::size_t utf_traits<charT>::bitsetsize;
+template <typename charT>
+	 const uchar32 utf_traits<charT>::bitsetmask;
+template <typename charT>
+	 const uchar32 utf_traits<charT>::cumask;
+//  utf_traits
 
 //  utf-8 specific.
 template <typename charT>
@@ -808,7 +836,12 @@ public:
 		}
 		return false;
 	}
-};	//  utf8_traits
+};
+template <typename charT>
+	 const std::size_t utf8_traits<charT>::maxseqlen;
+template <typename charT>
+	 const int utf8_traits<charT>::utftype;
+//  utf8_traits
 
 //  utf-16 specific.
 template <typename charT>
@@ -928,7 +961,18 @@ public:
 		}
 		return false;
 	}
-};	//  utf16_traits
+};
+template <typename charT>
+	 const std::size_t utf16_traits<charT>::maxseqlen;
+template <typename charT>
+	 const int utf16_traits<charT>::utftype;
+template <typename charT>
+	 const std::size_t utf16_traits<charT>::bitsetsize;
+template <typename charT>
+	 const uchar32 utf16_traits<charT>::bitsetmask;
+template <typename charT>
+	 const uchar32 utf16_traits<charT>::cumask;
+//  utf16_traits
 
 //  specialisation for char.
 template <>
@@ -1265,6 +1309,11 @@ public:
 		buffer_[oldsize] = n;
 	}
 
+	void push_backncr(const ElemT e)
+	{
+		push_back(e);
+	}
+
 	const_reference back() const
 	{
 		return buffer_[size_ - 1];
@@ -1494,6 +1543,8 @@ private:
 //	static const size_type maxsize_ = (npos - sizeof (simple_array)) / sizeof (ElemT);
 	static const size_type maxsize_ = (npos - sizeof (pointer) - sizeof (size_type) * 2) / sizeof (ElemT) / 2;
 };
+template <typename ElemT>
+const typename simple_array<ElemT>::size_type simple_array<ElemT>::npos;
 //  simple_array
 
 	}	//  namespace regex_internal
@@ -1672,31 +1723,40 @@ private:
 	{
 
 #if !defined(SRELL_NO_UNICODE_ICASE)
+
+		namespace ucf_constants
+		{
+
 #include "srell_ucfdata2.hpp"
+
+		}	//  namespace ucf_constants
 
 		namespace ucf_internal
 		{
 
-typedef unicode_casefolding<uchar32, uchar32> ucf_data;
+typedef ucf_constants::unicode_casefolding<uchar32, uchar32> ucfdata;
 
 		}	//  namespace ucf_internal
 #endif	//  !defined(SRELL_NO_UNICODE_ICASE)
+
+		namespace ucf_constants
+		{
+#if !defined(SRELL_NO_UNICODE_ICASE)
+			static const uchar32 rev_maxset = ucf_internal::ucfdata::rev_maxset;
+#else
+			static const uchar32 rev_maxset = 2;
+#endif
+		}	//  namespace ucf_constants
 
 class unicode_case_folding
 {
 public:
 
-#if !defined(SRELL_NO_UNICODE_ICASE)
-	static const uchar32 rev_maxset = ucf_internal::ucf_data::rev_maxset;
-#else
-	static const uchar32 rev_maxset = 2;
-#endif
-
 	static uchar32 do_casefolding(const uchar32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
-		if (cp <= ucf_internal::ucf_data::ucf_maxcodepoint)
-			return cp + ucf_internal::ucf_data::ucf_deltatable[ucf_internal::ucf_data::ucf_segmenttable[cp >> 8] + (cp & 0xff)];
+		if (cp <= ucf_internal::ucfdata::ucf_maxcodepoint)
+			return cp + ucf_internal::ucfdata::ucf_deltatable[ucf_internal::ucfdata::ucf_segmenttable[cp >> 8] + (cp & 0xff)];
 #else
 		if (cp >= char_alnum::ch_A && cp <= char_alnum::ch_Z)	//  'A' && 'Z'
 			return static_cast<uchar32>(cp - char_alnum::ch_A + char_alnum::ch_a);	//  - 'A' + 'a'
@@ -1704,17 +1764,17 @@ public:
 		return cp;
 	}
 
-	static uchar32 casefoldedcharset(uchar32 out[rev_maxset], const uchar32 cp)
+	static uchar32 casefoldedcharset(uchar32 out[ucf_constants::rev_maxset], const uchar32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
 		uchar32 count = 0;
 
-		if (cp <= ucf_internal::ucf_data::rev_maxcodepoint)
+		if (cp <= ucf_internal::ucfdata::rev_maxcodepoint)
 		{
-			const uchar32 offset_of_charset = ucf_internal::ucf_data::rev_indextable[ucf_internal::ucf_data::rev_segmenttable[cp >> 8] + (cp & 0xff)];
-			const uchar32 *ptr = &ucf_internal::ucf_data::rev_charsettable[offset_of_charset];
+			const uchar32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
+			const uchar32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
 
-			for (; *ptr != cfcharset_eos_ && count < rev_maxset; ++ptr, ++count)
+			for (; *ptr != cfcharset_eos_ && count < ucf_constants::rev_maxset; ++ptr, ++count)
 				out[count] = *ptr;
 		}
 		if (count == 0)
@@ -1755,7 +1815,7 @@ public:
 private:
 
 #if !defined(SRELL_NO_UNICODE_ICASE)
-	static const uchar32 cfcharset_eos_ = ucf_internal::ucf_data::eos;
+	static const uchar32 cfcharset_eos_ = ucf_internal::ucfdata::eos;
 #endif
 
 public:	//  For debug.
@@ -1773,17 +1833,58 @@ public:	//  For debug.
 	{
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-#include "srell_updata.hpp"
+
+		namespace up_constants
+		{
+
+#include "srell_updata2.hpp"
+
+			static const uint_l32 error_property = static_cast<uint_l32>(-1);
+		}	//  namespace up_constants
+
+		namespace up_internal
+		{
+			typedef up_constants::up_type pname_type;
+			typedef const char *pname_string_type;
+
+#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
+			struct pvalue_type
+			{
+				pname_type pname;
+				uint_l32 pnumber;
+				pname_string_type csstrings;
+			};
+#else
+			struct pvalue_type
+			{
+				pname_type pname;
+				pname_string_type csstrings;
+				uint_l32 pnumber;
+			};
+#endif
+
+			struct offset_and_number
+			{
+				std::size_t offset;
+				std::size_t number_of_pairs;
+			};
+
+			typedef up_constants::unicode_property_data<
+				pname_string_type,
+				uchar32,
+				pvalue_type,
+				offset_and_number
+				>
+				updata;
+
+		}	//  namespace up_internal
 
 //template <typename PairType>
 class unicode_property
 {
 public:
 
-	typedef uint_l32 property_type;
 	typedef simple_array<char> pstring;
-
-	static const property_type error_property = static_cast<property_type>(-1);
 
 	unicode_property()
 	{
@@ -1801,21 +1902,22 @@ public:
 	}
 #endif
 
-	static property_type lookup_property(const pstring &name, const pstring &value)
+	static uint_l32 lookup_property(const pstring &name, const pstring &value)
 	{
-		pname_type ptype = name.size() ? lookup_property_name(name) : updata::ptype::general_category;
-		property_type property_number = lookup_property_value(ptype, value);
+		pname_type ptype = name.size() ? lookup_property_name(name) : up_constants::uptype_general_category;
+//		property_type property_number = lookup_property_value(ptype, value);
+		uint_l32 property_number = lookup_property_value(ptype, value);
 
-		if (property_number == updata::unknown && name.size() == 0)
+		if (property_number == static_cast<uint_l32>(up_constants::upid_unknown) && name.size() == 0)
 		{
-			ptype = updata::ptype::binary;
+			ptype = up_constants::uptype_binary;
 			property_number = lookup_property_value(ptype, value);
 		}
 
-		return property_number != updata::unknown ? property_number : error_property;
+		return property_number != static_cast<uint_l32>(up_constants::upid_unknown) ? property_number : up_constants::error_property;
 	}
 
-	static std::size_t ranges_offset(const property_type property_number)
+	static std::size_t ranges_offset(const uint_l32 property_number)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].offset;
@@ -1825,7 +1927,7 @@ public:
 #endif
 	}
 
-	static std::size_t number_of_ranges(const property_type property_number)
+	static std::size_t number_of_ranges(const uint_l32 property_number)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].number_of_pairs;
@@ -1835,7 +1937,7 @@ public:
 #endif
 	}
 
-	static const uchar32 *ranges_address(const property_type property_number)
+	static const uchar32 *ranges_address(const uint_l32 property_number)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		return &updata::rangetable[ranges_offset(property_number) << 1];
@@ -1845,41 +1947,23 @@ public:
 #endif
 	}
 
+	static bool is_valid_pno(const uint_l32 pno)
+	{
+		return pno != up_constants::error_property && pno <= max_property_number;
+	}
+
+	static bool is_pos(const uint_l32 pno)
+	{
+		return pno > max_property_number && pno <= max_pos_number;
+	}
+
 private:
 
-	typedef uint_l32 pname_type;
-	typedef const char *pname_string_type;
-
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-	struct pvalue_type
-	{
-		pname_type pname;
-		property_type pnumber;
-		pname_string_type csstrings;
-	};
-#else
-	struct pvalue_type
-	{
-		pname_type pname;
-		pname_string_type csstrings;
-		property_type pnumber;
-	};
-#endif
-
-	struct offset_and_number
-	{
-		std::size_t offset;
-		std::size_t number_of_pairs;
-	};
-
-	typedef unicode_property_data<property_type,
-		pname_type,
-		pname_string_type,
-		uchar32,
-		pvalue_type,
-		offset_and_number
-		>
-		updata;
+	typedef up_internal::pname_type pname_type;
+	typedef up_internal::pname_string_type pname_string_type;
+	typedef up_internal::pvalue_type pvalue_type;
+	typedef up_internal::offset_and_number offset_and_number;
+	typedef up_internal::updata updata;
 
 	static pname_type lookup_property_name(const pstring &name)
 	{
@@ -1898,7 +1982,7 @@ private:
 				return static_cast<pname_type>(pno);
 		}
 #endif
-		return updata::ptype::unknown;
+		return up_constants::uptype_unknown;
 	}
 
 	//  Checks if value is included in colon-separated strings.
@@ -1925,7 +2009,7 @@ private:
 		return false;
 	}
 
-	static property_type lookup_property_value(const pname_type ptype, const pstring &value)
+	static uint_l32 lookup_property_value(const pname_type ptype, const pstring &value)
 	{
 #if defined(SRELL_UPDATA_VERSION)
 		for (std::size_t pno = 0; *updata::rangenumbertable[pno].csstrings; ++pno)
@@ -1944,26 +2028,13 @@ private:
 				return pvalue.pnumber;
 		}
 #endif
-		return updata::unknown;
+		return static_cast<uint_l32>(up_constants::upid_unknown);
 	}
 
-public:
+private:
 
-	static const std::size_t number_of_properties = updata::last_property_number + 1;
-	static const std::size_t last_property_number = updata::last_property_number;
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-	static const std::size_t last_pos_number = updata::last_pos_number;
-#else
-	static const std::size_t last_pos_number = updata::last_property_number;
-#endif
-	static const property_type gc_Zs = updata::gc_Space_Separator;
-	static const property_type gc_Cn = updata::gc_Unassigned;
-	static const property_type bp_Assigned = updata::bp_Assigned;
-
-//  UnicodeIDStart::
-//  UnicodeIDContinue::
-	static const property_type bp_ID_Start = updata::bp_ID_Start;
-	static const property_type bp_ID_Continue = updata::bp_ID_Continue;
+	static const std::size_t max_property_number = static_cast<std::size_t>(up_constants::upid_max_property_number);
+	static const std::size_t max_pos_number = static_cast<std::size_t>(up_constants::upid_max_pos_number);
 };
 //  unicode_property
 
@@ -2256,7 +2327,7 @@ public:
 
 	void make_caseunfoldedcharset()
 	{
-		uchar32 table[unicode_case_folding::rev_maxset] = {};
+		uchar32 table[ucf_constants::rev_maxset] = {};
 		bitset<constants::unicode_max_codepoint + 1> bs;
 
 		for (size_type i = 0; i < rparray_.size(); ++i)
@@ -2610,8 +2681,8 @@ public:
 
 			//  For reg_exp_identifier_start.
 			{
-				const uchar32 *const IDs_address = unicode_property::ranges_address(unicode_property::bp_ID_Start);
-				const std::size_t IDs_number = unicode_property::number_of_ranges(unicode_property::bp_ID_Start);
+				const uchar32 *const IDs_address = unicode_property::ranges_address(upid_bp_ID_Start);
+				const std::size_t IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
 				ranges.load_from_memory(IDs_address, IDs_number);
 			}
 			ranges.load_from_memory(&additions[0], 2);
@@ -2620,8 +2691,8 @@ public:
 			//  For reg_exp_identifier_part.
 			ranges.clear();
 			{
-				const uchar32 *const IDc_address = unicode_property::ranges_address(unicode_property::bp_ID_Continue);
-				const std::size_t IDc_number = unicode_property::number_of_ranges(unicode_property::bp_ID_Continue);
+				const uchar32 *const IDc_address = unicode_property::ranges_address(upid_bp_ID_Continue);
+				const std::size_t IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
 				ranges.load_from_memory(IDc_address, IDc_number);
 			}
 			ranges.load_from_memory(&additions[0], 3);
@@ -2646,6 +2717,13 @@ private:
 
 	range_pairs char_class_;
 	range_pairs::array_type char_class_pos_;
+
+//  UnicodeIDStart::
+//    any Unicode code point with the Unicode property "ID_Start"
+//  UnicodeIDContinue::
+//    any Unicode code point with the Unicode property "ID_Continue"
+	static const uint_l32 upid_bp_ID_Start = static_cast<uint_l32>(up_constants::bp_ID_Start);
+	static const uint_l32 upid_bp_ID_Continue = static_cast<uint_l32>(up_constants::bp_ID_Continue);
 };
 //  identifier_charclass
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -2660,7 +2738,6 @@ public:
 		//                6
 		number_of_predefcls
 	};
-	static const uint_l32 error_property = static_cast<uint_l32>(-1);
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 	typedef unicode_property::pstring pstring;
@@ -2823,18 +2900,18 @@ public:
 	{
 		const uint_l32 pno = static_cast<uint_l32>(unicode_property::lookup_property(pname, pvalue));
 
-		return (pno != unicode_property::error_property) ? pno : error_property;
+		return (pno != up_constants::error_property) ? pno : up_constants::error_property;
 	}
 
 	bool load_upranges(range_pairs &newranges, const uint_l32 property_number) const
 	{
 		newranges.clear();
 
-		if (property_number != unicode_property::error_property && property_number <= unicode_property::last_property_number)
+		if (unicode_property::is_valid_pno(property_number))
 		{
-			if (property_number == unicode_property::bp_Assigned)
+			if (property_number == upid_bp_Assigned)
 			{
-				load_updata(newranges, unicode_property::gc_Cn);
+				load_updata(newranges, upid_gc_Cn);
 				newranges.negation();
 			}
 			else
@@ -2848,15 +2925,15 @@ public:
 	//  Properties of strings.
 	bool is_pos(const uint_l32 pno) const
 	{
-		return pno > unicode_property::last_property_number && pno <= unicode_property::last_pos_number;
+		return unicode_property::is_pos(pno);
 	}
 
 	bool get_prawdata(simple_array<uchar32> &seq, uint_l32 property_number)
 	{
-		if (property_number != unicode_property::error_property)
+		if (property_number != up_constants::error_property)
 		{
-			if (property_number == unicode_property::bp_Assigned)
-				property_number = unicode_property::gc_Cn;	//  plus negation.
+			if (property_number == upid_bp_Assigned)
+				property_number = upid_gc_Cn;
 
 			const uchar32 *const address = unicode_property::ranges_address(property_number);
 //			const std::size_t offset = unicode_property::ranges_offset(property_number);
@@ -2918,9 +2995,9 @@ private:
 	void setup_predefinedclass()
 	{
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-		const uchar32 *const Zs_address = unicode_property::ranges_address(unicode_property::gc_Zs);
-//		const std::size_t Zs_offset = unicode_property::ranges_offset(unicode_property::gc_Zs);
-		const std::size_t Zs_number = unicode_property::number_of_ranges(unicode_property::gc_Zs);
+		const uchar32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
+//		const std::size_t Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
+		const std::size_t Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
 #else
 		static const uchar32 Zs[] = {
 			0x1680, 0x1680, 0x2000, 0x200a,	// 0x2028, 0x2029,
@@ -2989,6 +3066,13 @@ private:
 
 #endif
 
+#if !defined(SRELL_NO_UNICODE_PROPERTY)
+	static const uint_l32 upid_gc_Zs = static_cast<uint_l32>(up_constants::gc_Space_Separator);
+	static const uint_l32 upid_gc_Cn = static_cast<uint_l32>(up_constants::gc_Unassigned);
+	static const uint_l32 upid_bp_Assigned = static_cast<uint_l32>(up_constants::bp_Assigned);
+
+#endif
+
 public:	//  For debug.
 
 	void print_classes(const int) const;
@@ -3005,32 +3089,32 @@ public:	//  For debug.
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
-template <typename charT, typename numberT>
-class groupname_and_backrefnumber_mapper
+template <typename charT>
+class groupname_mapper
 {
 public:
 
 	typedef simple_array<charT> gname_string;
 	typedef typename gname_string::size_type size_type;
-	static const numberT notfound = static_cast<numberT>(-1);
+	static const uint_l32 notfound = static_cast<uint_l32>(-1);
 
-	groupname_and_backrefnumber_mapper()
+	groupname_mapper()
 	{
 	}
 
-	groupname_and_backrefnumber_mapper(const groupname_and_backrefnumber_mapper &right)
+	groupname_mapper(const groupname_mapper &right)
 		: names_(right.names_), keysize_classno_(right.keysize_classno_)
 	{
 	}
 
 #if defined(SRELL_CPP11_MOVE_ENABLED)
-	groupname_and_backrefnumber_mapper(groupname_and_backrefnumber_mapper &&right) SRELL_NOEXCEPT
+	groupname_mapper(groupname_mapper &&right) SRELL_NOEXCEPT
 		: names_(std::move(right.names_)), keysize_classno_(std::move(right.keysize_classno_))
 	{
 	}
 #endif
 
-	groupname_and_backrefnumber_mapper &operator=(const groupname_and_backrefnumber_mapper &right)
+	groupname_mapper &operator=(const groupname_mapper &right)
 	{
 		if (this != &right)
 		{
@@ -3041,7 +3125,7 @@ public:
 	}
 
 #if defined(SRELL_CPP11_MOVE_ENABLED)
-	groupname_and_backrefnumber_mapper &operator=(groupname_and_backrefnumber_mapper &&right) SRELL_NOEXCEPT
+	groupname_mapper &operator=(groupname_mapper &&right) SRELL_NOEXCEPT
 	{
 		if (this != &right)
 		{
@@ -3058,14 +3142,14 @@ public:
 		keysize_classno_.clear();
 	}
 
-	numberT operator[](const gname_string &gname) const
+	uint_l32 operator[](const gname_string &gname) const
 	{
-		numberT pos = 0;
+		uint_l32 pos = 0;
 		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); i += 2)
 		{
-			const numberT keysize = keysize_classno_[i];
+			const uint_l32 keysize = keysize_classno_[i];
 
-			if (keysize == static_cast<numberT>(gname.size()) && sameseq(pos, gname))
+			if (keysize == static_cast<uint_l32>(gname.size()) && sameseq(pos, gname))
 				return keysize_classno_[++i];
 
 			pos += keysize;
@@ -3073,13 +3157,13 @@ public:
 		return notfound;
 	}
 
-	gname_string operator[](const numberT indexno) const
+	gname_string operator[](const uint_l32 indexno) const
 	{
-		numberT pos = 0;
+		uint_l32 pos = 0;
 		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); ++i)
 		{
-			const numberT keysize = keysize_classno_[i];
-			const numberT classno = keysize_classno_[++i];
+			const uint_l32 keysize = keysize_classno_[i];
+			const uint_l32 classno = keysize_classno_[++i];
 
 			if (classno == indexno)
 				return gname_string(names_, pos, keysize);
@@ -3094,21 +3178,21 @@ public:
 		return static_cast<size_type>(keysize_classno_.size() >> 1);
 	}
 
-	bool push_back(const gname_string &gname, const numberT class_number)
+	bool push_back(const gname_string &gname, const uint_l32 class_number)
 	{
-		const numberT num = operator[](gname);
+		const uint_l32 num = operator[](gname);
 
 		if (num == notfound)
 		{
 			names_.append(gname);
-			keysize_classno_.append(1, static_cast<numberT>(gname.size()));
+			keysize_classno_.append(1, static_cast<uint_l32>(gname.size()));
 			keysize_classno_.append(1, class_number);
 			return true;
 		}
 		return false;	//  Already exists.
 	}
 
-	void swap(groupname_and_backrefnumber_mapper &right)
+	void swap(groupname_mapper &right)
 	{
 		this->names_.swap(right.names_);
 		keysize_classno_.swap(right.keysize_classno_);
@@ -3126,18 +3210,15 @@ private:
 	}
 
 	gname_string names_;
-	simple_array<numberT> keysize_classno_;
+	simple_array<uint_l32> keysize_classno_;
 
 public:	//  For debug.
 
 	void print_mappings(const int) const;
 };
-//  groupname_and_backrefnumber_mapper
-
 template <typename charT>
-class groupname_mapper : public groupname_and_backrefnumber_mapper<charT, uint_l32>
-{
-};
+const uint_l32 groupname_mapper<charT>::notfound;
+//  groupname_mapper
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 
@@ -3151,8 +3232,6 @@ class groupname_mapper : public groupname_and_backrefnumber_mapper<charT, uint_l
 
 struct re_quantifier
 {
-	static const uint_l32 infinity = static_cast<uint_l32>(~0);
-
 	//  atleast and atmost: for check_counter.
 	//  offset and length: for charcter_class.
 	//  (Special case 1) in roundbracket_open and roundbracket_pop atleast and atmost represent
@@ -3212,12 +3291,12 @@ struct re_quantifier
 
 	void set_infinity()
 	{
-		atmost = infinity;
+		atmost = constants::infinity;
 	}
 
 	bool is_infinity() const
 	{
-		return atmost == infinity;
+		return atmost == constants::infinity;
 	}
 
 	bool is_same() const
@@ -3232,19 +3311,19 @@ struct re_quantifier
 
 	bool is_asterisk() const
 	{
-		return atleast == 0 && atmost == infinity;
+		return atleast == 0 && atmost == constants::infinity;
 	}
 	bool is_plus() const
 	{
-		return atleast == 1 && atmost == infinity;
+		return atleast == 1 && atmost == constants::infinity;
 	}
 	bool is_asterisk_or_plus() const
 	{
-		return atleast <= 1 && atmost == infinity;
+		return atleast <= 1 && atmost == constants::infinity;
 	}
 	bool is_question_or_asterisk() const
 	{
-		return atleast == 0 && (atmost == 1 || atmost == infinity);
+		return atleast == 0 && (atmost == 1 || atmost == constants::infinity);
 	}
 
 	bool has_simple_equivalence() const
@@ -3254,39 +3333,39 @@ struct re_quantifier
 
 	void multiply(const re_quantifier &q)
 	{
-		if (atleast != infinity)
+		if (atleast != constants::infinity)
 		{
-			if (q.atleast != infinity)
+			if (q.atleast != constants::infinity)
 				atleast *= q.atleast;
 			else
-				atleast = infinity;
+				atleast = constants::infinity;
 		}
 
-		if (atmost != infinity)
+		if (atmost != constants::infinity)
 		{
-			if (q.atmost != infinity)
+			if (q.atmost != constants::infinity)
 				atmost *= q.atmost;
 			else
-				atmost = infinity;
+				atmost = constants::infinity;
 		}
 	}
 
 	void add(const re_quantifier &q)
 	{
-		if (atleast != infinity)
+		if (atleast != constants::infinity)
 		{
-			if (q.atleast != infinity && (atleast + q.atleast) >= atleast)
+			if (q.atleast != constants::infinity && (atleast + q.atleast) >= atleast)
 				atleast += q.atleast;
 			else
-				atleast = infinity;
+				atleast = constants::infinity;
 		}
 
-		if (atmost != infinity)
+		if (atmost != constants::infinity)
 		{
-			if (q.atmost != infinity && (atmost + q.atmost) >= atmost)
+			if (q.atmost != constants::infinity && (atmost + q.atmost) >= atmost)
 				atmost += q.atmost;
 			else
-				atmost = infinity;
+				atmost = constants::infinity;
 		}
 	}
 };
@@ -3537,9 +3616,7 @@ struct re_state
 };
 //  re_state
 
-template <typename charT>
-//struct re_flags
-struct re_compiler_state
+struct re_flags
 {
 //	bool i;
 //	bool m;
@@ -3549,6 +3626,29 @@ struct re_compiler_state
 	bool back;
 #endif
 
+	void reset(const regex_constants::syntax_option_type /* flags */)
+	{
+//		i = (flags & regex_constants::icase) != 0;	//  Case-insensitive.
+//		m = (flags & regex_constants::multiline) != 0;
+//		s = (flags & regex_constants::dotall) != 0;
+
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+		back = false;
+#endif
+	}
+
+	void restore_from(const re_flags &backup)
+	{
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+		back = backup.back;
+#endif
+	}
+};
+//  re_flags
+
+template <typename charT>
+struct re_compiler_state : public re_flags
+{
 	bool backref_used;
 
 	simple_array<uint_l32> atleast_widths_of_brackets;
@@ -3560,15 +3660,9 @@ struct re_compiler_state
 	identifier_charclass idchecker;
 #endif
 
-	void reset(const regex_constants::syntax_option_type & /* flags */)
+	void reset(const regex_constants::syntax_option_type flags)
 	{
-//		i = (flags & regex_constants::icase) != 0;	//  Case-insensitive.
-//		m = (flags & regex_constants::multiline) != 0;
-//		s = (flags & regex_constants::dotall) != 0;
-
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		back = false;
-#endif
+		re_flags::reset(flags);
 
 		backref_used = false;
 		atleast_widths_of_brackets.clear();
@@ -3579,13 +3673,6 @@ struct re_compiler_state
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 //		idchecker.clear();	//  Keeps data once created.
-#endif
-	}
-
-	void restore_from(const re_compiler_state &backup)
-	{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		back = backup.back;
 #endif
 	}
 };
@@ -4179,7 +4266,7 @@ private:
 	void setup_for_icase()
 	{
 		charT mbstr[utf_traits::maxseqlen];
-		uchar32 u32table[unicode_case_folding::rev_maxset];
+		uchar32 u32table[ucf_constants::rev_maxset];
 		const std::size_t u32str_lastcharpos = static_cast<std::size_t>(u32string_.size() - 1);
 		simple_array<std::size_t> minlen(u32string_.size());
 		std::size_t cu_repseq_lastcharpos = 0;
@@ -4233,6 +4320,353 @@ private:
 	}	//  namespace regex_internal
 
 //  ... "rei_bmh.hpp"]
+//  ["rei_upos.hpp" ...
+
+	namespace regex_internal
+	{
+
+struct posdata_holder
+{
+	simple_array<uchar32> indices;
+	simple_array<uchar32> seqs;
+	range_pairs ranges;
+	range_pair length;
+
+	void clear()
+	{
+		indices.clear();
+		seqs.clear();
+		ranges.clear();
+		length.set(1);
+	}
+
+	bool has_empty() const
+	{
+		return (indices.size() >= 2 && indices[0] != indices[1]) ? true : false;
+	}
+
+	bool has_data() const
+	{
+		return ranges.size() > 0 || indices.size() > 0;
+	}
+
+	bool may_contain_strings() const
+	{
+		return indices.size() > 0;	//  >= 2;
+	}
+
+	void swap(posdata_holder &right)
+	{
+		indices.swap(right.indices);
+		seqs.swap(right.seqs);
+		ranges.swap(right.ranges);
+		length.swap(right.length);
+	}
+
+	void do_union(const posdata_holder &right)
+	{
+		simple_array<uchar32> curseq;
+
+		ranges.merge(right.ranges);
+
+		if (right.has_empty() && !has_empty())
+			register_emptystring();
+
+		for (uchar32 seqlen = 2; seqlen < static_cast<uchar32>(right.indices.size()); ++seqlen)
+		{
+			const uchar32 end = right.indices[seqlen - 1];
+			uchar32 begin = right.indices[seqlen];
+
+			if (begin != end)
+			{
+				const std::size_t complen = seqlen * sizeof (uchar32);
+
+				ensure_length(seqlen);
+				curseq.resize(seqlen);
+
+				for (; begin < end;)
+				{
+					const uchar32 inspos = find_seq(&right.seqs[begin], seqlen, complen);
+
+					if (inspos == indices[seqlen - 1])
+					{
+						for (uchar32 i = 0; i < seqlen; ++i, ++begin)
+							curseq[i] = right.seqs[begin];
+
+						seqs.insert(inspos, curseq);
+						for (uchar32 i = 0; i < seqlen; ++i)
+							indices[i] += seqlen;
+					}
+					else
+						begin += seqlen;
+				}
+			}
+		}
+		check_lengths();
+	}
+
+	void do_subtract(const posdata_holder &right)
+	{
+		const uchar32 maxlen = static_cast<uchar32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
+
+		{
+			range_pairs kept;
+			range_pairs removed;
+
+			ranges.split_ranges(kept, removed, right.ranges);
+			ranges.swap(kept);
+		}
+
+		if (right.has_empty() && has_empty())
+			unregister_emptystring();
+
+		for (uchar32 seqlen = 2; seqlen < maxlen; ++seqlen)
+		{
+			const uchar32 end = right.indices[seqlen - 1];
+			uchar32 begin = right.indices[seqlen];
+
+			if (begin != end)
+			{
+				const std::size_t complen = seqlen * sizeof (uchar32);
+
+				for (; begin < end;)
+				{
+					const uchar32 delpos = find_seq(&right.seqs[begin], seqlen, complen);
+
+					if (delpos < indices[seqlen - 1])
+					{
+						seqs.erase(delpos, seqlen);
+
+						for (uchar32 i = 0; i < seqlen; ++i)
+							indices[i] -= seqlen;
+					}
+					else
+						begin += seqlen;
+				}
+			}
+		}
+		check_lengths();
+	}
+
+	void do_and(const posdata_holder &right)
+	{
+		const uchar32 maxlen = static_cast<uchar32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
+		posdata_holder newpos;
+		simple_array<uchar32> curseq;
+
+		{
+			range_pairs kept;
+
+			ranges.split_ranges(kept, newpos.ranges, right.ranges);
+			ranges.swap(newpos.ranges);
+		}
+
+		if (has_empty() && right.has_empty())
+			newpos.register_emptystring();
+		else if (may_contain_strings() || right.may_contain_strings())
+			ensure_length(1);
+
+		for (uchar32 seqlen = 2; seqlen < maxlen; ++seqlen)
+		{
+			const uchar32 end = right.indices[seqlen - 1];
+			uchar32 begin = right.indices[seqlen];
+
+			if (begin != end)
+			{
+				const std::size_t complen = seqlen * sizeof (uchar32);
+				const uchar32 myend = indices[seqlen - 1];
+
+				curseq.resize(seqlen);
+
+				for (; begin < end; begin += seqlen)
+				{
+					const uchar32 srcpos = find_seq(&right.seqs[begin], seqlen, complen);
+
+					if (srcpos < myend)
+					{
+						newpos.ensure_length(seqlen);
+
+						const uchar32 inspos = newpos.find_seq(&right.seqs[begin], seqlen, complen);
+
+						if (inspos == newpos.indices[seqlen - 1])
+						{
+							for (uchar32 i = 0; i < seqlen; ++i)
+								curseq[i] = right.seqs[begin + i];
+
+							newpos.seqs.insert(inspos, curseq);
+							for (uchar32 i = 0; i < seqlen; ++i)
+								newpos.indices[i] += seqlen;
+						}
+					}
+				}
+			}
+		}
+		this->indices.swap(newpos.indices);
+		this->seqs.swap(newpos.seqs);
+		check_lengths();
+	}
+
+	void split_seqs_and_ranges(const simple_array<uchar32> &inseqs, const bool icase, const bool back)
+	{
+		const uchar32 max = static_cast<uchar32>(inseqs.size());
+		simple_array<uchar32> curseq;
+
+		clear();
+
+		for (uchar32 indx = 0; indx < max;)
+		{
+			const uchar32 elen = inseqs[indx++];
+
+			if (elen == 1)	//  Range.
+			{
+				ranges.join(range_pair_helper(inseqs[indx], inseqs[indx + 1]));
+				indx += 2;
+			}
+			else if (elen == 2)
+			{
+				const uchar32 ucpval = inseqs[indx++];
+
+				if (ucpval != constants::ccstr_empty)
+					ranges.join(range_pair_helper(ucpval));
+				else
+					register_emptystring();
+			}
+			else if (elen >= 3)
+			{
+				const uchar32 seqlen = elen - 1;
+
+				ensure_length(seqlen);
+
+				const uchar32 inspos = indices[seqlen - 1];
+
+				curseq.resize(seqlen);
+				if (!back)
+				{
+					for (uchar32 j = 0; j < seqlen; ++j, ++indx)
+						curseq[j] = inseqs[indx];
+				}
+				else
+				{
+					for (uchar32 j = seqlen; j; ++indx)
+						curseq[--j] = inseqs[indx];
+				}
+
+				if (icase)
+				{
+					for (simple_array<uchar32>::size_type i = 0; i < curseq.size(); ++i)
+						curseq[i] = unicode_case_folding::do_casefolding(curseq[i]);
+				}
+
+				const std::size_t complen = seqlen * sizeof (uchar32);
+
+				for (uchar32 i = indices[seqlen];; i += seqlen)
+				{
+					if (i == inspos)
+					{
+						seqs.insert(inspos, curseq);
+						for (uchar32 i = 0; i < seqlen; ++i)
+							indices[i] += seqlen;
+						break;
+					}
+
+					if (std::memcmp(&seqs[i], curseq.data(), complen) == 0)
+						break;
+				}
+
+			}
+			//elen == 0: Padding.
+		}
+
+//		if (this->is_icase())
+		if (icase)
+			ranges.make_caseunfoldedcharset();
+
+		check_lengths();
+
+	}
+
+private:
+
+	void register_emptystring()
+	{
+		if (indices.size() < 2)
+		{
+			indices.resize(2);
+			indices[1] = 0;
+			indices[0] = 1;
+		}
+		else if (indices[0] == indices[1])
+		{
+			++indices[0];
+		}
+		length.first = 0;
+	}
+
+	void unregister_emptystring()
+	{
+		if (indices.size() >= 2 && indices[0] != indices[1])
+			indices[0] = indices[1];
+	}
+
+	void ensure_length(const uchar32 seqlen)
+	{
+		uchar32 curlen = static_cast<uchar32>(indices.size());
+
+		if (seqlen >= curlen)
+		{
+			indices.resize(seqlen + 1);
+			for (; curlen <= seqlen; ++curlen)
+				indices[curlen] = 0;
+		}
+	}
+
+	uchar32 find_seq(const uchar32 *const seqbegin, const uchar32 seqlen, const std::size_t complen) const
+	{
+		const uchar32 end = indices[seqlen - 1];
+
+		for (uchar32 begin = indices[seqlen]; begin < end; begin += seqlen)
+		{
+			if (std::memcmp(seqbegin, &seqs[begin], complen) == 0)
+				return begin;
+		}
+		return end;
+	}
+
+	void check_lengths()
+	{
+		length.set(constants::max_u32value, 0);
+
+		for (uchar32 i = 2; i < static_cast<uchar32>(indices.size()); ++i)
+		{
+			if (indices[i] != indices[i - 1])
+			{
+				if (length.first > i)
+					length.first = i;
+				if (length.second < i)
+					length.second = i;
+			}
+		}
+
+		if (ranges.size())
+		{
+			if (length.first > 1)
+				length.first = 1;
+			if (length.second < 1)
+				length.second = 1;
+		}
+
+		if (has_empty())
+			length.first = 0;
+
+		if (length.second == 0)
+			length.first = 0;
+	}
+};
+//  posdata_holder
+
+	}	//  namespace regex_internal
+
+//  ... "rei_upos.hpp"]
 //  ["rei_compiler.hpp" ...
 
 	namespace regex_internal
@@ -4559,7 +4993,7 @@ protected:
 			const uchar32 u32c = utf_traits::codepoint_inc(begin, end);
 			if (u32c > constants::unicode_max_codepoint)
 				this->throw_error(regex_constants::error_utf8);
-			u32.push_back(u32c);
+			u32.push_backncr(u32c);
 		}
 
 		return compile_core(u32.data(), u32.data() + u32.size(), flags);
@@ -4592,6 +5026,16 @@ protected:
 	bool is_dotall() const
 	{
 		return (this->soflags & regex_constants::dotall) ? true : false;
+	}
+
+	bool is_vmode() const
+	{
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		return (this->soflags & regex_constants::unicodesets) ? true : false;
+#else
+		return false;
+#endif
+
 	}
 
 	bool is_optimize() const
@@ -4804,15 +5248,21 @@ private:
 			return get_piece_in_roundbrackets(piece, piecesize, curpos, end, cstate);
 
 		case meta_char::mc_sbraop:	//  '[':
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+			if (this->is_vmode())	//  vmode.
+				return parse_charclass_v(piece, piecesize, curpos, end, cstate);
+#endif
 			if (!register_character_class(atom, curpos, end, cstate))
 				return false;
 
 			break;
 
 		case meta_char::mc_escape:	//  '\\':
-			if (!translate_atom_escape(atom, curpos, end, cstate))
+			if (!translate_atom_escape(atom, piece, piecesize, curpos, end, cstate))
 				return false;
 
+			if (piece.size())
+				return true;
 			break;
 
 		case meta_char::mc_period:	//  '.':
@@ -4874,7 +5324,7 @@ private:
 
 	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
 	{
-		const re_compiler_state<charT> original_cstate(cstate);
+		const re_flags originalflags(cstate);
 		state_type atom;
 
 		if (curpos == end)
@@ -4906,7 +5356,7 @@ private:
 
 		++curpos;
 
-		cstate.restore_from(original_cstate);
+		cstate.restore_from(originalflags);
 
 		switch (atom.type)
 		{
@@ -5436,6 +5886,397 @@ private:
 		cls.merge(predefclass);
 	}
 
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
+	bool parse_charclass_v(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, re_compiler_state<charT> &cstate)
+	{
+		posdata_holder pos;
+
+		parse_unicharset(pos, curpos, end, cstate);
+
+		if (!pos.may_contain_strings())
+		{
+			state_type atom;
+
+			atom.reset();
+			atom.character = pos.ranges.consists_of_one_character(this->is_icase());
+
+			if (atom.character == constants::invalid_u32value)
+			{
+				atom.type = st_character_class;
+				atom.number = this->character_class.register_newclass(pos.ranges);
+			}
+
+			piece.push_back(atom);
+			piecesize = atom.quantifier;
+		}
+		else
+		{
+			transform_seqdata(piece, pos);
+
+			piecesize.atleast = static_cast<uint_l32>(pos.length.first);
+			piecesize.atmost = static_cast<uint_l32>(pos.length.second);
+		}
+		return true;
+	}
+
+	void parse_unicharset(posdata_holder &basepos, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> &cstate)
+	{
+		enum operation_type
+		{
+			op_init, op_firstcc, op_union, op_intersection, op_subtraction
+		};
+		operation_type otype = op_init;
+		posdata_holder newpos;
+		range_pair code_range;
+		state_type ccatom;
+		bool invert;
+
+		if (curpos == end)
+			goto ERROR_NOT_CLOSED;
+
+		if (*curpos == meta_char::mc_caret)	//  '^'
+		{
+			invert = true;
+			++curpos;
+		}
+		else
+			invert = false;
+
+		//  ClassSetCharacter ::
+		//  \ CharacterEscape[+UnicodeMode]
+		//  \ ClassSetReservedPunctuator
+		//  \ b
+
+		for (;;)
+		{
+			if (curpos == end)
+				goto ERROR_NOT_CLOSED;
+
+			if (*curpos == meta_char::mc_sbracl)	//   ']'
+				break;
+
+			const uchar32 next2chars = check_doublepunctuators(curpos, end);
+
+			switch (otype)
+			{
+			case op_intersection:
+				if (next2chars != char_other::co_amp)
+					goto ERROR_DOUBLE_PUNCT;
+				curpos += 2;
+				break;
+
+			case op_subtraction:
+				if (next2chars != meta_char::mc_minus)
+					goto ERROR_DOUBLE_PUNCT;
+				curpos += 2;
+				break;
+
+			case op_firstcc:
+				if (next2chars == char_other::co_amp)
+					otype = op_intersection;
+				else if (next2chars == meta_char::mc_minus)
+					otype = op_subtraction;
+				else if (next2chars == constants::invalid_u32value)
+					break;
+				else
+					goto ERROR_DOUBLE_PUNCT;
+
+				curpos += 2;
+				break;
+
+//			case op_union:
+//			case op_init:
+			default:
+				if (next2chars != constants::invalid_u32value)
+					goto ERROR_DOUBLE_PUNCT;
+			}
+
+			AFTER_OPERATOR:
+
+			if (curpos == end)
+				goto ERROR_NOT_CLOSED;
+
+			ccatom.reset();
+
+			if (*curpos == meta_char::mc_sbraop)	//  '['
+			{
+				++curpos;
+				parse_unicharset(newpos, curpos, end, cstate);
+			}
+			else
+				get_character_in_class_vmode(newpos, ccatom, curpos, end, cstate, false);
+
+			if (otype == op_init)
+				otype = op_firstcc;
+			else if (otype == op_firstcc)
+				otype = op_union;
+
+			if (curpos == end)
+				goto ERROR_NOT_CLOSED;
+
+			if (ccatom.type == st_character_class)
+			{
+			}
+			else if (ccatom.type == st_character)
+			{
+				if (!newpos.has_data())
+				{
+					code_range.set(ccatom.character);
+
+					if (otype <= op_union)
+					{
+						if (*curpos == meta_char::mc_minus)	//  '-'
+						{
+							++curpos;
+
+							if (curpos == end)
+								goto ERROR_BROKEN_RANGE;
+
+							if (otype < op_union && *curpos == meta_char::mc_minus)		//  '-'
+							{
+								otype = op_subtraction;
+								++curpos;
+								basepos.ranges.join(code_range);
+								goto AFTER_OPERATOR;
+							}
+
+							get_character_in_class_vmode(newpos, ccatom, curpos, end, cstate, true);
+
+							otype = op_union;
+							code_range.second = ccatom.character;
+							if (!code_range.is_range_valid())
+								goto ERROR_BROKEN_RANGE;
+						}
+					}
+
+					newpos.ranges.join(code_range);
+					if (this->is_icase())
+						newpos.ranges.make_caseunfoldedcharset();
+				}
+			}
+
+			switch (otype)
+			{
+			case op_union:
+				basepos.do_union(newpos);
+				break;
+
+			case op_intersection:
+				basepos.do_and(newpos);
+				break;
+
+			case op_subtraction:
+				basepos.do_subtract(newpos);
+				break;
+
+			default:
+//			case op_firstcc:
+				basepos.swap(newpos);
+			}
+		}
+
+		//  *curpos == ']'
+		++curpos;
+
+		if (this->is_icase())
+			basepos.ranges.make_caseunfoldedcharset();
+
+		if (invert)
+		{
+			if (basepos.may_contain_strings())
+				goto ERROR_NOT_INVERTIBLE;
+
+			basepos.ranges.negation();
+		}
+
+		return;
+
+		ERROR_NOT_CLOSED:
+		this->throw_error(regex_constants::error_brack);
+
+		ERROR_BROKEN_RANGE:
+		this->throw_error(regex_constants::error_range);
+
+		ERROR_NOT_INVERTIBLE:
+		this->throw_error(regex_constants::error_complement);
+
+		ERROR_DOUBLE_PUNCT:
+		this->throw_error(regex_constants::error_operator);
+	}
+
+	uchar32 check_doublepunctuators(const uchar32 *curpos, const uchar32 *const end) const
+	{
+		const uchar32 firstchar = *curpos++;
+
+		if (curpos == end || *curpos != firstchar)
+			return constants::invalid_u32value;
+
+		switch (firstchar)
+		{
+		//  ClassSetReservedDoublePunctuator :: one of
+		//  && !! ## $$ %% ** ++ ,, .. :: ;; << == >> ?? @@ ^^ `` ~~
+		case char_other::co_amp:	//  '&'
+		case meta_char::mc_exclam:	//  '!'
+		case meta_char::mc_sharp:	//  '#'
+		case meta_char::mc_dollar:	//  '$'
+		case char_other::co_perc:	//  '%'
+		case meta_char::mc_astrsk:	//  '*'
+		case meta_char::mc_plus:	//  '+'
+		case meta_char::mc_comma:	//  ','
+		case meta_char::mc_period:	//  '.'
+		case meta_char::mc_colon:	//  ':'
+		case char_other::co_smcln:	//  ';'
+		case meta_char::mc_lt:		//  '<'
+		case meta_char::mc_eq:		//  '='
+		case meta_char::mc_gt:		//  '>'
+		case meta_char::mc_query:	//  '?'
+		case char_other::co_atmrk:	//  '@'
+		case meta_char::mc_caret:	//  '^'
+		case char_other::co_grav:	//  '`'
+		case char_other::co_tilde:	//  '~'
+		case meta_char::mc_minus:	//  '-'
+			return firstchar;
+
+		default:
+			return constants::invalid_u32value;
+		}
+	}
+
+	bool get_character_in_class_vmode(
+		posdata_holder &pos,
+		state_type &ccatom,
+		const uchar32 *&curpos,
+		const uchar32 *const end,
+		const re_compiler_state<charT> &cstate,
+		const bool no_ccesc
+	)
+	{
+		pos.clear();
+
+		ccatom.character = *curpos++;
+
+		switch (ccatom.character)
+		{
+		//  ClassSetSyntaxCharacter :: one of
+		//  ( ) [ ] { } / - \ |
+		case meta_char::mc_rbraop:	//  '('
+		case meta_char::mc_rbracl:	//  ')'
+		case meta_char::mc_sbraop:	//  '['
+		case meta_char::mc_sbracl:	//  ']'
+		case meta_char::mc_cbraop:	//  '{'
+		case meta_char::mc_cbracl:	//  '}'
+		case char_other::co_slash:	//  '/'
+		case meta_char::mc_minus:	//  '-'
+		case meta_char::mc_bar:		//  '|'
+			this->throw_error(regex_constants::error_noescape);
+			//@fallthrough@
+
+		case meta_char::mc_escape:	//  '\\'
+			break;
+
+		default:
+			return false;
+		}
+
+		if (curpos == end)
+			this->throw_error(regex_constants::error_escape);
+
+		ccatom.character = *curpos++;
+
+		if (!no_ccesc)
+		{
+			if (((ccatom.character | constants::asc_icase) == char_alnum::ch_p))
+			{
+				return parse_escape_p_vmode(pos, ccatom, curpos, end, cstate);
+			}
+			else if (ccatom.character == char_alnum::ch_q)
+			{
+				return parse_escape_q_vmode(pos, curpos, end, cstate);
+			}
+		}
+
+		switch (ccatom.character)
+		{
+		//  ClassSetReservedPunctuator :: one of
+		//  & - ! # % , : ; < = > @ ` ~
+		case char_other::co_amp:	//  '&'
+		case meta_char::mc_exclam:	//  '!'
+		case meta_char::mc_sharp:	//  '#'
+		case char_other::co_perc:	//  '%'
+		case meta_char::mc_comma:	//  ','
+		case meta_char::mc_colon:	//  ':'
+		case char_other::co_smcln:	//  ';'
+		case meta_char::mc_lt:		//  '<'
+		case meta_char::mc_eq:		//  '='
+		case meta_char::mc_gt:		//  '>'
+		case char_other::co_atmrk:	//  '@'
+		case char_other::co_grav:	//  '`'
+		case char_other::co_tilde:	//  '~'
+			return false;
+
+		default:;
+		}
+
+		translate_escseq_nocheck(&pos.ranges, ccatom, curpos, end, true, no_ccesc);
+		return false;
+	}
+
+	bool parse_escape_q_vmode(posdata_holder &pos, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> &cstate)
+	{
+		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
+			this->throw_error(regex_constants::error_escape);
+
+		simple_array<uchar32> seqs;
+		simple_array<uchar32> curseq;
+		posdata_holder dummypos;
+		state_type qatom;
+
+		++curpos;
+
+		for (;;)
+		{
+			if (curpos == end)
+				this->throw_error(regex_constants::error_escape);
+
+			if (*curpos == meta_char::mc_bar || *curpos == meta_char::mc_cbracl)	//  '|' or '}'.
+			{
+				const uint_l32 seqlen = static_cast<uint_l32>(curseq.size());
+
+				if (seqlen <= 1)
+				{
+					seqs.push_backncr(2);
+					seqs.push_backncr(seqlen != 0 ? curseq[0] : constants::ccstr_empty);
+				}
+				else	//  >= 2
+				{
+					seqs.push_backncr(seqlen + 1);
+					seqs.append(curseq);
+				}
+
+				if (*curpos == meta_char::mc_cbracl)	//  '}'
+					break;
+
+				curseq.clear();
+				++curpos;
+			}
+			else
+			{
+				qatom.reset();
+				get_character_in_class_vmode(dummypos, qatom, curpos, end, cstate, true);
+
+				curseq.push_backncr(qatom.character);
+			}
+		}
+
+		++curpos;
+		pos.split_seqs_and_ranges(seqs, this->is_icase(), cstate.back);
+
+		return true;
+	}
+
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
 	bool translate_escseq(range_pairs *const rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
 	{
 		if (curpos == end)
@@ -5446,7 +6287,17 @@ private:
 		return translate_escseq_nocheck(rp, atom, curpos, end, insidecharclass, false);
 	}
 
-	bool translate_character_class_escape(range_pairs *const rp, state_type &cceatom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
+	bool translate_character_class_escape(range_pairs *const rp, state_type &cceatom
+#if !defined(SRELL_NO_UNICODE_PROPERTY)
+		, const uchar32 *&curpos
+		, const uchar32 *const end
+		, const bool insidecharclass
+#else
+		, const uchar32 *&
+		, const uchar32 *const
+		, const bool
+#endif
+		)
 	{
 		//  Predefined classes.
 		switch (cceatom.character)
@@ -5670,7 +6521,7 @@ private:
 	{
 		const uint_l32 pnumber = lookup_propertynumber(curpos, end);
 
-		if (pnumber == re_character_class::error_property || this->character_class.is_pos(pnumber))
+		if (pnumber == up_constants::error_property || this->character_class.is_pos(pnumber))
 			this->throw_error(regex_constants::error_property);
 
 		this->character_class.load_upranges(pranges, pnumber);
@@ -5752,12 +6603,37 @@ private:
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool translate_atom_escape(state_type &escatom, const uchar32 *&curpos, const uchar32 *const end, /* const */ re_compiler_state<charT> &cstate)
+	bool translate_atom_escape(state_type &escatom
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		, state_array &piece
+		, re_quantifier &piecesize
+#else
+		, state_array &
+		, re_quantifier &
+#endif
+		, const uchar32 *&curpos, const uchar32 *const end, /* const */ re_compiler_state<charT> &cstate)
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
 		escatom.character = *curpos;
+
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		if (this->is_vmode() && ((escatom.character | constants::asc_icase) == char_alnum::ch_p))
+		{
+			posdata_holder pos;
+
+			parse_escape_p_vmode(pos, escatom, ++curpos, end, cstate);
+
+			if (escatom.type == st_character_class)
+				escatom.number = this->character_class.register_newclass(pos.ranges);
+			else
+				transform_seqdata(piece, pos);
+
+			piecesize.set(escatom.quantifier.atleast, escatom.quantifier.atmost);
+			return true;
+		}
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
 		switch (escatom.character)
 		{
@@ -5902,6 +6778,358 @@ private:
 		return groupname;
 	}
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
+
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
+	bool parse_escape_p_vmode(posdata_holder &pos, state_type &patom, const uchar32 *&curpos, const uchar32 *const end, const re_compiler_state<charT> &cstate)
+	{
+		if (curpos == end)
+			this->throw_error(regex_constants::error_escape);
+
+//		patom.is_not = (patom.character & constants::asc_icase) ? false : true;
+		if (patom.character == char_alnum::ch_P)	//  \P{...}
+			patom.is_not = true;
+
+		patom.number = lookup_propertynumber(curpos, end);
+
+		if (patom.number == up_constants::error_property)
+			this->throw_error(regex_constants::error_property);
+
+		if (!this->character_class.is_pos(patom.number))
+		{
+			pos.clear();
+
+			this->character_class.load_upranges(pos.ranges, patom.number);
+
+			if (this->is_icase() && patom.number >= static_cast<uint_l32>(re_character_class::number_of_predefcls))
+				pos.ranges.make_caseunfoldedcharset();
+
+			if (patom.is_not)
+			{
+				pos.ranges.negation();
+				patom.is_not = false;
+			}
+
+			patom.type = st_character_class;
+			patom.quantifier.reset(1);
+		}
+		else
+		{
+			simple_array<uchar32> sequences;
+
+			this->character_class.get_prawdata(sequences, patom.number);
+			pos.split_seqs_and_ranges(sequences, this->is_icase(), cstate.back);
+
+			patom.quantifier.set(pos.length.first, pos.length.second);
+
+			if (patom.is_not)
+				this->throw_error(regex_constants::error_complement);
+		}
+		return true;
+	}
+
+	uint_l32 transform_seqdata(state_array &piece, const posdata_holder &pos)
+	{
+		uchar32 seqlen = static_cast<uchar32>(pos.indices.size());
+		state_type ccatom;
+
+		ccatom.reset();
+		ccatom.type = st_character_class;
+		ccatom.number = this->character_class.register_newclass(pos.ranges);
+
+		if (seqlen > 0)
+		{
+			const bool has_empty = pos.has_empty();
+			state_size_type prevbranch_end = 0;
+			state_type branchatom;
+			state_type jumpatom;
+			state_array branch;
+
+			branch.resize(seqlen);
+			for (uchar32 i = 0; i < seqlen; ++i)
+				branch[i].reset();
+
+			branchatom.reset();
+			branchatom.type = st_epsilon;
+			branchatom.character = meta_char::mc_bar;	//  '|'
+
+			jumpatom.reset();
+			jumpatom.type = st_epsilon;
+
+			--seqlen;
+
+			for (; seqlen >= 2; --seqlen)
+			{
+				uchar32 offset = pos.indices[seqlen];
+				const uchar32 seqend = pos.indices[seqlen - 1];
+
+				if (offset != seqend)
+				{
+					branch.resize(seqlen + 1);
+					branch[seqlen] = jumpatom;
+
+					branchatom.quantifier.atleast = seqlen;
+
+					for (uchar32 count = 0; offset < seqend; ++offset)
+					{
+						branch[count++].character = pos.seqs[offset];
+
+						if (count == seqlen)
+						{
+							if (piece.size())
+							{
+								state_type &lastatom = piece[piece.size() - 1];
+
+								lastatom.next1 = seqlen + 2;
+								piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+							}
+							prevbranch_end = piece.size();
+							piece.push_back(branchatom);
+							piece.append(branch);
+							count = 0;
+						}
+					}
+				}
+			}
+
+			if (piece.size())
+			{
+				state_type &lastatom = piece[piece.size() - 1];
+
+				lastatom.next1 = has_empty ? 3 : 2;
+
+				piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+			}
+
+			branchatom.quantifier.atleast = 1;
+
+			if (has_empty)
+			{
+				branchatom.next2 = 2;
+				piece.push_back(branchatom);
+			}
+
+			piece.push_back(ccatom);
+
+			branchatom.character = meta_char::mc_colon;	//  ':'
+			branchatom.next1 = 1;
+			branchatom.next2 = 0;
+			branchatom.quantifier.set(1, 0);
+			piece.insert(0, branchatom);
+			++prevbranch_end;
+
+			branchatom.quantifier.atmost = 1;
+			piece.push_back(branchatom);
+
+			optimise_pos(piece, branchatom, has_empty);
+
+		}
+		return ccatom.number;
+	}
+
+	void optimise_pos(state_array &piece, state_type &branchatom, const bool has_empty) const
+	{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+
+		simple_array<uchar32> ins_bt;
+
+		branchatom.number = 0u;
+		branchatom.next1 = 0;
+
+		for (state_size_type srcbase = 1; srcbase < piece.size();)
+		{
+			state_type &srcbaseatom = piece[srcbase];
+
+			if (srcbaseatom.is_branch())
+			{
+				if (srcbaseatom.quantifier.atleast == 1)
+				{
+					break;
+				}
+
+				const state_size_type dstbaseinit = srcbase + srcbaseatom.next2;
+				const uint_l32 srcseqlen = srcbaseatom.quantifier.atleast;
+
+				for (uint_l32 complen = srcseqlen; complen;)
+				{
+					state_size_type dstbase = dstbaseinit;
+					bool modified = false;
+
+					--complen;
+
+					for (;;)
+					{
+						state_type &dstbaseatom = piece[dstbase];
+						const uint_l32 dstseqlen = dstbaseatom.quantifier.atleast;
+						state_size_type dstpos = dstbase + (dstbaseatom.type == st_epsilon ? 1 : 0);
+
+						if (piece[dstpos].type == st_character_class)
+						{
+							branchatom.next2 = static_cast<std::ptrdiff_t>(dstbase);
+							break;
+						}
+
+						if (dstseqlen >= complen)
+						{
+							state_size_type srcpos = srcbase + 1;
+
+							for (uint_l32 i = 0;; ++i)
+							{
+								state_type &srcref = piece[srcpos];
+								state_type &dstref = piece[dstpos];
+
+								if (i == complen)
+								{
+									if (dstref.type == st_epsilon)
+									{
+										if (complen)
+										{
+											uchar32 inspos = static_cast<uchar32>(ins_bt.size());
+
+											for (; !piece[srcpos].quantifier.is_greedy;)
+												srcpos = static_cast<uchar32>(piece[srcpos].quantifier.atmost);
+
+											for (; inspos >= 2 && (ins_bt[inspos - 2] > srcpos);)
+											{
+												inspos -= 2;
+											}
+
+											ins_bt.insert(inspos, dstpos);
+											ins_bt.insert(inspos, srcpos);
+										}
+									}
+									else if (dstref.type == st_character && srcref.character != dstref.character)
+									{
+										if (dstref.quantifier.is_greedy)
+										{
+											piece[srcpos].next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
+											dstref.quantifier.is_greedy = false;
+											dstref.quantifier.atmost = srcpos;
+										}
+										modified = true;
+									}
+
+									break;
+								}
+								else if (srcref.character == dstref.character && dstref.type == st_character)
+								{
+									++srcpos;
+									++dstpos;
+								}
+								else
+									break;
+							}
+
+							if (modified)
+								break;
+
+							if (dstbaseatom.type == st_epsilon && dstbaseatom.next2)
+							{
+								dstbase += dstbaseatom.next2;
+							}
+							else
+							{
+								break;
+							}
+						}
+						else
+							break;
+					}
+				}
+
+				if (branchatom.number == 0)
+				{
+					branchatom.next1 = static_cast<std::ptrdiff_t>(srcbase);
+				}
+				else
+				{
+					srcbaseatom.next2 = 0;
+					srcbaseatom.character = char_alnum::ch_s;
+				}
+
+				srcbase = dstbaseinit;
+
+				++branchatom.number;
+			}
+			else
+				break;
+//				++srcbase;
+		}
+
+		if (branchatom.next2 == 0)
+			++branchatom.next2;
+
+		if (branchatom.next1 != 0)
+			piece[branchatom.next1].next2 = static_cast<std::ptrdiff_t>(branchatom.next2 - branchatom.next1);
+
+		if (has_empty)
+		{
+			piece[branchatom.next2].next2 = 0;
+			piece[branchatom.next2 + 1].next2 = 1;
+		}
+
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+	}
+
+	void insert_btbranch(state_array &piece, const simple_array<uchar32> &ins_bt) const
+	{
+		state_type insstate;
+		simple_array<uchar32> reordering1;
+		simple_array<uchar32> reordering2;
+		uchar32 offset = 0;
+		uchar32 chainindex = 0;
+
+		insstate.reset();
+		insstate.type = st_epsilon;
+		insstate.character = meta_char::mc_bar;
+
+		reordering1.resize(piece.size() + 1);
+		reordering2.resize(piece.size() + 1);
+
+		for (uchar32 indx = 0; indx <= piece.size(); ++indx)
+		{
+			reordering1[indx] = indx + offset;
+
+			if (chainindex < ins_bt.size())
+			{
+				if (indx == ins_bt[chainindex])
+				{
+					++offset;
+					chainindex += 2;
+				}
+			}
+			reordering2[indx] = indx + offset;
+		}
+
+		for (uchar32 indx = 0; indx < piece.size(); ++indx)
+		{
+			state_type &st = piece[indx];
+
+			if (st.next1 != 0)
+			{
+				const uchar32 newn1 = reordering1[indx + st.next1];
+				st.next1 = static_cast<std::ptrdiff_t>(newn1 - reordering2[indx]);
+			}
+
+			if (st.next2 != 0)
+			{
+				const uchar32 newn2 = reordering1[indx + st.next2];
+				st.next2 = static_cast<std::ptrdiff_t>(newn2 - reordering2[indx]);
+			}
+		}
+
+		for (uchar32 indx = 0; indx < ins_bt.size();)
+		{
+			const uchar32 srcpos = reordering1[ins_bt[indx++]];
+			const uchar32 dstpos = reordering1[ins_bt[indx++]];
+
+			piece.insert(srcpos, insstate);
+			state_type &insst = piece[srcpos];
+			insst.next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
+		}
+	}
+
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
 	bool get_quantifier(re_quantifier &quantifier, const uchar32 *&curpos, const uchar32 *const end)
 	{
@@ -6177,7 +7405,7 @@ private:
 				}
 				else
 				{
-					uchar32 table[unicode_case_folding::rev_maxset] = {};
+					uchar32 table[ucf_constants::rev_maxset] = {};
 					const uchar32 setnum = unicode_case_folding::casefoldedcharset(table, state.character);
 
 					for (uchar32 j = 0; j < setnum; ++j)
@@ -6777,7 +8005,7 @@ private:
 #if !defined(SRELL_NO_ICASE)
 	bool check_if_really_needs_icase_search()
 	{
-		uchar32 u32chars[unicode_case_folding::rev_maxset];
+		uchar32 u32chars[ucf_constants::rev_maxset];
 
 		for (typename state_array::size_type i = 0; i < this->NFA_states.size(); ++i)
 		{
@@ -6806,7 +8034,7 @@ private:
 			const state_type &state = this->NFA_states[i];
 
 			if (state.type == st_character)
-				u32s.push_back(state.character);
+				u32s.push_backncr(state.character);
 			else
 			{
 				u32s.clear();
@@ -8671,7 +9899,7 @@ private:
 				{
 					const submatch_type &bracket = sstate.bracket[current_NFA.number];
 
-					if (!bracket.counter)	//  Undefined.
+					if (bracket.counter == 0)	//  Undefined.
 					{
 						ESCAPE_FROM_ZERO_WIDTH_MATCH:
 						sstate.nth.in_NFA_states = current_NFA.next_state2;
@@ -8986,6 +10214,7 @@ public:
 	static const regex_constants::syntax_option_type multiline = regex_constants::multiline;
 
 	static const regex_constants::syntax_option_type dotall = regex_constants::dotall;
+	static const regex_constants::syntax_option_type unicodesets = regex_constants::unicodesets;
 
 	//  28.8.2, construct/copy/destroy:
 	//  [7.8.2] construct/copy/destroy
@@ -9149,6 +10378,33 @@ public:
 		regex_internal::re_object_core<charT, traits>::swap(e);
 	}
 };
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::icase;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::nosubs;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::optimize;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::collate;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::ECMAScript;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::basic;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::extended;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::awk;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::grep;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::egrep;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::multiline;
+
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::dotall;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::unicodesets;
 
 //  28.8.6, basic_regex swap:
 template <class charT, class traits>
