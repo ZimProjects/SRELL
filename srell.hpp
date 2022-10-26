@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.000
+**  SRELL (std::regex-like library) version 4.004
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -608,7 +608,7 @@ public:
 		if ((codepoint & 0x80) == 0)	//  1 octet.
 			return codepoint;
 
-		if (++begin != end && (codepoint >= 0xc0 && codepoint <= 0xf7) && (*begin & 0xc0) == 0x80)
+		if (++begin != end && codepoint >= 0xc0 && (*begin & 0xc0) == 0x80)
 		{
 			codepoint = static_cast<uchar32>((codepoint << 6) | (*begin & 0x3f));
 
@@ -622,11 +622,12 @@ public:
 				if ((codepoint & 0x10000) == 0)	//  3 octets.
 					return static_cast<uchar32>(codepoint & 0xffff);
 
-				if (++begin != end && (*begin & 0xc0) == 0x80)	//  4 octets.
+				if (++begin != end && (*begin & 0xc0) == 0x80)
 				{
 					codepoint = static_cast<uchar32>((codepoint << 6) | (*begin & 0x3f));
 
-					return static_cast<uchar32>(codepoint & 0x1fffff);
+					if (codepoint <= 0x3dfffff)	//  4 octets.
+						return static_cast<uchar32>(codepoint & 0x1fffff);
 				}
 			}
 		}
@@ -643,10 +644,8 @@ public:
 		if ((codepoint & 0x80) == 0)	//  1 octet.
 			return codepoint;
 
-		//  Expects transformation to (codepoint - 0xc0) <= 0x37 by optimisation.
-		//  0xF7 instead of 0xF4 is for consistency with reverse iterators.
-		if (begin != end && (codepoint >= 0xc0 && codepoint <= 0xf7) && (*begin & 0xc0) == 0x80)
 //		if (begin != end && (0x7f00 & (1 << ((codepoint >> 3) & 0xf))) && (*begin & 0xc0) == 0x80)	//  c0, c8, d0, d8, e0, e8, f0.
+		if (begin != end && codepoint >= 0xc0 && (*begin & 0xc0) == 0x80)
 		{
 			codepoint = static_cast<uchar32>((codepoint << 6) | (*begin++ & 0x3f));
 
@@ -667,8 +666,8 @@ public:
 					//  e08080-e09fbf: invalid. 000-7FF.
 					//  e0a080-efbfbf: valid. 0800-FFFF.
 
-				//  1111 0aaa bbbb bbcc cccc
-				if (begin != end && (*begin & 0xc0) == 0x80)	//  4 octets.
+				//  1111 aaaa bbbb bbcc cccc
+				if (begin != end && (*begin & 0xc0) == 0x80)
 				{
 					codepoint = static_cast<uchar32>((codepoint << 6) | (*begin++ & 0x3f));
 					//  f0808080-f08fbfbf: invalid. 0000-FFFF.
@@ -677,8 +676,14 @@ public:
 					//  f4908080-f4bfbfbf: invalid. 110000-13FFFF.
 					//  f5808080-f7bfbfbf: invalid. 140000-1FFFFF.
 
-					//  11 110a aabb bbbb cccc ccdd dddd
-					return static_cast<uchar32>(codepoint & 0x1fffff);
+					//  11 11?a aabb bbbb cccc ccdd dddd
+					if (codepoint <= 0x3dfffff)	//  4 octets.
+						return static_cast<uchar32>(codepoint & 0x1fffff);
+						//  11 110a aabb bbbb cccc ccdd dddd
+
+					--begin;
+					--begin;
+					--begin;
 				}
 			}
 		}
@@ -3431,7 +3436,7 @@ struct re_state
 		//  is_not/dont_push:   -
 
 	//  st_epsilon,                 //  0x02
-		//  char/number:        -
+		//  char/number:        - (some symbols used only in compiler).
 		//  next1:              gen.
 		//  next2:              alt.
 		//  quantifiers:        -
@@ -3613,6 +3618,11 @@ struct re_state
 	{
 		return type == st_epsilon && next2 != 0 && character == meta_char::mc_bar;	//  '|'
 	}
+
+	bool is_asterisk_or_plus_for_onelen_atom() const
+	{
+		return type == st_epsilon && ((next1 == 1 && next2 == 2) || (next1 == 2 && next2 == 1)) && quantifier.is_asterisk_or_plus();
+	}
 };
 //  re_state
 
@@ -3649,9 +3659,6 @@ struct re_flags
 template <typename charT>
 struct re_compiler_state : public re_flags
 {
-	bool backref_used;
-
-	simple_array<uint_l32> atleast_widths_of_brackets;
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 	groupname_mapper<charT> unresolved_gnames;
 #endif
@@ -3663,9 +3670,6 @@ struct re_compiler_state : public re_flags
 	void reset(const regex_constants::syntax_option_type flags)
 	{
 		re_flags::reset(flags);
-
-		backref_used = false;
-		atleast_widths_of_brackets.clear();
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		unresolved_gnames.clear();
@@ -5514,11 +5518,6 @@ private:
 
 		rb_open.atleast = rb_pop.atleast = atom.number + 1;
 		rb_open.atmost = rb_pop.atmost = this->number_of_brackets - 1;	//  max_bracketno;
-
-		if (cstate.atleast_widths_of_brackets.size() < atom.number)
-			cstate.atleast_widths_of_brackets.resize(atom.number, 0);
-
-		cstate.atleast_widths_of_brackets[atom.number - 1] = piecesize.atleast;
 	}
 
 	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
@@ -5554,7 +5553,6 @@ private:
 					firstatom.quantifier = quantifier;
 
 				piece_with_quantifier.push_back(atom);
-				//      (push)
 			}
 
 			if (piece.size() >= 2 && firstatom.type == st_roundbracket_open && piece[1].type == st_roundbracket_pop)
@@ -5799,6 +5797,17 @@ private:
 			if (classatom.type == st_character_class)
 			{
 				ranges.merge(curranges);
+
+				if (curpos != end && *curpos == meta_char::mc_minus)	//  '-'
+				{
+					if (++curpos == end)
+						this->throw_error(regex_constants::error_brack);
+
+					if (*curpos == meta_char::mc_sbracl)
+						break;	// OK.
+
+					this->throw_error(regex_constants::error_brack);
+				}
 				continue;
 			}
 
@@ -6702,9 +6711,7 @@ private:
 	{
 		atom.next2 = 1;
 		atom.type = st_backreference;
-
-//		atom.quantifier.atleast = cstate.atleast_widths_of_brackets[atom.number - 1];
-			//  Moved to check_backreferences().
+		atom.quantifier.atleast = 0;
 
 		return true;
 	}
@@ -7273,26 +7280,22 @@ private:
 
 						if (rbcs.type == st_roundbracket_close && rbcs.number == backrefno)
 						{
-							if (roundbracket_closepos < backrefpos)
+							if (roundbracket_closepos > backrefpos)
 							{
-//								brs.quantifier.atleast = cstate.atleast_widths_of_brackets[backrefno - 1];
-								//  20210429: It was reported that clang-tidy was dissatisfied with this code.
-								//  20211006: Replaced with the following code:
+								if (brs.next1 == -1)
+								{
+									state_type &prevstate = this->NFA_states[backrefpos + brs.next1];
 
-								const uint_l32 backrefnoindex = backrefno - 1;
+									if (prevstate.is_asterisk_or_plus_for_onelen_atom())
+									{
+										prevstate.next1 = 2;
+										prevstate.next2 = 0;
+									}
+								}
 
-								//  This can never be true. Added only for satisfying clang-tidy.
-								if (backrefnoindex >= cstate.atleast_widths_of_brackets.size())
-									return false;
-
-								brs.quantifier.atleast = cstate.atleast_widths_of_brackets[backrefnoindex];
-
-								cstate.backref_used = true;
-							}
-							else
-							{
 								brs.type = st_epsilon;
 								brs.next2 = 0;
+								brs.character = meta_char::mc_escape;
 							}
 							break;
 						}
@@ -7391,7 +7394,7 @@ private:
 					&& (state.type != st_roundbracket_open)
 					&& (state.type != st_roundbracket_close || state.number != bracket_number)
 					&& (state.type != st_repeat_in_push)
-					&& (state.type != st_backreference || (state.quantifier.atleast == 0 && state.next1 != state.next2))
+					&& (state.type != st_backreference || (state.next1 != state.next2))
 					&& (state.type != st_lookaround_open))
 				if (gather_nextchars(nextcharclass, pos + state.next2, checked, bracket_number, subsequent))
 					canbe0length = true;
@@ -7421,10 +7424,7 @@ private:
 				{
 					const typename state_array::size_type nextpos = find_next1_of_bracketopen(state.number);
 
-					const bool length0 = gather_nextchars(nextcharclass, nextpos, state.number, subsequent);
-
-					if (!length0)
-						return canbe0length;
+					gather_nextchars(nextcharclass, nextpos, state.number, subsequent);
 				}
 				break;
 

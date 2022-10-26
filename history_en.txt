@@ -1,3 +1,41 @@
+20221022; version 4.004:
+  * Updated srell_ucfdata2.hpp and srell_updata2.hpp to support Unicode
+    15.0.0.
+  * Updated unicode/updataout2.cpp to support Unicode 15. (Support in
+    advance new script names that are expected to be available in RegExp
+    of ECMAScript 2023).
+  * Removed some code that had become unused or meaningless as a result
+    of the previous backreference bug fixes.
+
+20221012; version 4.003:
+  * Re-refixed the backreference bug. Incidentally, this bug was
+    introduced along with the addition of the variable-length lookbehind
+    feature. Therefore, SRELL versions 2.000- have this bug.
+    (It originated from the fact that in a variable length lookbehind
+    assertion, it is possible that the parser encounters a backreference
+    prior to the corresponding bracket pair, such as /(?<=\1\s+(\d+))/,
+    and the parser cannot know immediately whether the corresponding
+    capturing bracket pair really exists in the expression).
+
+20221012; version 4.002:
+  * Refixed the backreference bug in a different way because the fix in
+    4.001 did not cover the problem caused by such an expression as
+    /(?:\1+)*()/. Fixed also an infinite loop caused by an expression
+    like /()(?:\1+)*/.
+
+20221011; version 4.001:
+  * Fixed a bug that caused dereferencing a null pointer or infinite
+    loop when a backreference is followed by * or +, and the
+    backreference appears prior to the close bracket of the
+    corresponding pair of capturing brackets, such as /\1*()/, /(\1+)/.
+    (Thanks to @datadiode, the author of srellcom, for finding the bug).
+  * In accordance with the ECMAScript specification, restricted
+    positions where '-' can be written without escaping in character
+    classes. Now '-' following a predefined character class such as \d,
+    \s causes an error, unless it is the final character in a character
+    class. ([\s-0] causes an error, [\s-] is accepted).
+  * Adjusted internal UTF-8 iterators.
+
 20220618; version 4.000:
   * Added support for the v-flag mode that is expected to be added to
     a future version of ECMAScript.
