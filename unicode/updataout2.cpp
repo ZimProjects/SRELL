@@ -1,5 +1,5 @@
 //
-//  updataout.cpp: version 2.001 (2022/10/22).
+//  updataout.cpp: version 2.002 (2022/10/30).
 //
 //  This is a program that generates srell_updata2.hpp from:
 //    DerivedCoreProperties.txt
@@ -26,6 +26,7 @@
 #include <vector>
 #include <map>
 #include <stdexcept>
+#define SRELL_NO_UNICODE_DATA
 #include "../srell.hpp"
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400

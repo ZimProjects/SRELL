@@ -1,3 +1,11 @@
+20221030; version 4.005:
+  * Fixed a problem that caused undefined behaviour in conditions where
+    sizeof (int) != sizeof (long), e.g. LP64 (4/8/8). (Thanks to Travers
+    Ching for the report).
+  * Updated unicode/ucfdataout2.cpp and updataout2.cpp. Now they can
+    compile even without srell_ucfdata2.hpp and srell_updata2.hpp.
+  * Some clean-ups.
+
 20221022; version 4.004:
   * Updated srell_ucfdata2.hpp and srell_updata2.hpp to support Unicode
     15.0.0.
@@ -366,7 +374,7 @@
 
 20190714: version 2.230:
   * Improved the performance of searching when regular expressions begin
-    with a character or character class followed by a '*' or '+'. (E.g.,
+    with a character or character class followed by a '*' or '+'. (E.g.
     /[A-Za-z]+ing/).
 
 20190707: version 2.221:
@@ -375,7 +383,7 @@
   * When icase specified, if all characters in a character class become
     the same character as a result of case-folding, the pattern compiler
     has been changed to convert the character class to the character
-    literal (e.g., /r[Ss\u017F]t/i -> /rst/i).
+    literal (e.g. /r[Ss\u017F]t/i -> /rst/i).
   * Fixed a minor issue.
 
 20190617: version 2.220:
@@ -407,7 +415,7 @@
   * Fixed a bug that caused failure of capturing when 1) a pair of
     capturing brackets exists in a lookbehind assertion, and 2) variable
     length expressions exist in both the left side of and the inside of
-    the pair of brackets. E.g., given "1053" =~ /(?<=(\d+)(\d+))$/, no
+    the pair of brackets. E.g. given "1053" =~ /(?<=(\d+)(\d+))$/, no
     appropriate string was set for $2.
   * Updated srell_ucfdata.hpp and srell_updata.hpp to support Unicode
     12.1.0.

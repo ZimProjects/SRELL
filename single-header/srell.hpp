@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.004
+**  SRELL (std::regex-like library) version 4.005
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -1640,13 +1640,13 @@ public:
 
 	bitset &reset(const std::size_t bit)
 	{
-		buffer_[bit / bits_per_elem_] &= ~(1 << (bit & bitmask_));
+		buffer_[bit / bits_per_elem_] &= ~(1ul << (bit & bitmask_));
 		return *this;
 	}
 
 	bitset &set(const std::size_t bit)
 	{
-		buffer_[bit / bits_per_elem_] |= (1 << (bit & bitmask_));
+		buffer_[bit / bits_per_elem_] |= (1ul << (bit & bitmask_));
 		return *this;
 	}
 
@@ -1674,12 +1674,12 @@ public:
 
 	bool test(const std::size_t bit) const
 	{
-		return (buffer_[bit / bits_per_elem_] & (1 << (bit & bitmask_))) != 0;
+		return (buffer_[bit / bits_per_elem_] & (1ul << (bit & bitmask_))) != 0;
 	}
 
 	bool operator[](const std::size_t bit) const
 	{
-		return (buffer_[bit / bits_per_elem_] & (1 << (bit & bitmask_))) != 0;
+		return (buffer_[bit / bits_per_elem_] & (1ul << (bit & bitmask_))) != 0;
 	}
 
 	bitset<Bits> &flip()
@@ -15584,7 +15584,7 @@ private:
 				repseq_.push_back(mbstr[j]);
 		}
 
-		for (std::size_t i = 0; i < 256; ++i)
+		for (uint_l32 i = 0; i < 256; ++i)
 			bmtable_[i] = static_cast<std::size_t>(repseq_.size());
 
 		const std::size_t repseq_lastcharpos_ = static_cast<std::size_t>(repseq_.size() - 1);
@@ -16321,6 +16321,7 @@ protected:
 		while (begin != end)
 		{
 			const uchar32 u32c = utf_traits::codepoint_inc(begin, end);
+
 			if (u32c > constants::unicode_max_codepoint)
 				this->throw_error(regex_constants::error_utf8);
 			u32.push_backncr(u32c);
@@ -16386,6 +16387,9 @@ private:
 	typedef typename re_character_class::pstring pstring;
 #endif
 	typedef typename state_array::size_type state_size_type;
+
+	typedef simple_array<uchar32> u32array;
+	typedef typename u32array::size_type u32array_size_type;
 
 	bool compile_core(const uchar32 *begin, const uchar32 *const end, const regex_constants::syntax_option_type flags)
 	{
@@ -16529,7 +16533,7 @@ private:
 						return false;
 				}
 
-				if (piece.size() == 2 && firstatom.is_noncapturinggroup() && piece[1].is_noncapturinggroup())
+				if (piece.size() == 2 && firstatom.is_noncapturinggroup())
 				{
 					//  (?:) alone or followed by a quantifier.
 //					piece_with_quantifier += piece;
@@ -16692,7 +16696,6 @@ private:
 		{
 		case st_epsilon:
 
-//			if (piece.size() <= 2)	//  ':' or ':' + one.
 			if (piece.size() == 2)	//  ':' + something.
 			{
 				piece.erase(0);
@@ -16700,6 +16703,7 @@ private:
 			}
 
 			piece[0].quantifier.atmost = this->number_of_brackets - 1;
+			atom.character = char_other::co_smcln;	//  ';'
 			break;
 
 //		case st_lookaround_pop:
@@ -16822,7 +16826,7 @@ private:
 		piece.push_back(atom);
 	}
 
-	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier &piecesize, re_compiler_state<charT> &cstate)
+	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier & /* piecesize */, re_compiler_state<charT> & /* cstate */)
 	{
 //		uint_l32 max_bracketno = atom.number;
 
@@ -16859,8 +16863,9 @@ private:
 
 		atom.reset();
 		atom.quantifier = quantifier;
+
 		if (firstatom.is_character_or_class())
-			atom.character = meta_char::mc_astrsk;	//  For nextpos_optimisation1_3().
+			atom.character = meta_char::mc_astrsk;
 
 		if (quantifier.atmost == 1)
 		{
@@ -16881,7 +16886,7 @@ private:
 				piece_with_quantifier.push_back(atom);
 			}
 
-			if (piece.size() >= 2 && firstatom.type == st_roundbracket_open && piece[1].type == st_roundbracket_pop)
+			if (piece.size() >= 2 && firstatom.type == st_roundbracket_open)
 			{
 				firstatom.quantifier.atmost = 0u;
 				piece[1].quantifier.atmost = 0u;
@@ -16902,7 +16907,7 @@ private:
 		//  a{1,3}  1.CHorCL(2), 2.epsilon(3|6), 3.CHorCL(4), 4.epsilon(5|6), 5.CHorCL(6), [6].
 		//  a{2,3}  1.CHorCL(2), 2.CHorCL(3), 3.epsilon(4|5), 4.CHorCL(5), [5].
 		//  a{2,4}  1.CHorCL(2), 2.CHorCL(3), 3.epsilon(4|7), 4.CHorCL(5), 5.epsilon(6|7), 6.CHorCL(7), [7].
-		if (piece.size() == 1 && firstatom.is_character_or_class() && quantifier.has_simple_equivalence())
+		if (firstatom.is_character_or_class() && quantifier.has_simple_equivalence())
 		{
 			const typename state_array::size_type branchsize = piece.size() + 1;
 
@@ -16941,7 +16946,7 @@ private:
 		{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 
-			if (piece.size() == 1 && firstatom.is_character_or_class())
+			if (firstatom.is_character_or_class())
 			{
 				piece_with_quantifier += piece;
 				--atom.quantifier.atleast;	//  /.+/ -> /..*/.
@@ -17833,11 +17838,13 @@ private:
 
 			if (ucp >= 0xd800 && ucp <= 0xdbff)
 			{
-				const uchar32 * prefetch = curpos;
+				const uchar32 *prefetch = curpos;
 
 				if (prefetch != end && *prefetch == meta_char::mc_escape && ++prefetch != end && *prefetch == char_alnum::ch_u)
 				{
-					const uchar32 nextucp = translate_numbers(++prefetch, end, 16, 4, 4, 0xffff);
+					++prefetch;
+
+					const uchar32 nextucp = translate_numbers(prefetch, end, 16, 4, 4, 0xffff);
 
 					if (nextucp >= 0xdc00 && nextucp <= 0xdfff)
 					{
@@ -18102,7 +18109,8 @@ private:
 				this->throw_error(regex_constants::error_escape);
 
 			const uchar32 seqlen = utf_traits::to_codeunits(mbstr, curchar);
-			for (uchar32 i = 0; i < seqlen; ++i)
+
+			for (uint_l32 i = 0; i < seqlen; ++i)
 				groupname.append(1, mbstr[i]);
 		}
 		if (!groupname.size())
@@ -18163,7 +18171,7 @@ private:
 
 	uint_l32 transform_seqdata(state_array &piece, const posdata_holder &pos)
 	{
-		uchar32 seqlen = static_cast<uchar32>(pos.indices.size());
+		uint_l32 seqlen = static_cast<uint_l32>(pos.indices.size());
 		state_type ccatom;
 
 		ccatom.reset();
@@ -18179,7 +18187,7 @@ private:
 			state_array branch;
 
 			branch.resize(seqlen);
-			for (uchar32 i = 0; i < seqlen; ++i)
+			for (uint_l32 i = 0; i < seqlen; ++i)
 				branch[i].reset();
 
 			branchatom.reset();
@@ -18203,7 +18211,7 @@ private:
 
 					branchatom.quantifier.atleast = seqlen;
 
-					for (uchar32 count = 0; offset < seqend; ++offset)
+					for (uint_l32 count = 0; offset < seqend; ++offset)
 					{
 						branch[count++].character = pos.seqs[offset];
 
@@ -18251,6 +18259,7 @@ private:
 			piece.insert(0, branchatom);
 			++prevbranch_end;
 
+			branchatom.character = char_other::co_smcln;	//  ';'
 			branchatom.quantifier.atmost = 1;
 			piece.push_back(branchatom);
 
@@ -18317,18 +18326,18 @@ private:
 									{
 										if (complen)
 										{
-											uchar32 inspos = static_cast<uchar32>(ins_bt.size());
+											uint_l32 inspos = static_cast<uint_l32>(ins_bt.size());
 
 											for (; !piece[srcpos].quantifier.is_greedy;)
-												srcpos = static_cast<uchar32>(piece[srcpos].quantifier.atmost);
+												srcpos = piece[srcpos].quantifier.atmost;
 
 											for (; inspos >= 2 && (ins_bt[inspos - 2] > srcpos);)
 											{
 												inspos -= 2;
 											}
 
-											ins_bt.insert(inspos, dstpos);
-											ins_bt.insert(inspos, srcpos);
+											ins_bt.insert(inspos, static_cast<uchar32>(dstpos));
+											ins_bt.insert(inspos, static_cast<uchar32>(srcpos));
 										}
 									}
 									else if (dstref.type == st_character && srcref.character != dstref.character)
@@ -18337,7 +18346,7 @@ private:
 										{
 											piece[srcpos].next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
 											dstref.quantifier.is_greedy = false;
-											dstref.quantifier.atmost = srcpos;
+											dstref.quantifier.atmost = static_cast<uint_l32>(srcpos);
 										}
 										modified = true;
 									}
@@ -18410,7 +18419,7 @@ private:
 		simple_array<uchar32> reordering1;
 		simple_array<uchar32> reordering2;
 		uchar32 offset = 0;
-		uchar32 chainindex = 0;
+		uint_l32 chainindex = 0;
 
 		insstate.reset();
 		insstate.type = st_epsilon;
@@ -18423,7 +18432,7 @@ private:
 		{
 			reordering1[indx] = indx + offset;
 
-			if (chainindex < ins_bt.size())
+			if (chainindex < static_cast<uint_l32>(ins_bt.size()))
 			{
 				if (indx == ins_bt[chainindex])
 				{
@@ -18434,7 +18443,7 @@ private:
 			reordering2[indx] = indx + offset;
 		}
 
-		for (uchar32 indx = 0; indx < piece.size(); ++indx)
+		for (state_size_type indx = 0; indx < piece.size(); ++indx)
 		{
 			state_type &st = piece[indx];
 
@@ -18451,7 +18460,7 @@ private:
 			}
 		}
 
-		for (uchar32 indx = 0; indx < ins_bt.size();)
+		for (uint_l32 indx = 0; indx < static_cast<uint_l32>(ins_bt.size());)
 		{
 			const uchar32 srcpos = reordering1[ins_bt[indx++]];
 			const uchar32 dstpos = reordering1[ins_bt[indx++]];
@@ -18961,7 +18970,7 @@ private:
 				{
 					const re_quantifier &eq = prevstate_is_astrskepsilon->quantifier;
 					const state_size_type epsilonno = cur - 1;
-					const state_size_type faroffset = eq.is_greedy ? prevstate_is_astrskepsilon->next2 : prevstate_is_astrskepsilon->next1;
+					const std::ptrdiff_t faroffset = eq.is_greedy ? prevstate_is_astrskepsilon->next2 : prevstate_is_astrskepsilon->next1;
 					const state_size_type nextno = epsilonno + faroffset;
 #if !defined(SRELLDBG_NO_SPLITCC)
 					const state_size_type origlen = this->NFA_states.size();
@@ -18975,7 +18984,6 @@ private:
 						epsilonstate.next1 = 1;
 						epsilonstate.next2 = 0;
 						epsilonstate.number = 0;
-//						curstate2.quantifier.is_greedy = true;
 						if (epsilonstate.quantifier.is_infinity())
 						{
 							curstate2.next1 = 0;

@@ -1,5 +1,5 @@
 //
-//  ucfdataout.cpp: version 2.101 (2022/06/12).
+//  ucfdataout.cpp: version 2.102 (2022/10/30).
 //
 //  This is a program that generates srell_ucfdata.hpp from CaseFolding.txt
 //  provided by the Unicode Consortium. The latese version is available at:
@@ -10,6 +10,7 @@
 #include <cstdlib>
 #include <string>
 #include <map>
+#define SRELL_NO_UNICODE_DATA
 #include "../srell.hpp"
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400

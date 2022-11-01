@@ -1,3 +1,11 @@
+20221030; version 4.005:
+  ・int型とlong型とでビット幅が異なる環境（LP64, 4/8/8等）で未定義動作と
+    なるコードを修正（報告してくださったTravers Ching氏に感謝します）。
+  ・unicode/ucfdataout2.cpp, updataout2.cppを更新。Unicodeデータファイル
+    (srell_ucfdata2.hpp, srell_updata2.hpp) なしでもコンパイルできるよう
+    に。
+  ・その他コードの整理など。
+
 20221022; version 4.004:
   ・srell_ucfdata2.hppとsrell_updata2.hppとをUnicode 15.0.0対応に更新。
   ・unicode/updataout2.cppをUnicode 15対応に更新（ECMAScript 2023で対応
