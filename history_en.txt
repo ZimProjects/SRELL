@@ -1,12 +1,24 @@
-20221030; version 4.005:
-  * Fixed a problem that caused undefined behaviour in conditions where
+20221124; version 4.007:
+  * Added support for the un-bounded flag modifiers ((?ims-ims)), which
+    are available only at the beginning of the expression (the same as
+    Python 3.11).
+    Note: This feature is not defined in the ECMAScript specification
+    nor compatible with the regexp-modifiers proposal. This feature can
+    be disabled by defining SRELL_NO_UBMOD.
+
+20221123; version 4.006:
+  * Added a new entry point finder for expressions whose first matching
+    character is a single character.
+
+20221030; version 4.005/3.015 (@ only):
+  @ Fixed a problem that caused undefined behaviour in conditions where
     sizeof (int) != sizeof (long), e.g. LP64 (4/8/8). (Thanks to Travers
     Ching for the report).
   * Updated unicode/ucfdataout2.cpp and updataout2.cpp. Now they can
     compile even without srell_ucfdata2.hpp and srell_updata2.hpp.
   * Some clean-ups.
 
-20221022; version 4.004:
+20221022; version 4.004/3.014:
   * Updated srell_ucfdata2.hpp and srell_updata2.hpp to support Unicode
     15.0.0.
   * Updated unicode/updataout2.cpp to support Unicode 15. (Support in
@@ -15,7 +27,7 @@
   * Removed some code that had become unused or meaningless as a result
     of the previous backreference bug fixes.
 
-20221012; version 4.003:
+20221012; version 4.003/3.013:
   * Re-refixed the backreference bug. Incidentally, this bug was
     introduced along with the addition of the variable-length lookbehind
     feature. Therefore, SRELL versions 2.000- have this bug.
@@ -25,14 +37,14 @@
     and the parser cannot know immediately whether the corresponding
     capturing bracket pair really exists in the expression).
 
-20221012; version 4.002:
-  * Refixed the backreference bug in a different way because the fix in
-    4.001 did not cover the problem caused by such an expression as
+20221012; version 4.002/3.012:
+  * Refixed the backreference bug in a different way because the fix of
+    20221011 did not cover the problem caused by such an expression as
     /(?:\1+)*()/. Fixed also an infinite loop caused by an expression
     like /()(?:\1+)*/.
 
-20221011; version 4.001:
-  * Fixed a bug that caused dereferencing a null pointer or infinite
+20221011; version 4.001/3.011 (@ only):
+  @ Fixed a bug that caused dereferencing a null pointer or infinite
     loop when a backreference is followed by * or +, and the
     backreference appears prior to the close bracket of the
     corresponding pair of capturing brackets, such as /\1*()/, /(\1+)/.
