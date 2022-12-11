@@ -1,7 +1,20 @@
+20221210; version 4.009/3.016 (@ only):
+  @ Fixed a problem so that regex_iterator.prefix().matched can be set
+    to true in incrementing after it matched an empty sequence.
+  @ Fixed the core of algorithm functions not to cause compilation error
+    when an object of match_results instantiated with a custom allocator
+    is provided.
+  * Added new member functions to basic_regex as API extensions.
+
+20221130; version 4.008:
+  * Priority was given back to the BMH matcher from the finder
+    introduced in 4.006.
+  * Minor improvements of ^ and $ in the multiline mode and \b, \B.
+
 20221124; version 4.007:
   * Added support for the un-bounded flag modifiers ((?ims-ims)), which
-    are available only at the beginning of the expression (the same as
-    Python 3.11).
+    are available only at the beginning of a regular expression (the
+    same as Python 3.11).
     Note: This feature is not defined in the ECMAScript specification
     nor compatible with the regexp-modifiers proposal. This feature can
     be disabled by defining SRELL_NO_UBMOD.

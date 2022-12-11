@@ -1,3 +1,14 @@
+20221210; version 4.009/3.016（＊のみ）:
+  ＊regex_iteratorのiterator (it) が0幅にマッチすると、次に++した時に
+    it->prefix().matchedがtrueにならなかった問題を修正。
+  ＊match_resultsのテンプレート引数にカスタムallocatorを渡すとコンパイル
+    できなかった問題を修正。
+  ・basic_regexに新しいメンバ函数（拡張API）を追加。
+
+20221130; version 4.008:
+  ・4.006で導入したfinderよりもBMHの優先度が上になるよう調整。
+  ・\b/\Bおよびmultilineモードにおける^, $の改良。
+
 20221124; version 4.007:
   ・正規表現の最初でのみ使える埋込フラグ (?ims-ims) に対応（Python 3.11
     と同様）。
