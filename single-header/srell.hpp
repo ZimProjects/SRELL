@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.009
+**  SRELL (std::regex-like library) version 4.011
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -19736,6 +19736,30 @@ public:
 	{
 		return str().compare(s);
 	}
+
+	void swap(sub_match &s)
+	{
+		this->std::pair<BidirectionalIterator, BidirectionalIterator>::swap(s);
+		std::swap(matched, s.matched);
+	}
+
+#if !defined(SRELL_NO_APIEXT)
+
+	template <typename ST, typename SA>
+	operator std::basic_string<value_type, ST, SA>() const
+	{
+		typedef std::basic_string<value_type, ST, SA> string_type2;
+		return matched ? string_type2(this->first, this->second) : string_type2();
+	}
+
+	template <typename ST, typename SA>
+	std::basic_string<value_type, ST, SA> str() const
+	{
+		typedef std::basic_string<value_type, ST, SA> string_type2;
+		return matched ? string_type2(this->first, this->second) : string_type2();
+	}
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 };
 
 //  28.9.2, sub_match non-member operators:
@@ -21048,40 +21072,15 @@ private:
 		return false;
 	}
 
-	template <typename CharT1>
-	bool is_contiguous(const CharT1 *) const
+	bool is_contiguous(const charT *) const
 	{
 		return true;
 	}
 
-	bool is_contiguous(std::string::const_iterator) const
+	bool is_contiguous(typename std::basic_string<charT>::const_iterator) const
 	{
 		return true;
 	}
-
-	bool is_contiguous(std::wstring::const_iterator) const
-	{
-		return true;
-	}
-
-#if defined(SRELL_CPP20_CHAR8_ENABLED)
-	bool is_contiguous(std::u8string::const_iterator) const
-	{
-		return true;
-	}
-#endif
-
-#if defined(SRELL_CPP11_CHAR1632_ENABLED)
-	bool is_contiguous(std::u16string::const_iterator) const
-	{
-		return true;
-	}
-
-	bool is_contiguous(std::u32string::const_iterator) const
-	{
-		return true;
-	}
-#endif
 
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
@@ -21861,28 +21860,39 @@ private:
 
 #if !defined(SRELL_NO_APIEXT)
 
-private:
+protected:
 
-	template <typename ST, typename SA, typename iteratorTag>
-	iteratorTag pos0_(const std::basic_string<charT, ST, SA> &s, iteratorTag) const
+	template <typename StringLike, typename iteratorTag>
+	iteratorTag pos0_(const StringLike &s, iteratorTag) const
 	{
 		return s.begin();
 	}
-	template <typename ST, typename SA>
-	const charT *pos0_(const std::basic_string<charT, ST, SA> &s, const charT *) const
+	template <typename StringLike>
+	const charT *pos0_(const StringLike &s, const charT *) const
 	{
 		return s.data();
 	}
 
-protected:
+	template <typename StringLike, typename iteratorTag>
+	iteratorTag pos1_(const StringLike &s, iteratorTag) const
+	{
+		return s.end();
+	}
+	template <typename StringLike>
+	const charT *pos1_(const StringLike &s, const charT *) const
+	{
+		return s.data() + s.size();
+	}
 
-	template <typename ST, typename SA, typename RAIter, typename MA>
+	template <typename StringLike, typename RAIter, typename MA>
 	void do_replace(
-		std::basic_string<charT, ST, SA> &s,
-		bool (*repfunc)(std::basic_string<charT, ST, SA> &, const match_results<RAIter, MA> &, void *),
+		StringLike &s,
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<RAIter, MA> &, void *),
 		void *ptr
 	) const
 	{
+		typedef typename StringLike::traits_type ST;
+		typedef typename StringLike::allocator_type SA;
 		typedef std::basic_string<charT, ST, SA> string_type;
 		typedef typename string_type::size_type size_type;
 		typedef typename traits::utf_traits utf_traits;
@@ -21891,11 +21901,11 @@ protected:
 		string_type subst;
 		match_type match;
 		size_type offset = 0;
-		size_type prevend = 0;
+		size_type prevend = offset;
 
 		for (;;)
 		{
-			if (!this->search(pos0_(s, RAIter()) + offset, pos0_(s, RAIter()) + s.size(), pos0_(s, RAIter()), match, flags))
+			if (!this->search(pos0_(s, RAIter()) + offset, pos1_(s, RAIter()), pos0_(s, RAIter()), match, flags))
 				break;
 
 			const typename match_type::size_type matchlen = match.length(0);
@@ -21924,7 +21934,7 @@ protected:
 				{
 					RAIter it = pos0_(s, RAIter()) + offset;
 
-					utf_traits::codepoint_inc(it, pos0_(s, RAIter()) + s.size());
+					utf_traits::codepoint_inc(it, pos1_(s, RAIter()));
 					offset = it - pos0_(s, RAIter());
 				}
 			}
@@ -21934,20 +21944,31 @@ protected:
 		}
 	}
 
-	template <typename container, typename ST, typename SA>
+	template <typename BidiIter>
+	struct submatch_helper : public sub_match<BidiIter>
+	{
+		submatch_helper(const BidiIter f, const BidiIter s, const bool m = true)
+		{
+			this->first = f;
+			this->second = s;
+			this->matched = m;
+		}
+	};
+
+	template <typename MatchResults, typename container, typename BidiIter>
 	void do_split(
 		container &c,
-		const std::basic_string<charT, ST, SA> &s,
+		const BidiIter begin,
+		const BidiIter end,
 		const std::size_t limit /* = -1 */
 	) const
 	{
-		typedef std::basic_string<charT, ST, SA> string_type;
-		typedef typename string_type::size_type size_type;
 		typedef typename traits::utf_traits utf_traits;
-		typedef match_results<const charT *> match_type;
+		typedef MatchResults match_type;
+		typedef submatch_helper<BidiIter> helper;
 		regex_constants::match_flag_type flags = regex_constants::match_default;
-		size_type offset = 0;
-		size_type prevend = 0;
+		BidiIter offset = begin;
+		BidiIter prevend = offset;
 		std::size_t count = 0;
 		match_type match;
 
@@ -21956,48 +21977,45 @@ protected:
 			return;
 
 		//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 16:
-		if (offset == s.size())
+		if (offset == end)
 		{
-			if (!this->search(s.data() + offset, s.data() + s.size(), s.data(), match, flags))
-				c.push_back(s);
+			if (!this->search(offset, end, begin, match, flags))
+				c.push_back(helper(begin, end));
 
 			return;
 		}
 
-		for (; offset < s.size();)
+		for (; offset < end;)
 		{
-			if (!this->search(s.data() + offset, s.data() + s.size(), s.data(), match, flags))
+			if (!this->search(offset, end, begin, match, flags))
 				break;
 
-			if (match[0].second != s.data() + prevend)
+			if (match[0].second != prevend)
 			{
 				if (++count == limit)
 					break;
-				c.push_back(string_type(s.data() + prevend, match[0].first));
+				c.push_back(helper(prevend, match[0].first));
 
-				prevend = match[0].second - s.data();
+				prevend = match[0].second;
 
 				for (typename match_type::size_type i = 1; i < match.size(); ++i)
 				{
 					if (++count == limit)
 						goto FINAL_PUSH;
-					c.push_back(match[i].str());
+					c.push_back(match[i]);
 				}
 
 				offset = prevend;
 			}
 			else
 			{
-				const charT *nextpos = s.data() + offset;
-
-				utf_traits::codepoint_inc(nextpos, s.data() + s.size());
-				offset = nextpos - s.data();
+				utf_traits::codepoint_inc(offset, end);
 			}
 			flags |= regex_constants::match_prev_avail;
 		}
 
 		FINAL_PUSH:
-		c.push_back(string_type(s.data() + prevend, s.size() - prevend));
+		c.push_back(helper(prevend, end));
 	}
 
 #endif	//  !defined(SRELL_NO_APIEXT)
@@ -22344,22 +22362,24 @@ public:
 		return this->search(s.begin(), s.end(), flags);
 	}
 
-	template <typename ST, typename SA>
+	template <typename StringLike>
 	void replace(
-		std::basic_string<charT, ST, SA> &s,
+		StringLike &s,
 		const charT *const fmt_begin,
 		const charT *const fmt_end,
 		const bool global = false
 	) const
 	{
+		typedef typename StringLike::traits_type ST;
+		typedef typename StringLike::allocator_type SA;
 		regex_internal::repoptions<charT> opts(fmt_begin, fmt_end, global);
 
 		this->do_replace(s, regex_internal::call_mrformat<charT, ST, SA, const charT *>, reinterpret_cast<void *>(&opts));
 	}
 
-	template <typename ST, typename SA>
+	template <typename StringLike>
 	void replace(
-		std::basic_string<charT, ST, SA> &s,
+		StringLike &s,
 		const charT *const fmt,
 		const bool global = false
 	) const
@@ -22367,9 +22387,9 @@ public:
 		replace(s, fmt, fmt + std::char_traits<charT>::length(fmt), global);
 	}
 
-	template <typename ST, typename SA, typename FST, typename FSA>
+	template <typename StringLike, typename FST, typename FSA>
 	void replace(
-		std::basic_string<charT, ST, SA> &s,
+		StringLike &s,
 		const std::basic_string<charT, FST, FSA> &fmt,
 		const bool global = false
 	) const
@@ -22377,20 +22397,26 @@ public:
 		replace(s, fmt.data(), fmt.data() + fmt.size(), global);
 	}
 
-	template <typename ST, typename SA, typename RandomAccessIterator, typename MA>
+	template <typename StringLike, typename RandomAccessIterator, typename MA>
 	void replace(
-		std::basic_string<charT, ST, SA> &s,
-		bool (*repfunc)(std::basic_string<charT, ST, SA> &, const match_results<RandomAccessIterator, MA> &, void *),
+		StringLike &s,
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<RandomAccessIterator, MA> &, void *),
 		void *ptr = NULL
 	) const
 	{
 		this->do_replace(s, repfunc, ptr);
 	}
 
-	template <typename S, typename MR>
+	//  re.replace<my_match_type>(...):
+	//  Overload for match_results<BidiIter, CustomAllocator> (my_match_type)
+	//  to be used internally and passed to a callback function instead of default
+	//  match_results<BidiIter, std::allocator<sub_match<BidiIter> >.
+//	template <typename S, typename MR>
+	template <typename MatchResults, typename StringLike>
 	void replace(
-		std::basic_string<charT, typename S::traits_type, typename S::allocator_type> &s,
-		bool (*repfunc)(std::basic_string<charT, typename S::traits_type, typename S::allocator_type> &, const match_results<typename MR::value_type::iterator, typename MR::allocator_type> &, void *),
+		StringLike &s,
+//		bool (*repfunc)(std::basic_string<charT, typename S::traits_type, typename S::allocator_type> &, const match_results<typename MR::value_type::iterator, typename MR::allocator_type> &, void *),
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const MatchResults &, void *),
 		void *ptr = NULL
 	) const
 	{
@@ -22398,9 +22424,10 @@ public:
 	}
 
 	//  For (?:u8c?|u16w?|u32|u1632w|w)?cmatch.
+	template <typename StringLike>
 	void replace(
-		std::basic_string<charT> &s,
-		bool (*repfunc)(std::basic_string<charT> &, const match_results<const charT *> &, void *),
+		StringLike &s,
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<const charT *> &, void *),
 		void *ptr = NULL
 	) const
 	{
@@ -22408,9 +22435,10 @@ public:
 	}
 
 	//  For (?:u8c?|u16w?|u32|u1632w|w)?smatch.
+	template <typename StringLike>
 	void replace(
-		std::basic_string<charT> &s,
-		bool (*repfunc)(std::basic_string<charT> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
+		StringLike &s,
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
 		void *ptr = NULL
 	) const
 	{
@@ -22418,9 +22446,10 @@ public:
 	}
 
 	//  For lambda with (?:u8c?|u16w?|u32|u1632w|w)?cmatch.
+	template <typename StringLike>
 	void creplace(
-		std::basic_string<charT> &s,
-		bool (*repfunc)(std::basic_string<charT> &, const match_results<const charT *> &, void *),
+		StringLike &s,
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<const charT *> &, void *),
 		void *ptr = NULL
 	) const
 	{
@@ -22428,9 +22457,10 @@ public:
 	}
 
 	//  For lambda with (?:u8c?|u16w?|u32|u1632w|w)?smatch.
+	template <typename StringLike>
 	void sreplace(
-		std::basic_string<charT> &s,
-		bool (*repfunc)(std::basic_string<charT> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
+		StringLike &s,
+		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
 		void *ptr = NULL
 	) const
 	{
@@ -22444,7 +22474,75 @@ public:
 		const std::size_t limit = static_cast<std::size_t>(-1)
 	) const
 	{
-		this->do_split(c, s, limit);
+		typedef typename container::value_type::iterator BidiIter;
+		typedef match_results<BidiIter> match_type;	//  match_type::value_type == container::value_type.
+		this->template do_split<match_type>(c, this->pos0_(s, BidiIter()), this->pos1_(s, BidiIter()), limit);
+	}
+
+	template <typename container, typename BidirectionalIterator>
+	void split(
+		container &c,
+		const BidirectionalIterator begin,	//  The same as or convertible to container::value_type::iterator.
+		const BidirectionalIterator end,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		typedef typename container::value_type::iterator const_iterator;
+		typedef match_results<const_iterator> match_type;
+
+		this->template do_split<match_type>(c, static_cast<const_iterator>(begin), static_cast<const_iterator>(end), limit);
+		//  container::value_type::iterator should be const_iterator,
+		//  whereas BidirectionalIterator can be iterator.
+	}
+
+	template <typename container>
+	void split(
+		container &c,
+		const charT *const str,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		typedef match_results<const charT *> match_type;
+		this->template do_split<match_type>(c, str, str + std::char_traits<charT>::length(str), limit);
+	}
+
+	//  re.split<my_match_type>(listcontainer, string):
+	//  Overload for match_results<BidiIter, CustomAllocator> (my_match_type)
+	//  to be used internally instead of default
+	//  match_results<BidiIter, std::allocator<sub_match<BidiIter> >.
+	//  In general, container::value_type == sub_match<BidiIter> == MatchResults::value_type.
+	template <typename MatchResults, typename container, typename ST, typename SA>
+	void split(
+		container &c,
+		const std::basic_string<charT, ST, SA> &s,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		typedef typename container::value_type::iterator BidiIter;
+		this->template do_split<MatchResults>(c, this->pos0_(s, BidiIter()), this->pos1_(s, BidiIter()), limit);
+	}
+
+	template <typename MatchResults, typename container, typename BidirectionalIterator>
+	void split(
+		container &c,
+		const BidirectionalIterator begin,	//  The same as or convertible to MatchResults::value_type::iterator and container::value_type::iterator.
+		const BidirectionalIterator end,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		typedef typename container::value_type::iterator const_iterator;
+
+		this->template do_split<MatchResults>(c, static_cast<const_iterator>(begin), static_cast<const_iterator>(end), limit);
+	}
+
+	template <typename MatchResults, typename container>
+	void split(
+		container &c,
+		const charT *const str,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		this->template do_split<MatchResults>(c, str, str + std::char_traits<charT>::length(str), limit);
 	}
 
 private:
@@ -23028,6 +23126,94 @@ std::basic_string<charT> regex_replace(
 	regex_replace(std::back_inserter(result), s, s + std::char_traits<charT>::length(s), e, fmt, flags);
 	return result;
 }
+
+#if !defined(SRELL_NO_APIEXT)
+
+template <typename BasicStringLike>
+struct str_clip
+{
+public:
+
+	typedef BasicStringLike string_type;
+	typedef typename string_type::traits_type traits_type;
+	typedef typename string_type::allocator_type allocator_type;
+	typedef typename string_type::size_type size_type;
+	typedef typename string_type::iterator iterator;
+	typedef typename string_type::const_iterator const_iterator;
+	typedef typename string_type::const_pointer const_pointer;
+
+	str_clip(const str_clip &s)
+		: ptr_(s.ptr_), offset_(s.offset_), roffset_(s.roffset_)
+	{
+	}
+
+	str_clip(string_type &s)
+		: ptr_(&s), offset_(0), roffset_(0)
+	{
+	}
+
+	str_clip(string_type &s, const size_type pos, const size_type count = string_type::npos)
+		: ptr_(&s), offset_(pos)
+	{
+		const size_type remainder = s.size() - pos;
+
+		roffset_ = count < remainder ? remainder - count : 0;
+	}
+
+	str_clip(string_type &s, const_iterator b, const_iterator e)
+		: ptr_(&s), offset_(b - s.begin()), roffset_(s.end() - e)
+	{
+	}
+
+	const str_clip &clip(const size_type pos, const size_type count = string_type::npos)
+	{
+		const size_type remainder = ptr_->size() - pos;
+
+		offset_ = pos;
+		roffset_ = count < remainder ? remainder - count : 0;
+		return *this;
+	}
+
+	const str_clip &clip(const_iterator b, const_iterator e)
+	{
+		offset_ = b - ptr_->begin();
+		roffset_ = ptr_->end() - e;
+		return *this;
+	}
+
+	const_pointer data() const
+	{
+		return ptr_->data() + offset_;
+	}
+
+	size_type size() const
+	{
+		return ptr_->size() - offset_ - roffset_;
+	}
+
+	iterator begin() const
+	{
+		return ptr_->begin() + offset_;
+	}
+
+	iterator end() const
+	{
+		return ptr_->end() - roffset_;
+	}
+
+	void replace(const size_type pos, const size_type count, const string_type &r) const
+	{
+		ptr_->replace(pos + offset_, count, r);
+	}
+
+private:
+
+	string_type *ptr_;
+	size_type offset_;
+	size_type roffset_;
+};
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 
 //  ... "regex_algorithm.hpp"]
 //  ["regex_token_iterator.hpp" ...

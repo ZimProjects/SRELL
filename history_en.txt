@@ -1,3 +1,19 @@
+20221214; version 4.011:
+  * [LWG Issue 3204] Added swap() to sub_match.
+  * Modified replace() so that it can replace any container type that
+    looks like std::basic_string.
+  * Added srell::str_clip.
+  * Added overload functions to split() that support iterators and a
+    pointer.
+
+20221212; version 4.010:
+  * Adjusted the behaviour of split() in accordance with the document.
+    While the document says sub_match is pushed to a list container,
+    in the code basic_string was pushed to the list container.
+  * Added overloads to the sub_match class that support implicit and
+    explcit converting to std::basic_string instantiated with a custom
+    traits/allocator.
+
 20221210; version 4.009/3.016 (@ only):
   @ Fixed a problem so that regex_iterator.prefix().matched can be set
     to true in incrementing after it matched an empty sequence.

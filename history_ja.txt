@@ -1,3 +1,17 @@
+20221214; version 4.011:
+  ・[LWG Issue 3204] sub_matchにswap()を追加。
+  ・replace()の仕様変更。std::basic_string風のコンテナ型なら何でも置換で
+    きるように。
+  ・srell::str_clipを追加。
+  ・split()にイテレータ、ポインタに対応するoverloadを追加。
+
+20221212; version 4.010:
+  ・split()の実装が説明文と合うように修正。文ではsub_matchがリストコンテ
+    ナにpushされるとなっているのに対して、コードではbasic_stringがpushさ
+    れていました。
+  ・sub_matchクラスのbasic_stringへの変換函数（キャスト及びstr()）に、カ
+    スタムtraits/allocator対応版を追加。
+
 20221210; version 4.009/3.016（＊のみ）:
   ＊regex_iteratorのiterator (it) が0幅にマッチすると、次に++した時に
     it->prefix().matchedがtrueにならなかった問題を修正。
