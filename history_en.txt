@@ -1,10 +1,50 @@
-20221214; version 4.011:
-  * [LWG Issue 3204] Added swap() to sub_match.
+20230114; version 4.019:
+  * Implemented a new entry point selector.
+
+20230109; version 4.018:
+  * Cancelled the mergence of automata that was done in version 4.016.
+    Starting to modify the pattern compiler of 4.017 for i-modifier
+    support showed icase search performance degradation that did not
+    surface in preliminary examinations.
+
+20230107; version 4.017:
+  * Fixed a bug that caused compilation to fail since version 4.006 when
+    bidirectional iterators were passed to an algorithm function.
+
+20230106; version 4.016/3.018 (@ only):
+  * Merged four automata into two (preparation for i-modifier support).
+  @ Fixed the pattern compiler not to treat /a{0,0}/ as an error.
+  @ Other minor fixes.
+
+20221227; version 4.015:
+  * Fixed a minor issue in regex_iterator2 that was treated as an error
+    by VC when _ITERATOR_DEBUG_LEVEL >= 1.
+  * Other improvements.
+
+20221220; version 4.014:
+  * Supplemented some member functions that were missing accidentally
+    from match_results in the previous release.
+  * Simplified regex_token_iterator.
+
+20221220; version 4.013:
+  * Fixed a minor issue in split(). When splitting "abc" by /$/, split()
+    had returned {"abc", ""} instead of {"abc"} that is correct.
+  * Reduced the number of overload functions of replace(). Now when the
+    lambda expression is used, the type of match_results that will be
+    passed to a callback function needs specifying explicitly as the
+    template argument.
+  * Added regex_iterator2.
+
+20221216; version 4.012:
+  * Fixed replace(). VC2005 could not compile it.
+
+20221214; version 4.011/3.017 (@ only):
+  @ [LWG Issue 3204] Added swap() to sub_match.
   * Modified replace() so that it can replace any container type that
     looks like std::basic_string.
   * Added srell::str_clip.
-  * Added overload functions to split() that support iterators and a
-    pointer.
+  * Added overload functions to split() that support a pair of iterators
+    and a pointer.
 
 20221212; version 4.010:
   * Adjusted the behaviour of split() in accordance with the document.
@@ -36,8 +76,8 @@
     be disabled by defining SRELL_NO_UBMOD.
 
 20221123; version 4.006:
-  * Added a new entry point finder for expressions whose first matching
-    character is a single character.
+  * Added a new finder for expressions whose first matching character is
+    a single character.
 
 20221030; version 4.005/3.015 (@ only):
   @ Fixed a problem that caused undefined behaviour in conditions where
