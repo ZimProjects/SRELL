@@ -2,8 +2,8 @@
 
 次のファイルを同じディレクトリに置き、srell.hppをincludeするだけです。
 ・srell.hpp
-・srell_ucfdata2.hpp（case folding用データ）
-・srell_updata2.hpp（Unicode property用データ）
+・srell_ucfdata2.h（case folding用データ）
+・srell_updata3.h（Unicode property用データ）
 
 ■付属物
 以下のディレクトリ内にあるものはおまけのようなものです。

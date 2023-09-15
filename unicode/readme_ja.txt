@@ -1,17 +1,19 @@
 ■同梱物について
 
   1. ucfdataout2.cpp
-  2. updataout2.cpp
+  2. updataout3.cpp
+
+  これらはISO-646/US-ASCII互換の環境でコンパイル、実行される必要があります。
 
 ----
 1. ucfdataout2.cpp
 
-  srell_ucfdata2.hppの最新版を作成するプログラムのソースファイルです。SRELLの
-2.5以降はcase-insensitiveな（大文字小文字の違いを無視した）照合を行うために、
-このsrell_ucfdata2.hppを必要とします。
+  srell_ucfdata2.hの最新版を作成するプログラムのソースファイルです。SRELLは
+case-insensitiveな（大文字小文字の違いを無視した）照合を行うために、この
+srell_ucfdata2.hを必要とします。
 
   ucfdataout2は、Unicode Consortiumより提供されているCaseFolding.txtというテキ
-ストデータからsrell_ucfdata2.hppを自動生成します。
+ストデータからsrell_ucfdata2.hを生成します。
 
   +---------------------------------------------------------------------------
   | CaseFolding.txtとは
@@ -33,27 +35,30 @@
        http://www.unicode.org/Public/UNIDATA/CaseFolding.txt ,
     3) CaseFolding.txtと、1)で作成したバイナリとを同じフォルダに置いて
        バイナリを実行します。
-    4) srell_ucfdata2.hppが生成されますので、それをSRELLの置かれているディレク
-       トリへと移動させます。
+    4) srell_ucfdata2.hが生成されますので、それをSRELLの置かれているディレクト
+       リへと移動させます。
 
   1-2. 互換性
 
-    srell_ucfdata2.hppは、SRELL 2.401までが利用していたsrell_updata.hppと互換
-    性がありません。
+    srell_ucfdata2.h:   SRELL 4.030以降。拡張子が異なるだけで中身は
+                        srell_ucfdata2.hppに同じ。
+    srell_ucfdata2.hpp: SRELL 2.500から4.029まで。
+    srell_updata.hpp:   SRELL 2.401まで。
 
 ----
-2. updataout2.cpp
+2. updataout3.cpp
 
-  srell_updata2.hppの最新版を作成するプログラムのソースファイルです。SRELLは
+  srell_updata3.hの最新版を作成するプログラムのソースファイルです。SRELLは
 Unicode property escapes（\p{...} と \P{...}）を含む正規表現と文字列との照合
-を行うために、このsrell_updata2.hppを必要とします。
+を行うために、このsrell_updata3.hを必要とします。
 
-  updataout2は、Unicode Consortiumより提供されている次のテキストデータから
-srell_updata2.hppを自動生成します。
+  updataout3は、Unicode Consortiumより提供されている次のテキストデータから
+srell_updata3.hを生成します。
 
   ・DerivedCoreProperties.txt
   ・DerivedNormalizationProps.txt
   ・emoji-data.txt
+  ・PropertyValueAliases.txt
   ・PropList.txt
   ・ScriptExtensions.txt
   ・Scripts.txt
@@ -66,7 +71,7 @@ srell_updata2.hppを自動生成します。
 
   2-1. 使用方法
 
-    1) updataout2.cppをコンパイルします。
+    1) updataout3.cppをコンパイルします。
     2) 前記テキストファイルの最新版を次のURLより取得します。
        a. emoji-data.txt: http://www.unicode.org/Public/UNIDATA/emoji/
        b. emoji-sequences.txt と emoji-zwj-sequences.txt:
@@ -74,11 +79,12 @@ srell_updata2.hppを自動生成します。
        c. その他: http://www.unicode.org/Public/UNIDATA/
     3) これらのテキストファイルと、1)で作成したバイナリとを同じフォルダに
        置いてバイナリを実行します。
-    4) srell_updata2.hppが生成されますので、それをSRELLの置かれているディレク
-       トリへと移動させます。
+    4) srell_updata3.hが生成されますので、それをSRELLの置かれているディレクト
+       リへと移動させます。
 
   2-2. 互換性
 
-    srell_updata2.hppは、SRELL 3.010までが利用していたsrell_updata.hppと互換性
-    がありません。
+    srell_updata3.h:   SRELL 4.030以降。
+    srell_updata2.hpp: SRELL 4.000から4.029まで。
+    srell_updata.hpp:  SRELL 3.018まで。
 

@@ -1,11 +1,100 @@
+20230913; version 4.031:
+  * Updated ucfdata2.h and updata3.h to support Unicode 15.1.0.
+  * Updated updataout3.cpp so that the "Unknown" value can be used as a
+    value for Scripts/Script_Extensions of Unicode property escapes.
+    Although this value is mentioned in Scripts.txt, SRELL did not
+    support it because it was not included in the table in the
+    ECMAScript specification which shows what script names must be
+    supported. However, as the table was removed from the specification
+    and the rationale to exclude it has disappeared, SRELL has begun to
+    support this value, following V8.
+
+20230909; version 4.030:
+  * Modified the pattern compiler not to create a rewinder only for ^,
+    $, or \b/\B.
+  * Introduced the binary search to look up names and values for Unicode
+    properties.
+  * In accordance with the change above, updated unicode/updataout2.cpp
+    to updataout3.cpp.
+    Furthermore, since the ECMAScript specification ceased to list the
+    script names that must be supported, modified to read them from
+    Scripts.txt and PropertyValueAliases.txt.
+  * Changed the suffix of Unicode data files from *.hpp to *.h.
+  * Updated unicode/ucfdataout2.cpp to follow the suffix change above.
+
+20230903; version 4.029:
+  * Updated unicode/updataout2.cpp to fix an issue that caused
+    compilation error because internal integer types were unified in
+    version 4.023.
+  * Recreated srell_updata2.hpp (Data for the two scripts that were
+    newly added to Unicode 15 were missing from the previous version.
+    Apparently, it was output by the previous version of
+    updataout2.cpp).
+
+20230831; version 4.028:
+  * Improved not to call the automaton for Unicode code point values
+    that cannot be held by a single char/wchar_t when the regex or
+    wregex type is used.
+
+20230821; version 4.027:
+  * Fixed a bug that caused the first capturing group to be empty in the
+    match result of /(?:(\d+-)?)+(\d{1,2})-(\d{1,2})/ against
+    "2023-8-21" (This bug had been existing from an early version).
+  * Fixed a bug that caused the entire match to be only "23-8-21" in the
+    same match result (This bug was introduced in 4.019 and was not
+    covered by the fix in 4.026).
+
+20230820; version 4.026:
+  * Fix a bug that caused a search for /(\d+-)?\d{1,2}-\d{1,2}/ in
+    "2023-8-20" matched only "23-8-20" since version 4.019.
+
+20230819; version 4.025:
+  * To avoid movzx, changed the type to hold a flag in the internal
+    representation from bool to an integer type.
+  * Repleaced names of member variables in structs that are used
+    frequently in the automaton with shorter names.
+
+20230817; version 4.024:
+  * Commented out the code for an optimisation that had become unused
+    since 4.019.
+  * Various minor improvements and fixes.
+
+20230804; version 4.023:
+  * Unified two internal integer types to one type.
+  * Simplified several optimisations that had become less effective
+    because of the entry point selector introduced in 4.019.
+  * Improved the entry point selector.
+  * Corrected misnamed variable names.
+
+20230730; version 4.022:
+  * Refinement of source code and various minor fixes.
+
+20230727; version 4.021:
+  * Improved the branch optimisation so that SRELL can optimise
+    Alternatives without inserting new additional internal states.
+
+20230724; version 4.020:
+  * Simplified the method of converting properties of strings to the
+    internal representation.
+  * Other minor improvements.
+
+* [4.000-4.019, v flag mode] Because there was a mistake in the setting
+  for compiling my own source files to a release version, the v flag
+  mode was not correctly implemented in SRELL 4.000-4.019. Adding the
+  following line at the last of the optimise_pos() function fixes the
+  problem:
+    insert_btbranch(piece, ins_bt);
+  The bug originated from the fact that this function was not called
+  from anywhere.
+
 20230114; version 4.019:
   * Implemented a new entry point selector.
 
 20230109; version 4.018:
-  * Cancelled the mergence of automata that was done in version 4.016.
-    Starting to modify the pattern compiler of 4.017 for i-modifier
-    support showed icase search performance degradation that did not
-    surface in preliminary examinations.
+  * Cancelled the mergence of automata that was done in version 4.016,
+    because once I began to modify the pattern compiler for i-modifier
+    support, icase search performance degradation that had not surface
+    in preliminary examinations appeared.
 
 20230107; version 4.017:
   * Fixed a bug that caused compilation to fail since version 4.006 when

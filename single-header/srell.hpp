@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.019
+**  SRELL (std::regex-like library) version 4.031
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -54,7 +54,6 @@
   #endif
 #endif
 #ifdef __cpp_initializer_lists
-#include <initializer_list>
   #ifndef SRELL_CPP11_INITIALIZER_LIST_ENABLED
   #define SRELL_CPP11_INITIALIZER_LIST_ENABLED
   #endif
@@ -116,7 +115,9 @@
 #endif
 #define SRELL_NO_NAMEDCAPTURE
 #define SRELL_NO_SINGLELINE
-#define SRELL_FIXEDWIDTHLOOKBEHIND
+//#define SRELL_FIXEDWIDTHLOOKBEHIND
+//  Since version 4.019, SRELL highly depends on the variable-length
+//  lookbehind feature. Uncommenting this line is not recommended.
 #endif
 
 namespace srell
@@ -314,22 +315,19 @@ private:
 
 #if defined(SRELL_CPP11_CHAR1632_ENABLED)
 
-		typedef char32_t uchar32;
+		typedef char32_t ui_l32;	//  uint_least32.
 
 #elif defined(UINT_MAX) && UINT_MAX >= 0xFFFFFFFF
 
-		typedef unsigned int uchar32;
+		typedef unsigned int ui_l32;
 
 #elif defined(ULONG_MAX) && ULONG_MAX >= 0xFFFFFFFF
 
-		typedef unsigned long uchar32;
+		typedef unsigned long ui_l32;
 
 #else
 #error could not find a suitable type for 32-bit Unicode integer values.
 #endif	//  defined(SRELL_CPP11_CHAR1632_ENABLED)
-
-		typedef uchar32 uint_l32;	//  uint_least32.
-
 	}	//  regex_internal
 
 //  ... "rei_type.h"]
@@ -370,7 +368,7 @@ private:
 
 			st_success,                 //  0x12
 
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
+#if defined(SRELLTEST_NEXTPOS_OPT)
 			st_move_nextpos,            //  0x13
 #endif
 
@@ -381,105 +379,122 @@ private:
 
 		namespace constants
 		{
-			static const uchar32 unicode_max_codepoint = 0x10ffff;
-			static const uchar32 invalid_u32value = static_cast<uchar32>(-1);
-			static const uchar32 max_u32value = static_cast<uchar32>(-2);
-			static const uchar32 asc_icase = 0x20;
-			static const uchar32 ccstr_empty = static_cast<uchar32>(-1);
-			static const uint_l32 infinity = static_cast<uint_l32>(~0);
+			static const ui_l32 unicode_max_codepoint = 0x10ffff;
+			static const ui_l32 invalid_u32value = static_cast<ui_l32>(-1);
+			static const ui_l32 max_u32value = static_cast<ui_l32>(-2);
+			static const ui_l32 asc_icase = 0x20;
+			static const ui_l32 ccstr_empty = static_cast<ui_l32>(-1);
+			static const ui_l32 infinity = static_cast<ui_l32>(~0);
 		}
 		//  constants
 
 		namespace meta_char
 		{
-			static const uchar32 mc_exclam = 0x21;	//  '!'
-			static const uchar32 mc_sharp  = 0x23;	//  '#'
-			static const uchar32 mc_dollar = 0x24;	//  '$'
-			static const uchar32 mc_rbraop = 0x28;	//  '('
-			static const uchar32 mc_rbracl = 0x29;	//  ')'
-			static const uchar32 mc_astrsk = 0x2a;	//  '*'
-			static const uchar32 mc_plus   = 0x2b;	//  '+'
-			static const uchar32 mc_comma  = 0x2c;	//  ','
-			static const uchar32 mc_minus  = 0x2d;	//  '-'
-			static const uchar32 mc_period = 0x2e;	//  '.'
-			static const uchar32 mc_colon  = 0x3a;	//  ':'
-			static const uchar32 mc_lt = 0x3c;		//  '<'
-			static const uchar32 mc_eq = 0x3d;		//  '='
-			static const uchar32 mc_gt = 0x3e;		//  '>'
-			static const uchar32 mc_query  = 0x3f;	//  '?'
-			static const uchar32 mc_sbraop = 0x5b;	//  '['
-			static const uchar32 mc_escape = 0x5c;	//  '\\'
-			static const uchar32 mc_sbracl = 0x5d;	//  ']'
-			static const uchar32 mc_caret  = 0x5e;	//  '^'
-			static const uchar32 mc_cbraop = 0x7b;	//  '{'
-			static const uchar32 mc_bar    = 0x7c;	//  '|'
-			static const uchar32 mc_cbracl = 0x7d;	//  '}'
+			static const ui_l32 mc_exclam = 0x21;	//  '!'
+			static const ui_l32 mc_sharp  = 0x23;	//  '#'
+			static const ui_l32 mc_dollar = 0x24;	//  '$'
+			static const ui_l32 mc_rbraop = 0x28;	//  '('
+			static const ui_l32 mc_rbracl = 0x29;	//  ')'
+			static const ui_l32 mc_astrsk = 0x2a;	//  '*'
+			static const ui_l32 mc_plus   = 0x2b;	//  '+'
+			static const ui_l32 mc_comma  = 0x2c;	//  ','
+			static const ui_l32 mc_minus  = 0x2d;	//  '-'
+			static const ui_l32 mc_period = 0x2e;	//  '.'
+			static const ui_l32 mc_colon  = 0x3a;	//  ':'
+			static const ui_l32 mc_lt = 0x3c;		//  '<'
+			static const ui_l32 mc_eq = 0x3d;		//  '='
+			static const ui_l32 mc_gt = 0x3e;		//  '>'
+			static const ui_l32 mc_query  = 0x3f;	//  '?'
+			static const ui_l32 mc_sbraop = 0x5b;	//  '['
+			static const ui_l32 mc_escape = 0x5c;	//  '\\'
+			static const ui_l32 mc_sbracl = 0x5d;	//  ']'
+			static const ui_l32 mc_caret  = 0x5e;	//  '^'
+			static const ui_l32 mc_cbraop = 0x7b;	//  '{'
+			static const ui_l32 mc_bar    = 0x7c;	//  '|'
+			static const ui_l32 mc_cbracl = 0x7d;	//  '}'
 		}
 		//  meta_char
 
 		namespace char_ctrl
 		{
-			static const uchar32 cc_nul  = 0x00;	//  '\0'	//0x00:NUL
-			static const uchar32 cc_bs   = 0x08;	//  '\b'	//0x08:BS
-			static const uchar32 cc_htab = 0x09;	//  '\t'	//0x09:HT
-			static const uchar32 cc_nl   = 0x0a;	//  '\n'	//0x0a:LF
-			static const uchar32 cc_vtab = 0x0b;	//  '\v'	//0x0b:VT
-			static const uchar32 cc_ff   = 0x0c;	//  '\f'	//0x0c:FF
-			static const uchar32 cc_cr   = 0x0d;	//  '\r'	//0x0d:CR
+			static const ui_l32 cc_nul  = 0x00;	//  '\0'	//0x00:NUL
+			static const ui_l32 cc_bs   = 0x08;	//  '\b'	//0x08:BS
+			static const ui_l32 cc_htab = 0x09;	//  '\t'	//0x09:HT
+			static const ui_l32 cc_nl   = 0x0a;	//  '\n'	//0x0a:LF
+			static const ui_l32 cc_vtab = 0x0b;	//  '\v'	//0x0b:VT
+			static const ui_l32 cc_ff   = 0x0c;	//  '\f'	//0x0c:FF
+			static const ui_l32 cc_cr   = 0x0d;	//  '\r'	//0x0d:CR
 		}
 		//  char_ctrl
 
 		namespace char_alnum
 		{
-			static const uchar32 ch_0 = 0x30;	//  '0'
-			static const uchar32 ch_1 = 0x31;	//  '1'
-			static const uchar32 ch_7 = 0x37;	//  '7'
-			static const uchar32 ch_8 = 0x38;	//  '8'
-			static const uchar32 ch_9 = 0x39;	//  '9'
-			static const uchar32 ch_A = 0x41;	//  'A'
-			static const uchar32 ch_B = 0x42;	//  'B'
-			static const uchar32 ch_D = 0x44;	//  'D'
-			static const uchar32 ch_F = 0x46;	//  'F'
-			static const uchar32 ch_P = 0x50;	//  'P'
-			static const uchar32 ch_S = 0x53;	//  'S'
-			static const uchar32 ch_W = 0x57;	//  'W'
-			static const uchar32 ch_Z = 0x5a;	//  'Z'
-			static const uchar32 ch_a = 0x61;	//  'a'
-			static const uchar32 ch_b = 0x62;	//  'b'
-			static const uchar32 ch_c = 0x63;	//  'c'
-			static const uchar32 ch_d = 0x64;	//  'd'
-			static const uchar32 ch_f = 0x66;	//  'f'
-			static const uchar32 ch_i = 0x69;	//  'i'
-			static const uchar32 ch_k = 0x6b;	//  'k'
-			static const uchar32 ch_m = 0x6d;	//  'm'
-			static const uchar32 ch_n = 0x6e;	//  'n'
-			static const uchar32 ch_p = 0x70;	//  'p'
-			static const uchar32 ch_q = 0x71;	//  'q'
-			static const uchar32 ch_r = 0x72;	//  'r'
-			static const uchar32 ch_s = 0x73;	//  's'
-			static const uchar32 ch_t = 0x74;	//  't'
-			static const uchar32 ch_u = 0x75;	//  'u'
-			static const uchar32 ch_v = 0x76;	//  'v'
-			static const uchar32 ch_w = 0x77;	//  'w'
-			static const uchar32 ch_x = 0x78;	//  'x'
-			static const uchar32 ch_z = 0x7a;	//  'z'
+			static const ui_l32 ch_0 = 0x30;	//  '0'
+			static const ui_l32 ch_1 = 0x31;	//  '1'
+			static const ui_l32 ch_7 = 0x37;	//  '7'
+			static const ui_l32 ch_8 = 0x38;	//  '8'
+			static const ui_l32 ch_9 = 0x39;	//  '9'
+			static const ui_l32 ch_A = 0x41;	//  'A'
+			static const ui_l32 ch_B = 0x42;	//  'B'
+			static const ui_l32 ch_D = 0x44;	//  'D'
+			static const ui_l32 ch_F = 0x46;	//  'F'
+			static const ui_l32 ch_P = 0x50;	//  'P'
+			static const ui_l32 ch_S = 0x53;	//  'S'
+			static const ui_l32 ch_W = 0x57;	//  'W'
+			static const ui_l32 ch_Z = 0x5a;	//  'Z'
+			static const ui_l32 ch_a = 0x61;	//  'a'
+			static const ui_l32 ch_b = 0x62;	//  'b'
+			static const ui_l32 ch_c = 0x63;	//  'c'
+			static const ui_l32 ch_d = 0x64;	//  'd'
+			static const ui_l32 ch_f = 0x66;	//  'f'
+			static const ui_l32 ch_i = 0x69;	//  'i'
+			static const ui_l32 ch_k = 0x6b;	//  'k'
+			static const ui_l32 ch_m = 0x6d;	//  'm'
+			static const ui_l32 ch_n = 0x6e;	//  'n'
+			static const ui_l32 ch_p = 0x70;	//  'p'
+			static const ui_l32 ch_q = 0x71;	//  'q'
+			static const ui_l32 ch_r = 0x72;	//  'r'
+			static const ui_l32 ch_s = 0x73;	//  's'
+			static const ui_l32 ch_t = 0x74;	//  't'
+			static const ui_l32 ch_u = 0x75;	//  'u'
+			static const ui_l32 ch_v = 0x76;	//  'v'
+			static const ui_l32 ch_w = 0x77;	//  'w'
+			static const ui_l32 ch_x = 0x78;	//  'x'
+			static const ui_l32 ch_z = 0x7a;	//  'z'
 		}
 		//  char_alnum
 
 		namespace char_other
 		{
-			static const uchar32 co_sp    = 0x20;	//  ' '
-			static const uchar32 co_perc  = 0x25;	//  '%'
-			static const uchar32 co_amp   = 0x26;	//  '&'
-			static const uchar32 co_apos  = 0x27;	//  '\''
-			static const uchar32 co_slash = 0x2f;	//  '/'
-			static const uchar32 co_smcln = 0x3b;	//  ';'
-			static const uchar32 co_atmrk = 0x40;	//  '@'
-			static const uchar32 co_ll    = 0x5f;	//  '_'
-			static const uchar32 co_grav  = 0x60;	//  '`'
-			static const uchar32 co_tilde = 0x7e;	//  '~'
+			static const ui_l32 co_sp    = 0x20;	//  ' '
+			static const ui_l32 co_perc  = 0x25;	//  '%'
+			static const ui_l32 co_amp   = 0x26;	//  '&'
+			static const ui_l32 co_apos  = 0x27;	//  '\''
+			static const ui_l32 co_slash = 0x2f;	//  '/'
+			static const ui_l32 co_smcln = 0x3b;	//  ';'
+			static const ui_l32 co_atmrk = 0x40;	//  '@'
+			static const ui_l32 co_ll    = 0x5f;	//  '_'
+			static const ui_l32 co_grav  = 0x60;	//  '`'
+			static const ui_l32 co_tilde = 0x7e;	//  '~'
 		}
 		//  char_other
+
+		namespace epsilon_type	//  Used only in the pattern compiler.
+		{
+			static const ui_l32 et_default  = char_ctrl::cc_nul;	//  '\0'
+			static const ui_l32 et_ccastrsk = 0x2a;	//  '*'
+			static const ui_l32 et_alt      = 0x7c;	//  '|'
+			static const ui_l32 et_hooked   = 0x68;	//  'h'
+			static const ui_l32 et_jmpinlp  = 0x2b;	//  '+'
+			static const ui_l32 et_brnchend = 0x2f;	//  '/'
+			static const ui_l32 et_fmrbckrf = 0x5c;	//  '\\'
+			static const ui_l32 et_bo1fmrbr = 0x31;	//  '1'
+			static const ui_l32 et_bo2skpd  = 0x21;	//  '!'
+			static const ui_l32 et_bo2fmrbr = 0x32;	//  '2'
+			static const ui_l32 et_ncgopen  = 0x3a;	//  ':'
+			static const ui_l32 et_ncgclose = 0x3b;	//  ';'
+		}
+		//  epsilon_type
 	}
 	//  namespace regex_internal
 
@@ -499,38 +514,39 @@ public:
 	static const std::size_t maxseqlen = 1;
 	static const int utftype = 0;
 
-	static const std::size_t bitsetsize = 0x100;
-	static const uchar32 bitsetmask = 0xff;
-	static const uchar32 cumask = 0xff;
+	static const ui_l32 charbit = (sizeof (charT) * CHAR_BIT) > 21 ? 21 : (sizeof (charT) * CHAR_BIT);
+	static const ui_l32 bitsetsize = 1 << (charbit > 16 ? 16 : charbit);
+	static const ui_l32 bitsetmask = bitsetsize - 1;
+	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : ((1 << charbit) - 1);
 
 	//  *iter
 	template <typename ForwardIterator>
-	static uchar32 codepoint(ForwardIterator begin, const ForwardIterator /* end */)
+	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator /* end */)
 	{
-		return static_cast<uchar32>(*begin);
+		return static_cast<ui_l32>(*begin);
 		//  Caller is responsible for begin != end.
 	}
 
 	//  *iter++
 	template <typename ForwardIterator>
-	static uchar32 codepoint_inc(ForwardIterator &begin, const ForwardIterator /* end */)
+	static ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator /* end */)
 	{
-		return static_cast<uchar32>(*begin++);
+		return static_cast<ui_l32>(*begin++);
 		//  Caller is responsible for begin != end.
 	}
 
 	//  iter2 = iter; return *--iter2;
 	template <typename BidirectionalIterator>
-	static uchar32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator /* begin */)
+	static ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator /* begin */)
 	{
-		return static_cast<uchar32>(*--cur);
+		return static_cast<ui_l32>(*--cur);
 	}
 
 	//  *--iter
 	template <typename BidirectionalIterator>
-	static uchar32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator /* begin */)
+	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator /* begin */)
 	{
-		return static_cast<uchar32>(*--cur);
+		return static_cast<ui_l32>(*--cur);
 		//  Caller is responsible for cur != begin.
 	}
 
@@ -544,13 +560,13 @@ public:
 
 #endif	//  !defined(SRELLDBG_NO_BMH)
 
-	static uint_l32 to_codeunits(charT out[maxseqlen], uchar32 cp)
+	static ui_l32 to_codeunits(charT out[maxseqlen], ui_l32 cp)
 	{
 		out[0] = static_cast<charT>(cp);
 		return 1;
 	}
 
-	static uchar32 firstcodeunit(const uchar32 cp)
+	static ui_l32 firstcodeunit(const ui_l32 cp)
 	{
 		return cp;
 	}
@@ -561,16 +577,12 @@ public:
 		return begin != end;
 	}
 };
-template <typename charT>
-	const std::size_t utf_traits_core<charT>::maxseqlen;
-template <typename charT>
-	const int utf_traits_core<charT>::utftype;
-template <typename charT>
-	const std::size_t utf_traits_core<charT>::bitsetsize;
-template <typename charT>
-	const uchar32 utf_traits_core<charT>::bitsetmask;
-template <typename charT>
-	const uchar32 utf_traits_core<charT>::cumask;
+template <typename charT> const std::size_t utf_traits_core<charT>::maxseqlen;
+template <typename charT> const int utf_traits_core<charT>::utftype;
+template <typename charT> const ui_l32 utf_traits_core<charT>::charbit;
+template <typename charT> const ui_l32 utf_traits_core<charT>::bitsetsize;
+template <typename charT> const ui_l32 utf_traits_core<charT>::bitsetmask;
+template <typename charT> const ui_l32 utf_traits_core<charT>::maxcpvalue;
 //  utf_traits_core
 
 //  common and utf-32.
@@ -579,18 +591,8 @@ struct utf_traits : public utf_traits_core<charT>
 {
 	static const int utftype = 32;
 
-	static const std::size_t bitsetsize = 0x10000;
-	static const uchar32 bitsetmask = 0xffff;
-	static const uchar32 cumask = 0x1fffff;
 };
-template <typename charT>
-	const int utf_traits<charT>::utftype;
-template <typename charT>
-	const std::size_t utf_traits<charT>::bitsetsize;
-template <typename charT>
-	const uchar32 utf_traits<charT>::bitsetmask;
-template <typename charT>
-	const uchar32 utf_traits<charT>::cumask;
+template <typename charT> const int utf_traits<charT>::utftype;
 //  utf_traits
 
 //  utf-8 specific.
@@ -603,36 +605,41 @@ public:
 	static const std::size_t maxseqlen = 4;
 	static const int utftype = 8;
 
+	static const ui_l32 charbit = 8;
+	static const ui_l32 bitsetsize = 0x100;
+	static const ui_l32 bitsetmask = 0xff;
+	static const ui_l32 maxcpvalue = 0x10ffff;
+
 	template <typename ForwardIterator>
-	static uchar32 codepoint(ForwardIterator begin, const ForwardIterator end)
+	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
 	{
 //		return codepoint_inc(begin, end);
 
-		uchar32 codepoint = static_cast<uchar32>(*begin & 0xff);
+		ui_l32 codepoint = static_cast<ui_l32>(*begin & 0xff);
 
 		if ((codepoint & 0x80) == 0)	//  1 octet.
 			return codepoint;
 
 		if (++begin != end && codepoint >= 0xc0 && (*begin & 0xc0) == 0x80)
 		{
-			codepoint = static_cast<uchar32>((codepoint << 6) | (*begin & 0x3f));
+			codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin & 0x3f));
 
 			if ((codepoint & 0x800) == 0)	//  2 octets.
-				return static_cast<uchar32>(codepoint & 0x7ff);
+				return static_cast<ui_l32>(codepoint & 0x7ff);
 
 			if (++begin != end && (*begin & 0xc0) == 0x80)
 			{
-				codepoint = static_cast<uchar32>((codepoint << 6) | (*begin & 0x3f));
+				codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin & 0x3f));
 
 				if ((codepoint & 0x10000) == 0)	//  3 octets.
-					return static_cast<uchar32>(codepoint & 0xffff);
+					return static_cast<ui_l32>(codepoint & 0xffff);
 
 				if (++begin != end && (*begin & 0xc0) == 0x80)
 				{
-					codepoint = static_cast<uchar32>((codepoint << 6) | (*begin & 0x3f));
+					codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin & 0x3f));
 
 					if (codepoint <= 0x3dfffff)	//  4 octets.
-						return static_cast<uchar32>(codepoint & 0x1fffff);
+						return static_cast<ui_l32>(codepoint & 0x1fffff);
 				}
 			}
 		}
@@ -642,9 +649,9 @@ public:
 	}
 
 	template <typename ForwardIterator>
-	static uchar32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
+	static ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
 	{
-		uchar32 codepoint = static_cast<uchar32>(*begin++ & 0xff);
+		ui_l32 codepoint = static_cast<ui_l32>(*begin++ & 0xff);
 
 		if ((codepoint & 0x80) == 0)	//  1 octet.
 			return codepoint;
@@ -652,29 +659,29 @@ public:
 //		if (begin != end && (0x7f00 & (1 << ((codepoint >> 3) & 0xf))) && (*begin & 0xc0) == 0x80)	//  c0, c8, d0, d8, e0, e8, f0.
 		if (begin != end && codepoint >= 0xc0 && (*begin & 0xc0) == 0x80)
 		{
-			codepoint = static_cast<uchar32>((codepoint << 6) | (*begin++ & 0x3f));
+			codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
 
 			//  11 ?aaa aabb bbbb
 			if ((codepoint & 0x800) == 0)	//  2 octets.
-				return static_cast<uchar32>(codepoint & 0x7ff);
+				return static_cast<ui_l32>(codepoint & 0x7ff);
 				//  c080-c1bf: invalid. 00-7F.
 				//  c280-dfbf: valid. 080-7FF.
 
 			//  11 1aaa aabb bbbb
 			if (begin != end && (*begin & 0xc0) == 0x80)
 			{
-				codepoint = static_cast<uchar32>((codepoint << 6) | (*begin++ & 0x3f));
+				codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
 
 				//  111? aaaa bbbb bbcc cccc
 				if ((codepoint & 0x10000) == 0)	//  3 octets.
-					return static_cast<uchar32>(codepoint & 0xffff);
+					return static_cast<ui_l32>(codepoint & 0xffff);
 					//  e08080-e09fbf: invalid. 000-7FF.
 					//  e0a080-efbfbf: valid. 0800-FFFF.
 
 				//  1111 aaaa bbbb bbcc cccc
 				if (begin != end && (*begin & 0xc0) == 0x80)
 				{
-					codepoint = static_cast<uchar32>((codepoint << 6) | (*begin++ & 0x3f));
+					codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
 					//  f0808080-f08fbfbf: invalid. 0000-FFFF.
 					//  f0908080-f3bfbfbf: valid. 10000-FFFFF.
 					//  f4808080-f48fbfbf: valid. 100000-10FFFF.
@@ -683,7 +690,7 @@ public:
 
 					//  11 11?a aabb bbbb cccc ccdd dddd
 					if (codepoint <= 0x3dfffff)	//  4 octets.
-						return static_cast<uchar32>(codepoint & 0x1fffff);
+						return static_cast<ui_l32>(codepoint & 0x1fffff);
 						//  11 110a aabb bbbb cccc ccdd dddd
 
 					--begin;
@@ -698,31 +705,31 @@ public:
 	}
 
 	template <typename BidirectionalIterator>
-	static uchar32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
+	static ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
 	{
-		uchar32 codepoint = static_cast<uchar32>(*--cur);
+		ui_l32 codepoint = static_cast<ui_l32>(*--cur);
 
 		if ((codepoint & 0x80) == 0)
-			return static_cast<uchar32>(codepoint & 0xff);
+			return static_cast<ui_l32>(codepoint & 0xff);
 
 		if ((codepoint & 0x40) == 0 && cur != begin)
 		{
-			codepoint = static_cast<uchar32>((codepoint & 0x3f) | (*--cur << 6));
+			codepoint = static_cast<ui_l32>((codepoint & 0x3f) | (*--cur << 6));
 
 			if ((codepoint & 0x3800) == 0x3000)	//  2 octets.
-				return static_cast<uchar32>(codepoint & 0x7ff);
+				return static_cast<ui_l32>(codepoint & 0x7ff);
 
 			if ((codepoint & 0x3000) == 0x2000 && cur != begin)
 			{
-				codepoint = static_cast<uchar32>((codepoint & 0xfff) | (*--cur << 12));
+				codepoint = static_cast<ui_l32>((codepoint & 0xfff) | (*--cur << 12));
 
 				if ((codepoint & 0xf0000) == 0xe0000)	//  3 octets.
-					return static_cast<uchar32>(codepoint & 0xffff);
+					return static_cast<ui_l32>(codepoint & 0xffff);
 
 				if ((codepoint & 0xc0000) == 0x80000 && cur != begin)
 				{
 					if ((*--cur & 0xf8) == 0xf0)	//  4 octets.
-						return static_cast<uchar32>((codepoint & 0x3ffff) | ((*cur & 7) << 18));
+						return static_cast<ui_l32>((codepoint & 0x3ffff) | ((*cur & 7) << 18));
 				}
 			}
 		}
@@ -730,39 +737,39 @@ public:
 	}
 
 	template <typename BidirectionalIterator>
-	static uchar32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
+	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
 	{
-		uchar32 codepoint = static_cast<uchar32>(*--cur);
+		ui_l32 codepoint = static_cast<ui_l32>(*--cur);
 
 		if ((codepoint & 0x80) == 0)
-			return static_cast<uchar32>(codepoint & 0xff);
+			return static_cast<ui_l32>(codepoint & 0xff);
 
 		if ((codepoint & 0x40) == 0 && cur != begin)
 		{
-			codepoint = static_cast<uchar32>((codepoint & 0x3f) | (*--cur << 6));
+			codepoint = static_cast<ui_l32>((codepoint & 0x3f) | (*--cur << 6));
 
 			//  11 0bbb bbaa aaaa?
 			if ((codepoint & 0x3800) == 0x3000)	//  2 octets.
 //			if ((*cur & 0xe0) == 0xc0)
-				return static_cast<uchar32>(codepoint & 0x7ff);
+				return static_cast<ui_l32>(codepoint & 0x7ff);
 
 			//  10 bbbb bbaa aaaa?
 			if ((codepoint & 0x3000) == 0x2000 && cur != begin)	//  [\x80-\xbf]{2}.
 //			if ((*cur & 0xc0) == 0x80 && cur != begin)
 			{
-				codepoint = static_cast<uchar32>((codepoint & 0xfff) | (*--cur << 12));
+				codepoint = static_cast<ui_l32>((codepoint & 0xfff) | (*--cur << 12));
 
 				//  1110 cccc bbbb bbaa aaaa?
 				if ((codepoint & 0xf0000) == 0xe0000)	//  3 octets.
 //				if ((*cur & 0xf0) == 0xe0)
-					return static_cast<uchar32>(codepoint & 0xffff);
+					return static_cast<ui_l32>(codepoint & 0xffff);
 
 				//  10cc cccc bbbb bbaa aaaa?
 				if ((codepoint & 0xc0000) == 0x80000 && cur != begin)	//  [\x80-\xbf]{3}.
 //				if ((*cur & 0xc0) == 0x80 && cur != begin)
 				{
 					if ((*--cur & 0xf8) == 0xf0)	//  4 octets.
-						return static_cast<uchar32>((codepoint & 0x3ffff) | ((*cur & 7) << 18));
+						return static_cast<ui_l32>((codepoint & 0x3ffff) | ((*cur & 7) << 18));
 						//  d ddcc cccc bbbb bbaa aaaa
 					//else	//  [\0-\xef\xf8-\xff][\x80-\xbf]{3}.
 
@@ -791,7 +798,7 @@ public:
 
 #endif	//  !defined(SRELLDBG_NO_BMH)
 
-	static uint_l32 to_codeunits(charT out[maxseqlen], uchar32 cp)
+	static ui_l32 to_codeunits(charT out[maxseqlen], ui_l32 cp)
 	{
 		if (cp < 0x80)
 		{
@@ -821,18 +828,18 @@ public:
 		}
 	}
 
-	static uchar32 firstcodeunit(const uchar32 cp)
+	static ui_l32 firstcodeunit(const ui_l32 cp)
 	{
 		if (cp < 0x80)
 			return cp;
 
 		if (cp < 0x800)
-			return static_cast<uchar32>(((cp >> 6) & 0x1f) | 0xc0);
+			return static_cast<ui_l32>(((cp >> 6) & 0x1f) | 0xc0);
 
 		if (cp < 0x10000)
-			return static_cast<uchar32>(((cp >> 12) & 0x0f) | 0xe0);
+			return static_cast<ui_l32>(((cp >> 12) & 0x0f) | 0xe0);
 
-		return static_cast<uchar32>(((cp >> 18) & 0x07) | 0xf0);
+		return static_cast<ui_l32>(((cp >> 18) & 0x07) | 0xf0);
 	}
 
 	template <typename ForwardIterator>
@@ -847,10 +854,12 @@ public:
 		return false;
 	}
 };
-template <typename charT>
-	const std::size_t utf8_traits<charT>::maxseqlen;
-template <typename charT>
-	const int utf8_traits<charT>::utftype;
+template <typename charT> const std::size_t utf8_traits<charT>::maxseqlen;
+template <typename charT> const int utf8_traits<charT>::utftype;
+template <typename charT> const ui_l32 utf8_traits<charT>::charbit;
+template <typename charT> const ui_l32 utf8_traits<charT>::bitsetsize;
+template <typename charT> const ui_l32 utf8_traits<charT>::bitsetmask;
+template <typename charT> const ui_l32 utf8_traits<charT>::maxcpvalue;
 //  utf8_traits
 
 //  utf-16 specific.
@@ -863,67 +872,68 @@ public:
 	static const std::size_t maxseqlen = 2;
 	static const int utftype = 16;
 
-	static const std::size_t bitsetsize = 0x10000;
-	static const uchar32 bitsetmask = 0xffff;
-	static const uchar32 cumask = 0xffff;
+	static const ui_l32 charbit = 16;
+	static const ui_l32 bitsetsize = 0x10000;
+	static const ui_l32 bitsetmask = 0xffff;
+	static const ui_l32 maxcpvalue = 0x10ffff;
 
 	template <typename ForwardIterator>
-	static uchar32 codepoint(ForwardIterator begin, const ForwardIterator end)
+	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
 	{
-		const uchar32 codeunit = *begin;
+		const ui_l32 codeunit = *begin;
 
 		if ((codeunit & 0xdc00) != 0xd800)
-			return static_cast<uchar32>(codeunit & 0xffff);
+			return static_cast<ui_l32>(codeunit & 0xffff);
 
 		if (++begin != end && (*begin & 0xdc00) == 0xdc00)
-			return static_cast<uchar32>((((codeunit & 0x3ff) << 10) | (*begin & 0x3ff)) + 0x10000);
+			return static_cast<ui_l32>((((codeunit & 0x3ff) << 10) | (*begin & 0x3ff)) + 0x10000);
 
-		return static_cast<uchar32>(codeunit & 0xffff);
+		return static_cast<ui_l32>(codeunit & 0xffff);
 	}
 
 	template <typename ForwardIterator>
-	static uchar32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
+	static ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
 	{
-		const uchar32 codeunit = *begin++;
+		const ui_l32 codeunit = *begin++;
 
 		if ((codeunit & 0xdc00) != 0xd800)
-			return static_cast<uchar32>(codeunit & 0xffff);
+			return static_cast<ui_l32>(codeunit & 0xffff);
 
 		if (begin != end && (*begin & 0xdc00) == 0xdc00)
-			return static_cast<uchar32>((((codeunit & 0x3ff) << 10) | (*begin++ & 0x3ff)) + 0x10000);
+			return static_cast<ui_l32>((((codeunit & 0x3ff) << 10) | (*begin++ & 0x3ff)) + 0x10000);
 
-		return static_cast<uchar32>(codeunit & 0xffff);
+		return static_cast<ui_l32>(codeunit & 0xffff);
 	}
 
 	template <typename BidirectionalIterator>
-	static uchar32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
+	static ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
 	{
-		const uchar32 codeunit = *--cur;
+		const ui_l32 codeunit = *--cur;
 
 		if ((codeunit & 0xdc00) != 0xdc00 || cur == begin)
-			return static_cast<uchar32>(codeunit & 0xffff);
+			return static_cast<ui_l32>(codeunit & 0xffff);
 
 		if ((*--cur & 0xdc00) == 0xd800)
-			return static_cast<uchar32>((((*cur & 0x3ff) << 10) | (codeunit & 0x3ff)) + 0x10000);
+			return static_cast<ui_l32>((((*cur & 0x3ff) << 10) | (codeunit & 0x3ff)) + 0x10000);
 
-		return static_cast<uchar32>(codeunit & 0xffff);
+		return static_cast<ui_l32>(codeunit & 0xffff);
 	}
 
 	template <typename BidirectionalIterator>
-	static uchar32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
+	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
 	{
-		const uchar32 codeunit = *--cur;
+		const ui_l32 codeunit = *--cur;
 
 		if ((codeunit & 0xdc00) != 0xdc00 || cur == begin)
-			return static_cast<uchar32>(codeunit & 0xffff);
+			return static_cast<ui_l32>(codeunit & 0xffff);
 
 		if ((*--cur & 0xdc00) == 0xd800)
-			return static_cast<uchar32>((((*cur & 0x3ff) << 10) | (codeunit & 0x3ff)) + 0x10000);
+			return static_cast<ui_l32>((((*cur & 0x3ff) << 10) | (codeunit & 0x3ff)) + 0x10000);
 		//else	//  (codeunit & 0xdc00) == 0xdc00 && (*cur & 0xdc00) != 0xd800
 
 		++cur;
 
-		return static_cast<uchar32>(codeunit & 0xffff);
+		return static_cast<ui_l32>(codeunit & 0xffff);
 	}
 
 #if !defined(SRELLDBG_NO_BMH)
@@ -936,7 +946,7 @@ public:
 
 #endif	//  !defined(SRELLDBG_NO_BMH)
 
-	static uint_l32 to_codeunits(charT out[maxseqlen], uchar32 cp)
+	static ui_l32 to_codeunits(charT out[maxseqlen], ui_l32 cp)
 	{
 		if (cp < 0x10000)
 		{
@@ -952,12 +962,12 @@ public:
 		}
 	}
 
-	static uchar32 firstcodeunit(const uchar32 cp)
+	static ui_l32 firstcodeunit(const ui_l32 cp)
 	{
 		if (cp < 0x10000)
 			return cp;
 
-		return static_cast<uchar32>((cp >> 10) + 0xd7c0);
+		return static_cast<ui_l32>((cp >> 10) + 0xd7c0);
 			//  aaaaa bbbbcccc ddddeeee -> AA AAbb bbcc/cc dddd eeee where AAAA = aaaaa - 1.
 	}
 
@@ -972,16 +982,12 @@ public:
 		return false;
 	}
 };
-template <typename charT>
-	const std::size_t utf16_traits<charT>::maxseqlen;
-template <typename charT>
-	const int utf16_traits<charT>::utftype;
-template <typename charT>
-	const std::size_t utf16_traits<charT>::bitsetsize;
-template <typename charT>
-	const uchar32 utf16_traits<charT>::bitsetmask;
-template <typename charT>
-	const uchar32 utf16_traits<charT>::cumask;
+template <typename charT> const std::size_t utf16_traits<charT>::maxseqlen;
+template <typename charT> const int utf16_traits<charT>::utftype;
+template <typename charT> const ui_l32 utf16_traits<charT>::charbit;
+template <typename charT> const ui_l32 utf16_traits<charT>::bitsetsize;
+template <typename charT> const ui_l32 utf16_traits<charT>::bitsetmask;
+template <typename charT> const ui_l32 utf16_traits<charT>::maxcpvalue;
 //  utf16_traits
 
 //  specialisation for char.
@@ -991,27 +997,27 @@ struct utf_traits<char> : public utf_traits_core<char>
 public:
 
 	template <typename ForwardIterator>
-	static uchar32 codepoint(ForwardIterator begin, const ForwardIterator /* end */)
+	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator /* end */)
 	{
-		return static_cast<uchar32>(static_cast<unsigned char>(*begin));
+		return static_cast<ui_l32>(static_cast<unsigned char>(*begin));
 	}
 
 	template <typename ForwardIterator>
-	static uchar32 codepoint_inc(ForwardIterator &begin, const ForwardIterator /* end */)
+	static ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator /* end */)
 	{
-		return static_cast<uchar32>(static_cast<unsigned char>(*begin++));
+		return static_cast<ui_l32>(static_cast<unsigned char>(*begin++));
 	}
 
 	template <typename BidirectionalIterator>
-	static uchar32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator /* begin */)
+	static ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator /* begin */)
 	{
-		return static_cast<uchar32>(static_cast<unsigned char>(*--cur));
+		return static_cast<ui_l32>(static_cast<unsigned char>(*--cur));
 	}
 
 	template <typename BidirectionalIterator>
-	static uchar32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator /* begin */)
+	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator /* begin */)
 	{
-		return static_cast<uchar32>(static_cast<unsigned char>(*--cur));
+		return static_cast<ui_l32>(static_cast<unsigned char>(*--cur));
 	}
 
 #if !defined(SRELLDBG_NO_BMH)
@@ -1464,19 +1470,6 @@ public:
 		return buffer_;
 	}
 
-	int compare(size_type pos, const size_type count1, const_pointer p, const size_type count2) const
-	{
-		size_type count = count1 <= count2 ? count1 : count2;
-
-		for (; count; ++pos, ++p, --count)
-		{
-			const value_type &v = buffer_[pos];
-			if (v != *p)
-				return v < *p ? -1 : 1;
-		}
-		return count1 == count2 ? 0 : (count1 < count2 ? -1 : 1);
-	}
-
 	size_type max_size() const
 	{
 		return maxsize_;
@@ -1737,7 +1730,7 @@ private:
 		namespace ucf_constants
 		{
 
-//  ["srell_ucfdata2.hpp" ...
+//  ["srell_ucfdata2.h" ...
 //  CaseFolding-15.0.0.txt
 //  Date: 2022-02-02, 23:35:35 GMT
 //  © 2022 Unicode®, Inc.
@@ -4222,14 +4215,14 @@ const T2 unicode_casefolding<T2, T3>::rev_charsettable[] =
 	0x1E943, 0x1E921, eos	//  4300
 };
 #define SRELL_UCFDATA_VERSION 201
-//  ... "srell_ucfdata2.hpp"]
+//  ... "srell_ucfdata2.h"]
 
 		}	//  namespace ucf_constants
 
 		namespace ucf_internal
 		{
 
-typedef ucf_constants::unicode_casefolding<uchar32, uchar32> ucfdata;
+typedef ucf_constants::unicode_casefolding<ui_l32, ui_l32> ucfdata;
 
 		}	//  namespace ucf_internal
 #endif	//  !defined(SRELL_NO_UNICODE_ICASE)
@@ -4237,9 +4230,9 @@ typedef ucf_constants::unicode_casefolding<uchar32, uchar32> ucfdata;
 		namespace ucf_constants
 		{
 #if !defined(SRELL_NO_UNICODE_ICASE)
-			static const uchar32 rev_maxset = ucf_internal::ucfdata::rev_maxset;
+			static const ui_l32 rev_maxset = ucf_internal::ucfdata::rev_maxset;
 #else
-			static const uchar32 rev_maxset = 2;
+			static const ui_l32 rev_maxset = 2;
 #endif
 		}	//  namespace ucf_constants
 
@@ -4247,27 +4240,27 @@ class unicode_case_folding
 {
 public:
 
-	static uchar32 do_casefolding(const uchar32 cp)
+	static ui_l32 do_casefolding(const ui_l32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
 		if (cp <= ucf_internal::ucfdata::ucf_maxcodepoint)
 			return cp + ucf_internal::ucfdata::ucf_deltatable[ucf_internal::ucfdata::ucf_segmenttable[cp >> 8] + (cp & 0xff)];
 #else
 		if (cp >= char_alnum::ch_A && cp <= char_alnum::ch_Z)	//  'A' && 'Z'
-			return static_cast<uchar32>(cp - char_alnum::ch_A + char_alnum::ch_a);	//  - 'A' + 'a'
+			return static_cast<ui_l32>(cp - char_alnum::ch_A + char_alnum::ch_a);	//  - 'A' + 'a'
 #endif
 		return cp;
 	}
 
-	static uint_l32 do_caseunfolding(uchar32 out[ucf_constants::rev_maxset], const uchar32 cp)
+	static ui_l32 do_caseunfolding(ui_l32 out[ucf_constants::rev_maxset], const ui_l32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
-		uint_l32 count = 0u;
+		ui_l32 count = 0u;
 
 		if (cp <= ucf_internal::ucfdata::rev_maxcodepoint)
 		{
-			const uchar32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
-			const uchar32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
+			const ui_l32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
+			const ui_l32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
 
 			for (; *ptr != cfcharset_eos_ && count < ucf_constants::rev_maxset; ++ptr, ++count)
 				out[count] = *ptr;
@@ -4277,29 +4270,28 @@ public:
 
 		return count;
 #else
-//		const uchar32 nocase = static_cast<uchar32>(cp & ~0x20);
-		const uchar32 nocase = static_cast<uchar32>(cp | constants::asc_icase);
+		const ui_l32 nocase = static_cast<ui_l32>(cp | constants::asc_icase);
 
 		out[0] = cp;
 //		if (nocase >= char_alnum::ch_A && nocase <= char_alnum::ch_Z)
 		if (nocase >= char_alnum::ch_a && nocase <= char_alnum::ch_z)
 		{
-			out[1] = static_cast<uchar32>(cp ^ constants::asc_icase);
+			out[1] = static_cast<ui_l32>(cp ^ constants::asc_icase);
 			return 2u;
 		}
 		return 1u;
 #endif
 	}
 
-	static uint_l32 count_caseunfolding(const uchar32 cp)
+	static ui_l32 count_caseunfolding(const ui_l32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
-		uint_l32 count = 0u;
+		ui_l32 count = 0u;
 
 		if (cp <= ucf_internal::ucfdata::rev_maxcodepoint)
 		{
-			const uchar32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
-			const uchar32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
+			const ui_l32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
+			const ui_l32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
 
 			for (; *ptr != cfcharset_eos_; ++ptr)
 				++count;
@@ -4309,7 +4301,7 @@ public:
 
 		return count;
 #else
-		const uchar32 nocase = static_cast<uchar32>(cp | constants::asc_icase);
+		const ui_l32 nocase = static_cast<ui_l32>(cp | constants::asc_icase);
 
 		return (nocase >= char_alnum::ch_a && nocase <= char_alnum::ch_z) ? 2u : 1u;
 #endif
@@ -4334,7 +4326,7 @@ public:
 private:
 
 #if !defined(SRELL_NO_UNICODE_ICASE)
-	static const uchar32 cfcharset_eos_ = ucf_internal::ucfdata::eos;
+	static const ui_l32 cfcharset_eos_ = ucf_internal::ucfdata::eos;
 #endif
 
 public:	//  For debug.
@@ -4356,54 +4348,60 @@ public:	//  For debug.
 		namespace up_constants
 		{
 
-//  ["srell_updata2.hpp" ...
+//  ["srell_updata3.h" ...
 //  UnicodeData.txt
 //
-//  PropList-15.0.0.txt
-//  Date: 2022-08-05, 22:17:16 GMT
-//  © 2022 Unicode®, Inc.
+//  PropList-15.1.0.txt
+//  Date: 2023-08-01, 21:56:53 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
-//  DerivedCoreProperties-15.0.0.txt
-//  Date: 2022-08-05, 22:17:05 GMT
-//  © 2022 Unicode®, Inc.
+//  DerivedCoreProperties-15.1.0.txt
+//  Date: 2023-08-07, 15:21:24 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
 //  emoji-data.txt
-//  Date: 2022-08-02, 00:26:10 GMT
-//  © 2022 Unicode®, Inc.
+//  Date: 2023-02-01, 02:22:54 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
-//  DerivedNormalizationProps-15.0.0.txt
-//  Date: 2022-04-02, 01:29:03 GMT
-//  © 2022 Unicode®, Inc.
+//  DerivedNormalizationProps-15.1.0.txt
+//  Date: 2023-05-02, 13:20:58 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
 //  emoji-sequences.txt
-//  Date: 2022-08-15, 23:13:41 GMT
-//  © 2022 Unicode®, Inc.
+//  Date: 2023-06-05, 21:39:54 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
 //  emoji-zwj-sequences.txt
-//  Date: 2022-05-06, 16:14:52 GMT
-//  © 2022 Unicode®, Inc.
+//  Date: 2023-06-05, 20:04:50 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
-//  Scripts-15.0.0.txt
-//  Date: 2022-04-26, 23:15:02 GMT
-//  © 2022 Unicode®, Inc.
+//  PropertyValueAliases-15.1.0.txt
+//  Date: 2023-08-07, 15:21:34 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
-//  ScriptExtensions-15.0.0.txt
-//  Date: 2022-02-02, 00:57:11 GMT
-//  © 2022 Unicode®, Inc.
+//  Scripts-15.1.0.txt
+//  Date: 2023-07-28, 16:01:07 GMT
+//  © 2023 Unicode®, Inc.
+//  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
+//  For terms of use, see https://www.unicode.org/terms_of_use.html
+//
+//  ScriptExtensions-15.1.0.txt
+//  Date: 2023-02-01, 23:02:24 GMT
+//  © 2023 Unicode®, Inc.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
@@ -4411,474 +4409,1652 @@ public:	//  For debug.
 enum upid_type
 {
 	upid_unknown = 0,
-	gc_Other = 1,	//  #1
-	gc_Control = 2,	//  #2
-	gc_Format = 3,	//  #3
-	gc_Unassigned = 4,	//  #4
-	gc_Private_Use = 5,	//  #5
-	gc_Surrogate = 6,	//  #6
-	gc_Letter = 7,	//  #7
-	gc_Cased_Letter = 8,	//  #8
-	gc_Lowercase_Letter = 9,	//  #9
-	gc_Titlecase_Letter = 10,	//  #10
-	gc_Uppercase_Letter = 11,	//  #11
-	gc_Modifier_Letter = 12,	//  #12
-	gc_Other_Letter = 13,	//  #13
-	gc_Mark = 14,	//  #14
-	gc_Spacing_Mark = 15,	//  #15
-	gc_Enclosing_Mark = 16,	//  #16
-	gc_Nonspacing_Mark = 17,	//  #17
-	gc_Number = 18,	//  #18
-	gc_Decimal_Number = 19,	//  #19
-	gc_Letter_Number = 20,	//  #20
-	gc_Other_Number = 21,	//  #21
-	gc_Punctuation = 22,	//  #22
-	gc_Connector_Punctuation = 23,	//  #23
-	gc_Dash_Punctuation = 24,	//  #24
-	gc_Close_Punctuation = 25,	//  #25
-	gc_Final_Punctuation = 26,	//  #26
-	gc_Initial_Punctuation = 27,	//  #27
-	gc_Other_Punctuation = 28,	//  #28
-	gc_Open_Punctuation = 29,	//  #29
-	gc_Symbol = 30,	//  #30
-	gc_Currency_Symbol = 31,	//  #31
-	gc_Modifier_Symbol = 32,	//  #32
-	gc_Math_Symbol = 33,	//  #33
-	gc_Other_Symbol = 34,	//  #34
-	gc_Separator = 35,	//  #35
-	gc_Line_Separator = 36,	//  #36
-	gc_Paragraph_Separator = 37,	//  #37
-	gc_Space_Separator = 38,	//  #38
-	bp_ASCII = 39,	//  #39
-	bp_ASCII_Hex_Digit = 40,	//  #40
-	bp_Alphabetic = 41,	//  #41
-	bp_Any = 42,	//  #42
-	bp_Assigned = 43,	//  #43
-	bp_Bidi_Control = 44,	//  #44
-	bp_Bidi_Mirrored = 45,	//  #45
-	bp_Case_Ignorable = 46,	//  #46
-	bp_Cased = 47,	//  #47
-	bp_Changes_When_Casefolded = 48,	//  #48
-	bp_Changes_When_Casemapped = 49,	//  #49
-	bp_Changes_When_Lowercased = 50,	//  #50
-	bp_Changes_When_NFKC_Casefolded = 51,	//  #51
-	bp_Changes_When_Titlecased = 52,	//  #52
-	bp_Changes_When_Uppercased = 53,	//  #53
-	bp_Dash = 54,	//  #54
-	bp_Default_Ignorable_Code_Point = 55,	//  #55
-	bp_Deprecated = 56,	//  #56
-	bp_Diacritic = 57,	//  #57
-	bp_Emoji = 58,	//  #58
-	bp_Emoji_Component = 59,	//  #59
-	bp_Emoji_Modifier = 60,	//  #60
-	bp_Emoji_Modifier_Base = 61,	//  #61
-	bp_Emoji_Presentation = 62,	//  #62
-	bp_Extended_Pictographic = 63,	//  #63
-	bp_Extender = 64,	//  #64
-	bp_Grapheme_Base = 65,	//  #65
-	bp_Grapheme_Extend = 66,	//  #66
-	bp_Hex_Digit = 67,	//  #67
-	bp_IDS_Binary_Operator = 68,	//  #68
-	bp_IDS_Trinary_Operator = 69,	//  #69
-	bp_ID_Continue = 70,	//  #70
-	bp_ID_Start = 71,	//  #71
-	bp_Ideographic = 72,	//  #72
-	bp_Join_Control = 73,	//  #73
-	bp_Logical_Order_Exception = 74,	//  #74
-	bp_Lowercase = 75,	//  #75
-	bp_Math = 76,	//  #76
-	bp_Noncharacter_Code_Point = 77,	//  #77
-	bp_Pattern_Syntax = 78,	//  #78
-	bp_Pattern_White_Space = 79,	//  #79
-	bp_Quotation_Mark = 80,	//  #80
-	bp_Radical = 81,	//  #81
-	bp_Regional_Indicator = 82,	//  #82
-	bp_Sentence_Terminal = 83,	//  #83
-	bp_Soft_Dotted = 84,	//  #84
-	bp_Terminal_Punctuation = 85,	//  #85
-	bp_Unified_Ideograph = 86,	//  #86
-	bp_Uppercase = 87,	//  #87
-	bp_Variation_Selector = 88,	//  #88
-	bp_White_Space = 89,	//  #89
-	bp_XID_Continue = 90,	//  #90
-	bp_XID_Start = 91,	//  #91
-	sc_Adlam = 92,	//  #92
-	sc_Ahom = 93,	//  #93
-	sc_Anatolian_Hieroglyphs = 94,	//  #94
-	sc_Arabic = 95,	//  #95
-	sc_Armenian = 96,	//  #96
-	sc_Avestan = 97,	//  #97
-	sc_Balinese = 98,	//  #98
-	sc_Bamum = 99,	//  #99
-	sc_Bassa_Vah = 100,	//  #100
-	sc_Batak = 101,	//  #101
-	sc_Bengali = 102,	//  #102
-	sc_Bhaiksuki = 103,	//  #103
-	sc_Bopomofo = 104,	//  #104
-	sc_Brahmi = 105,	//  #105
-	sc_Braille = 106,	//  #106
-	sc_Buginese = 107,	//  #107
-	sc_Buhid = 108,	//  #108
-	sc_Canadian_Aboriginal = 109,	//  #109
-	sc_Carian = 110,	//  #110
-	sc_Caucasian_Albanian = 111,	//  #111
-	sc_Chakma = 112,	//  #112
-	sc_Cham = 113,	//  #113
-	sc_Cherokee = 114,	//  #114
-	sc_Chorasmian = 115,	//  #115
-	sc_Common = 116,	//  #116
-	sc_Coptic = 117,	//  #117
-	sc_Cypro_Minoan = 118,	//  #118
-	sc_Cuneiform = 119,	//  #119
-	sc_Cypriot = 120,	//  #120
-	sc_Cyrillic = 121,	//  #121
-	sc_Deseret = 122,	//  #122
-	sc_Devanagari = 123,	//  #123
-	sc_Dives_Akuru = 124,	//  #124
-	sc_Dogra = 125,	//  #125
-	sc_Duployan = 126,	//  #126
-	sc_Egyptian_Hieroglyphs = 127,	//  #127
-	sc_Elbasan = 128,	//  #128
-	sc_Elymaic = 129,	//  #129
-	sc_Ethiopic = 130,	//  #130
-	sc_Georgian = 131,	//  #131
-	sc_Glagolitic = 132,	//  #132
-	sc_Gothic = 133,	//  #133
-	sc_Grantha = 134,	//  #134
-	sc_Greek = 135,	//  #135
-	sc_Gujarati = 136,	//  #136
-	sc_Gunjala_Gondi = 137,	//  #137
-	sc_Gurmukhi = 138,	//  #138
-	sc_Han = 139,	//  #139
-	sc_Hangul = 140,	//  #140
-	sc_Hanifi_Rohingya = 141,	//  #141
-	sc_Hanunoo = 142,	//  #142
-	sc_Hatran = 143,	//  #143
-	sc_Hebrew = 144,	//  #144
-	sc_Hiragana = 145,	//  #145
-	sc_Imperial_Aramaic = 146,	//  #146
-	sc_Inherited = 147,	//  #147
-	sc_Inscriptional_Pahlavi = 148,	//  #148
-	sc_Inscriptional_Parthian = 149,	//  #149
-	sc_Javanese = 150,	//  #150
-	sc_Kaithi = 151,	//  #151
-	sc_Kannada = 152,	//  #152
-	sc_Katakana = 153,	//  #153
-	sc_Kayah_Li = 154,	//  #154
-	sc_Kharoshthi = 155,	//  #155
-	sc_Khitan_Small_Script = 156,	//  #156
-	sc_Khmer = 157,	//  #157
-	sc_Khojki = 158,	//  #158
-	sc_Khudawadi = 159,	//  #159
-	sc_Lao = 160,	//  #160
-	sc_Latin = 161,	//  #161
-	sc_Lepcha = 162,	//  #162
-	sc_Limbu = 163,	//  #163
-	sc_Linear_A = 164,	//  #164
-	sc_Linear_B = 165,	//  #165
-	sc_Lisu = 166,	//  #166
-	sc_Lycian = 167,	//  #167
-	sc_Lydian = 168,	//  #168
-	sc_Mahajani = 169,	//  #169
-	sc_Makasar = 170,	//  #170
-	sc_Malayalam = 171,	//  #171
-	sc_Mandaic = 172,	//  #172
-	sc_Manichaean = 173,	//  #173
-	sc_Marchen = 174,	//  #174
-	sc_Masaram_Gondi = 175,	//  #175
-	sc_Medefaidrin = 176,	//  #176
-	sc_Meetei_Mayek = 177,	//  #177
-	sc_Mende_Kikakui = 178,	//  #178
-	sc_Meroitic_Cursive = 179,	//  #179
-	sc_Meroitic_Hieroglyphs = 180,	//  #180
-	sc_Miao = 181,	//  #181
-	sc_Modi = 182,	//  #182
-	sc_Mongolian = 183,	//  #183
-	sc_Mro = 184,	//  #184
-	sc_Multani = 185,	//  #185
-	sc_Myanmar = 186,	//  #186
-	sc_Nabataean = 187,	//  #187
-	sc_Nandinagari = 188,	//  #188
-	sc_New_Tai_Lue = 189,	//  #189
-	sc_Newa = 190,	//  #190
-	sc_Nko = 191,	//  #191
-	sc_Nushu = 192,	//  #192
-	sc_Nyiakeng_Puachue_Hmong = 193,	//  #193
-	sc_Ogham = 194,	//  #194
-	sc_Ol_Chiki = 195,	//  #195
-	sc_Old_Hungarian = 196,	//  #196
-	sc_Old_Italic = 197,	//  #197
-	sc_Old_North_Arabian = 198,	//  #198
-	sc_Old_Permic = 199,	//  #199
-	sc_Old_Persian = 200,	//  #200
-	sc_Old_Sogdian = 201,	//  #201
-	sc_Old_South_Arabian = 202,	//  #202
-	sc_Old_Turkic = 203,	//  #203
-	sc_Old_Uyghur = 204,	//  #204
-	sc_Oriya = 205,	//  #205
-	sc_Osage = 206,	//  #206
-	sc_Osmanya = 207,	//  #207
-	sc_Pahawh_Hmong = 208,	//  #208
-	sc_Palmyrene = 209,	//  #209
-	sc_Pau_Cin_Hau = 210,	//  #210
-	sc_Phags_Pa = 211,	//  #211
-	sc_Phoenician = 212,	//  #212
-	sc_Psalter_Pahlavi = 213,	//  #213
-	sc_Rejang = 214,	//  #214
-	sc_Runic = 215,	//  #215
-	sc_Samaritan = 216,	//  #216
-	sc_Saurashtra = 217,	//  #217
-	sc_Sharada = 218,	//  #218
-	sc_Shavian = 219,	//  #219
-	sc_Siddham = 220,	//  #220
-	sc_SignWriting = 221,	//  #221
-	sc_Sinhala = 222,	//  #222
-	sc_Sogdian = 223,	//  #223
-	sc_Sora_Sompeng = 224,	//  #224
-	sc_Soyombo = 225,	//  #225
-	sc_Sundanese = 226,	//  #226
-	sc_Syloti_Nagri = 227,	//  #227
-	sc_Syriac = 228,	//  #228
-	sc_Tagalog = 229,	//  #229
-	sc_Tagbanwa = 230,	//  #230
-	sc_Tai_Le = 231,	//  #231
-	sc_Tai_Tham = 232,	//  #232
-	sc_Tai_Viet = 233,	//  #233
-	sc_Takri = 234,	//  #234
-	sc_Tamil = 235,	//  #235
-	sc_Tangsa = 236,	//  #236
-	sc_Tangut = 237,	//  #237
-	sc_Telugu = 238,	//  #238
-	sc_Thaana = 239,	//  #239
-	sc_Thai = 240,	//  #240
-	sc_Tibetan = 241,	//  #241
-	sc_Tifinagh = 242,	//  #242
-	sc_Tirhuta = 243,	//  #243
-	sc_Toto = 244,	//  #244
-	sc_Ugaritic = 245,	//  #245
-	sc_Vai = 246,	//  #246
-	sc_Vithkuqi = 247,	//  #247
-	sc_Wancho = 248,	//  #248
-	sc_Warang_Citi = 249,	//  #249
-	sc_Yezidi = 250,	//  #250
-	sc_Yi = 251,	//  #251
-	sc_Zanabazar_Square = 252,	//  #252
-	scx_Adlam = 253,	//  #253
-	scx_Ahom = 254,	//  #93
-	scx_Anatolian_Hieroglyphs = 255,	//  #94
-	scx_Arabic = 256,	//  #254
-	scx_Armenian = 257,	//  #96
-	scx_Avestan = 258,	//  #97
-	scx_Balinese = 259,	//  #98
-	scx_Bamum = 260,	//  #99
-	scx_Bassa_Vah = 261,	//  #100
-	scx_Batak = 262,	//  #101
-	scx_Bengali = 263,	//  #255
-	scx_Bhaiksuki = 264,	//  #103
-	scx_Bopomofo = 265,	//  #256
-	scx_Brahmi = 266,	//  #105
-	scx_Braille = 267,	//  #106
-	scx_Buginese = 268,	//  #257
-	scx_Buhid = 269,	//  #258
-	scx_Canadian_Aboriginal = 270,	//  #109
-	scx_Carian = 271,	//  #110
-	scx_Caucasian_Albanian = 272,	//  #111
-	scx_Chakma = 273,	//  #259
-	scx_Cham = 274,	//  #113
-	scx_Cherokee = 275,	//  #114
-	scx_Chorasmian = 276,	//  #115
-	scx_Common = 277,	//  #260
-	scx_Coptic = 278,	//  #261
-	scx_Cypro_Minoan = 279,	//  #262
-	scx_Cuneiform = 280,	//  #119
-	scx_Cypriot = 281,	//  #263
-	scx_Cyrillic = 282,	//  #264
-	scx_Deseret = 283,	//  #122
-	scx_Devanagari = 284,	//  #265
-	scx_Dives_Akuru = 285,	//  #124
-	scx_Dogra = 286,	//  #266
-	scx_Duployan = 287,	//  #267
-	scx_Egyptian_Hieroglyphs = 288,	//  #127
-	scx_Elbasan = 289,	//  #128
-	scx_Elymaic = 290,	//  #129
-	scx_Ethiopic = 291,	//  #130
-	scx_Georgian = 292,	//  #268
-	scx_Glagolitic = 293,	//  #269
-	scx_Gothic = 294,	//  #133
-	scx_Grantha = 295,	//  #270
-	scx_Greek = 296,	//  #271
-	scx_Gujarati = 297,	//  #272
-	scx_Gunjala_Gondi = 298,	//  #273
-	scx_Gurmukhi = 299,	//  #274
-	scx_Han = 300,	//  #275
-	scx_Hangul = 301,	//  #276
-	scx_Hanifi_Rohingya = 302,	//  #277
-	scx_Hanunoo = 303,	//  #278
-	scx_Hatran = 304,	//  #143
-	scx_Hebrew = 305,	//  #144
-	scx_Hiragana = 306,	//  #279
-	scx_Imperial_Aramaic = 307,	//  #146
-	scx_Inherited = 308,	//  #280
-	scx_Inscriptional_Pahlavi = 309,	//  #148
-	scx_Inscriptional_Parthian = 310,	//  #149
-	scx_Javanese = 311,	//  #281
-	scx_Kaithi = 312,	//  #282
-	scx_Kannada = 313,	//  #283
-	scx_Katakana = 314,	//  #284
-	scx_Kayah_Li = 315,	//  #285
-	scx_Kharoshthi = 316,	//  #155
-	scx_Khitan_Small_Script = 317,	//  #156
-	scx_Khmer = 318,	//  #157
-	scx_Khojki = 319,	//  #286
-	scx_Khudawadi = 320,	//  #287
-	scx_Lao = 321,	//  #160
-	scx_Latin = 322,	//  #288
-	scx_Lepcha = 323,	//  #162
-	scx_Limbu = 324,	//  #289
-	scx_Linear_A = 325,	//  #290
-	scx_Linear_B = 326,	//  #291
-	scx_Lisu = 327,	//  #166
-	scx_Lycian = 328,	//  #167
-	scx_Lydian = 329,	//  #168
-	scx_Mahajani = 330,	//  #292
-	scx_Makasar = 331,	//  #170
-	scx_Malayalam = 332,	//  #293
-	scx_Mandaic = 333,	//  #294
-	scx_Manichaean = 334,	//  #295
-	scx_Marchen = 335,	//  #174
-	scx_Masaram_Gondi = 336,	//  #296
-	scx_Medefaidrin = 337,	//  #176
-	scx_Meetei_Mayek = 338,	//  #177
-	scx_Mende_Kikakui = 339,	//  #178
-	scx_Meroitic_Cursive = 340,	//  #179
-	scx_Meroitic_Hieroglyphs = 341,	//  #180
-	scx_Miao = 342,	//  #181
-	scx_Modi = 343,	//  #297
-	scx_Mongolian = 344,	//  #298
-	scx_Mro = 345,	//  #184
-	scx_Multani = 346,	//  #299
-	scx_Myanmar = 347,	//  #300
-	scx_Nabataean = 348,	//  #187
-	scx_Nandinagari = 349,	//  #301
-	scx_New_Tai_Lue = 350,	//  #189
-	scx_Newa = 351,	//  #190
-	scx_Nko = 352,	//  #302
-	scx_Nushu = 353,	//  #192
-	scx_Nyiakeng_Puachue_Hmong = 354,	//  #193
-	scx_Ogham = 355,	//  #194
-	scx_Ol_Chiki = 356,	//  #195
-	scx_Old_Hungarian = 357,	//  #196
-	scx_Old_Italic = 358,	//  #197
-	scx_Old_North_Arabian = 359,	//  #198
-	scx_Old_Permic = 360,	//  #303
-	scx_Old_Persian = 361,	//  #200
-	scx_Old_Sogdian = 362,	//  #201
-	scx_Old_South_Arabian = 363,	//  #202
-	scx_Old_Turkic = 364,	//  #203
-	scx_Old_Uyghur = 365,	//  #304
-	scx_Oriya = 366,	//  #305
-	scx_Osage = 367,	//  #206
-	scx_Osmanya = 368,	//  #207
-	scx_Pahawh_Hmong = 369,	//  #208
-	scx_Palmyrene = 370,	//  #209
-	scx_Pau_Cin_Hau = 371,	//  #210
-	scx_Phags_Pa = 372,	//  #306
-	scx_Phoenician = 373,	//  #212
-	scx_Psalter_Pahlavi = 374,	//  #307
-	scx_Rejang = 375,	//  #214
-	scx_Runic = 376,	//  #215
-	scx_Samaritan = 377,	//  #216
-	scx_Saurashtra = 378,	//  #217
-	scx_Sharada = 379,	//  #308
-	scx_Shavian = 380,	//  #219
-	scx_Siddham = 381,	//  #220
-	scx_SignWriting = 382,	//  #221
-	scx_Sinhala = 383,	//  #309
-	scx_Sogdian = 384,	//  #310
-	scx_Sora_Sompeng = 385,	//  #224
-	scx_Soyombo = 386,	//  #225
-	scx_Sundanese = 387,	//  #226
-	scx_Syloti_Nagri = 388,	//  #311
-	scx_Syriac = 389,	//  #312
-	scx_Tagalog = 390,	//  #313
-	scx_Tagbanwa = 391,	//  #314
-	scx_Tai_Le = 392,	//  #315
-	scx_Tai_Tham = 393,	//  #232
-	scx_Tai_Viet = 394,	//  #233
-	scx_Takri = 395,	//  #316
-	scx_Tamil = 396,	//  #317
-	scx_Tangsa = 397,	//  #236
-	scx_Tangut = 398,	//  #237
-	scx_Telugu = 399,	//  #318
-	scx_Thaana = 400,	//  #319
-	scx_Thai = 401,	//  #240
-	scx_Tibetan = 402,	//  #241
-	scx_Tifinagh = 403,	//  #242
-	scx_Tirhuta = 404,	//  #320
-	scx_Toto = 405,	//  #244
-	scx_Ugaritic = 406,	//  #245
-	scx_Vai = 407,	//  #246
-	scx_Vithkuqi = 408,	//  #247
-	scx_Wancho = 409,	//  #248
-	scx_Warang_Citi = 410,	//  #249
-	scx_Yezidi = 411,	//  #321
-	scx_Yi = 412,	//  #322
-	scx_Zanabazar_Square = 413,	//  #252
-	upid_max_property_number = 322,
-	bp_RGI_Emoji = 414,	//  #323
-	bp_Basic_Emoji = 415,	//  #324
-	bp_Emoji_Keycap_Sequence = 416,	//  #325
-	bp_RGI_Emoji_Modifier_Sequence = 417,	//  #326
-	bp_RGI_Emoji_Flag_Sequence = 418,	//  #327
-	bp_RGI_Emoji_Tag_Sequence = 419,	//  #328
-	bp_RGI_Emoji_ZWJ_Sequence = 420,	//  #329
-	upid_max_pos_number = 329
+	upid_invalid = 0,
+	upid_error = 0,
+	uptype_bp = 1,
+	uptype_gc = 2,
+	uptype_sc = 3,
+	uptype_scx = 4,
+	gc_Other = 5,
+	gc_Control = 6,
+	gc_Format = 7,
+	gc_Unassigned = 8,
+	gc_Private_Use = 9,
+	gc_Surrogate = 10,
+	gc_Letter = 11,
+	gc_Cased_Letter = 12,
+	gc_Lowercase_Letter = 13,
+	gc_Titlecase_Letter = 14,
+	gc_Uppercase_Letter = 15,
+	gc_Modifier_Letter = 16,
+	gc_Other_Letter = 17,
+	gc_Mark = 18,
+	gc_Spacing_Mark = 19,
+	gc_Enclosing_Mark = 20,
+	gc_Nonspacing_Mark = 21,
+	gc_Number = 22,
+	gc_Decimal_Number = 23,
+	gc_Letter_Number = 24,
+	gc_Other_Number = 25,
+	gc_Punctuation = 26,
+	gc_Connector_Punctuation = 27,
+	gc_Dash_Punctuation = 28,
+	gc_Close_Punctuation = 29,
+	gc_Final_Punctuation = 30,
+	gc_Initial_Punctuation = 31,
+	gc_Other_Punctuation = 32,
+	gc_Open_Punctuation = 33,
+	gc_Symbol = 34,
+	gc_Currency_Symbol = 35,
+	gc_Modifier_Symbol = 36,
+	gc_Math_Symbol = 37,
+	gc_Other_Symbol = 38,
+	gc_Separator = 39,
+	gc_Line_Separator = 40,
+	gc_Paragraph_Separator = 41,
+	gc_Space_Separator = 42,
+	bp_ASCII = 43,
+	bp_ASCII_Hex_Digit = 44,
+	bp_Alphabetic = 45,
+	bp_Any = 46,
+	bp_Assigned = 47,
+	bp_Bidi_Control = 48,
+	bp_Bidi_Mirrored = 49,
+	bp_Case_Ignorable = 50,
+	bp_Cased = 51,
+	bp_Changes_When_Casefolded = 52,
+	bp_Changes_When_Casemapped = 53,
+	bp_Changes_When_Lowercased = 54,
+	bp_Changes_When_NFKC_Casefolded = 55,
+	bp_Changes_When_Titlecased = 56,
+	bp_Changes_When_Uppercased = 57,
+	bp_Dash = 58,
+	bp_Default_Ignorable_Code_Point = 59,
+	bp_Deprecated = 60,
+	bp_Diacritic = 61,
+	bp_Emoji = 62,
+	bp_Emoji_Component = 63,
+	bp_Emoji_Modifier = 64,
+	bp_Emoji_Modifier_Base = 65,
+	bp_Emoji_Presentation = 66,
+	bp_Extended_Pictographic = 67,
+	bp_Extender = 68,
+	bp_Grapheme_Base = 69,
+	bp_Grapheme_Extend = 70,
+	bp_Hex_Digit = 71,
+	bp_IDS_Binary_Operator = 72,
+	bp_IDS_Trinary_Operator = 73,
+	bp_ID_Continue = 74,
+	bp_ID_Start = 75,
+	bp_Ideographic = 76,
+	bp_Join_Control = 77,
+	bp_Logical_Order_Exception = 78,
+	bp_Lowercase = 79,
+	bp_Math = 80,
+	bp_Noncharacter_Code_Point = 81,
+	bp_Pattern_Syntax = 82,
+	bp_Pattern_White_Space = 83,
+	bp_Quotation_Mark = 84,
+	bp_Radical = 85,
+	bp_Regional_Indicator = 86,
+	bp_Sentence_Terminal = 87,
+	bp_Soft_Dotted = 88,
+	bp_Terminal_Punctuation = 89,
+	bp_Unified_Ideograph = 90,
+	bp_Uppercase = 91,
+	bp_Variation_Selector = 92,
+	bp_White_Space = 93,
+	bp_XID_Continue = 94,
+	bp_XID_Start = 95,
+	sc_Common = 96,
+	sc_Latin = 97,
+	sc_Greek = 98,
+	sc_Cyrillic = 99,
+	sc_Armenian = 100,
+	sc_Hebrew = 101,
+	sc_Arabic = 102,
+	sc_Syriac = 103,
+	sc_Thaana = 104,
+	sc_Devanagari = 105,
+	sc_Bengali = 106,
+	sc_Gurmukhi = 107,
+	sc_Gujarati = 108,
+	sc_Oriya = 109,
+	sc_Tamil = 110,
+	sc_Telugu = 111,
+	sc_Kannada = 112,
+	sc_Malayalam = 113,
+	sc_Sinhala = 114,
+	sc_Thai = 115,
+	sc_Lao = 116,
+	sc_Tibetan = 117,
+	sc_Myanmar = 118,
+	sc_Georgian = 119,
+	sc_Hangul = 120,
+	sc_Ethiopic = 121,
+	sc_Cherokee = 122,
+	sc_Canadian_Aboriginal = 123,
+	sc_Ogham = 124,
+	sc_Runic = 125,
+	sc_Khmer = 126,
+	sc_Mongolian = 127,
+	sc_Hiragana = 128,
+	sc_Katakana = 129,
+	sc_Bopomofo = 130,
+	sc_Han = 131,
+	sc_Yi = 132,
+	sc_Old_Italic = 133,
+	sc_Gothic = 134,
+	sc_Deseret = 135,
+	sc_Inherited = 136,
+	sc_Tagalog = 137,
+	sc_Hanunoo = 138,
+	sc_Buhid = 139,
+	sc_Tagbanwa = 140,
+	sc_Limbu = 141,
+	sc_Tai_Le = 142,
+	sc_Linear_B = 143,
+	sc_Ugaritic = 144,
+	sc_Shavian = 145,
+	sc_Osmanya = 146,
+	sc_Cypriot = 147,
+	sc_Braille = 148,
+	sc_Buginese = 149,
+	sc_Coptic = 150,
+	sc_New_Tai_Lue = 151,
+	sc_Glagolitic = 152,
+	sc_Tifinagh = 153,
+	sc_Syloti_Nagri = 154,
+	sc_Old_Persian = 155,
+	sc_Kharoshthi = 156,
+	sc_Balinese = 157,
+	sc_Cuneiform = 158,
+	sc_Phoenician = 159,
+	sc_Phags_Pa = 160,
+	sc_Nko = 161,
+	sc_Sundanese = 162,
+	sc_Lepcha = 163,
+	sc_Ol_Chiki = 164,
+	sc_Vai = 165,
+	sc_Saurashtra = 166,
+	sc_Kayah_Li = 167,
+	sc_Rejang = 168,
+	sc_Lycian = 169,
+	sc_Carian = 170,
+	sc_Lydian = 171,
+	sc_Cham = 172,
+	sc_Tai_Tham = 173,
+	sc_Tai_Viet = 174,
+	sc_Avestan = 175,
+	sc_Egyptian_Hieroglyphs = 176,
+	sc_Samaritan = 177,
+	sc_Lisu = 178,
+	sc_Bamum = 179,
+	sc_Javanese = 180,
+	sc_Meetei_Mayek = 181,
+	sc_Imperial_Aramaic = 182,
+	sc_Old_South_Arabian = 183,
+	sc_Inscriptional_Parthian = 184,
+	sc_Inscriptional_Pahlavi = 185,
+	sc_Old_Turkic = 186,
+	sc_Kaithi = 187,
+	sc_Batak = 188,
+	sc_Brahmi = 189,
+	sc_Mandaic = 190,
+	sc_Chakma = 191,
+	sc_Meroitic_Cursive = 192,
+	sc_Meroitic_Hieroglyphs = 193,
+	sc_Miao = 194,
+	sc_Sharada = 195,
+	sc_Sora_Sompeng = 196,
+	sc_Takri = 197,
+	sc_Caucasian_Albanian = 198,
+	sc_Bassa_Vah = 199,
+	sc_Duployan = 200,
+	sc_Elbasan = 201,
+	sc_Grantha = 202,
+	sc_Pahawh_Hmong = 203,
+	sc_Khojki = 204,
+	sc_Linear_A = 205,
+	sc_Mahajani = 206,
+	sc_Manichaean = 207,
+	sc_Mende_Kikakui = 208,
+	sc_Modi = 209,
+	sc_Mro = 210,
+	sc_Old_North_Arabian = 211,
+	sc_Nabataean = 212,
+	sc_Palmyrene = 213,
+	sc_Pau_Cin_Hau = 214,
+	sc_Old_Permic = 215,
+	sc_Psalter_Pahlavi = 216,
+	sc_Siddham = 217,
+	sc_Khudawadi = 218,
+	sc_Tirhuta = 219,
+	sc_Warang_Citi = 220,
+	sc_Ahom = 221,
+	sc_Anatolian_Hieroglyphs = 222,
+	sc_Hatran = 223,
+	sc_Multani = 224,
+	sc_Old_Hungarian = 225,
+	sc_SignWriting = 226,
+	sc_Adlam = 227,
+	sc_Bhaiksuki = 228,
+	sc_Marchen = 229,
+	sc_Newa = 230,
+	sc_Osage = 231,
+	sc_Tangut = 232,
+	sc_Masaram_Gondi = 233,
+	sc_Nushu = 234,
+	sc_Soyombo = 235,
+	sc_Zanabazar_Square = 236,
+	sc_Dogra = 237,
+	sc_Gunjala_Gondi = 238,
+	sc_Makasar = 239,
+	sc_Medefaidrin = 240,
+	sc_Hanifi_Rohingya = 241,
+	sc_Sogdian = 242,
+	sc_Old_Sogdian = 243,
+	sc_Elymaic = 244,
+	sc_Nandinagari = 245,
+	sc_Nyiakeng_Puachue_Hmong = 246,
+	sc_Wancho = 247,
+	sc_Chorasmian = 248,
+	sc_Dives_Akuru = 249,
+	sc_Khitan_Small_Script = 250,
+	sc_Yezidi = 251,
+	sc_Cypro_Minoan = 252,
+	sc_Old_Uyghur = 253,
+	sc_Tangsa = 254,
+	sc_Toto = 255,
+	sc_Vithkuqi = 256,
+	sc_Kawi = 257,
+	sc_Nag_Mundari = 258,
+	sc_Unknown = 259,
+	scx_Common = 260,
+	scx_Latin = 261,
+	scx_Greek = 262,
+	scx_Cyrillic = 263,
+	scx_Armenian = 100,	//  #264
+	scx_Hebrew = 101,	//  #265
+	scx_Arabic = 264,	//  #266
+	scx_Syriac = 265,	//  #267
+	scx_Thaana = 266,	//  #268
+	scx_Devanagari = 267,	//  #269
+	scx_Bengali = 268,	//  #270
+	scx_Gurmukhi = 269,	//  #271
+	scx_Gujarati = 270,	//  #272
+	scx_Oriya = 271,	//  #273
+	scx_Tamil = 272,	//  #274
+	scx_Telugu = 273,	//  #275
+	scx_Kannada = 274,	//  #276
+	scx_Malayalam = 275,	//  #277
+	scx_Sinhala = 276,	//  #278
+	scx_Thai = 115,	//  #279
+	scx_Lao = 116,	//  #280
+	scx_Tibetan = 117,	//  #281
+	scx_Myanmar = 277,	//  #282
+	scx_Georgian = 278,	//  #283
+	scx_Hangul = 279,	//  #284
+	scx_Ethiopic = 121,	//  #285
+	scx_Cherokee = 122,	//  #286
+	scx_Canadian_Aboriginal = 123,	//  #287
+	scx_Ogham = 124,	//  #288
+	scx_Runic = 125,	//  #289
+	scx_Khmer = 126,	//  #290
+	scx_Mongolian = 280,	//  #291
+	scx_Hiragana = 281,	//  #292
+	scx_Katakana = 282,	//  #293
+	scx_Bopomofo = 283,	//  #294
+	scx_Han = 284,	//  #295
+	scx_Yi = 285,	//  #296
+	scx_Old_Italic = 133,	//  #297
+	scx_Gothic = 134,	//  #298
+	scx_Deseret = 135,	//  #299
+	scx_Inherited = 286,	//  #300
+	scx_Tagalog = 287,	//  #301
+	scx_Hanunoo = 288,	//  #302
+	scx_Buhid = 289,	//  #303
+	scx_Tagbanwa = 290,	//  #304
+	scx_Limbu = 291,	//  #305
+	scx_Tai_Le = 292,	//  #306
+	scx_Linear_B = 293,	//  #307
+	scx_Ugaritic = 144,	//  #308
+	scx_Shavian = 145,	//  #309
+	scx_Osmanya = 146,	//  #310
+	scx_Cypriot = 294,	//  #311
+	scx_Braille = 148,	//  #312
+	scx_Buginese = 295,	//  #313
+	scx_Coptic = 296,	//  #314
+	scx_New_Tai_Lue = 151,	//  #315
+	scx_Glagolitic = 297,	//  #316
+	scx_Tifinagh = 153,	//  #317
+	scx_Syloti_Nagri = 298,	//  #318
+	scx_Old_Persian = 155,	//  #319
+	scx_Kharoshthi = 156,	//  #320
+	scx_Balinese = 157,	//  #321
+	scx_Cuneiform = 158,	//  #322
+	scx_Phoenician = 159,	//  #323
+	scx_Phags_Pa = 299,	//  #324
+	scx_Nko = 300,	//  #325
+	scx_Sundanese = 162,	//  #326
+	scx_Lepcha = 163,	//  #327
+	scx_Ol_Chiki = 164,	//  #328
+	scx_Vai = 165,	//  #329
+	scx_Saurashtra = 166,	//  #330
+	scx_Kayah_Li = 301,	//  #331
+	scx_Rejang = 168,	//  #332
+	scx_Lycian = 169,	//  #333
+	scx_Carian = 170,	//  #334
+	scx_Lydian = 171,	//  #335
+	scx_Cham = 172,	//  #336
+	scx_Tai_Tham = 173,	//  #337
+	scx_Tai_Viet = 174,	//  #338
+	scx_Avestan = 175,	//  #339
+	scx_Egyptian_Hieroglyphs = 176,	//  #340
+	scx_Samaritan = 177,	//  #341
+	scx_Lisu = 178,	//  #342
+	scx_Bamum = 179,	//  #343
+	scx_Javanese = 302,	//  #344
+	scx_Meetei_Mayek = 181,	//  #345
+	scx_Imperial_Aramaic = 182,	//  #346
+	scx_Old_South_Arabian = 183,	//  #347
+	scx_Inscriptional_Parthian = 184,	//  #348
+	scx_Inscriptional_Pahlavi = 185,	//  #349
+	scx_Old_Turkic = 186,	//  #350
+	scx_Kaithi = 303,	//  #351
+	scx_Batak = 188,	//  #352
+	scx_Brahmi = 189,	//  #353
+	scx_Mandaic = 304,	//  #354
+	scx_Chakma = 305,	//  #355
+	scx_Meroitic_Cursive = 192,	//  #356
+	scx_Meroitic_Hieroglyphs = 193,	//  #357
+	scx_Miao = 194,	//  #358
+	scx_Sharada = 306,	//  #359
+	scx_Sora_Sompeng = 196,	//  #360
+	scx_Takri = 307,	//  #361
+	scx_Caucasian_Albanian = 198,	//  #362
+	scx_Bassa_Vah = 199,	//  #363
+	scx_Duployan = 308,	//  #364
+	scx_Elbasan = 201,	//  #365
+	scx_Grantha = 309,	//  #366
+	scx_Pahawh_Hmong = 203,	//  #367
+	scx_Khojki = 310,	//  #368
+	scx_Linear_A = 311,	//  #369
+	scx_Mahajani = 312,	//  #370
+	scx_Manichaean = 313,	//  #371
+	scx_Mende_Kikakui = 208,	//  #372
+	scx_Modi = 314,	//  #373
+	scx_Mro = 210,	//  #374
+	scx_Old_North_Arabian = 211,	//  #375
+	scx_Nabataean = 212,	//  #376
+	scx_Palmyrene = 213,	//  #377
+	scx_Pau_Cin_Hau = 214,	//  #378
+	scx_Old_Permic = 315,	//  #379
+	scx_Psalter_Pahlavi = 316,	//  #380
+	scx_Siddham = 217,	//  #381
+	scx_Khudawadi = 317,	//  #382
+	scx_Tirhuta = 318,	//  #383
+	scx_Warang_Citi = 220,	//  #384
+	scx_Ahom = 221,	//  #385
+	scx_Anatolian_Hieroglyphs = 222,	//  #386
+	scx_Hatran = 223,	//  #387
+	scx_Multani = 319,	//  #388
+	scx_Old_Hungarian = 225,	//  #389
+	scx_SignWriting = 226,	//  #390
+	scx_Adlam = 320,	//  #391
+	scx_Bhaiksuki = 228,	//  #392
+	scx_Marchen = 229,	//  #393
+	scx_Newa = 230,	//  #394
+	scx_Osage = 231,	//  #395
+	scx_Tangut = 232,	//  #396
+	scx_Masaram_Gondi = 321,	//  #397
+	scx_Nushu = 234,	//  #398
+	scx_Soyombo = 235,	//  #399
+	scx_Zanabazar_Square = 236,	//  #400
+	scx_Dogra = 322,	//  #401
+	scx_Gunjala_Gondi = 323,	//  #402
+	scx_Makasar = 239,	//  #403
+	scx_Medefaidrin = 240,	//  #404
+	scx_Hanifi_Rohingya = 324,	//  #405
+	scx_Sogdian = 325,	//  #406
+	scx_Old_Sogdian = 243,	//  #407
+	scx_Elymaic = 244,	//  #408
+	scx_Nandinagari = 326,	//  #409
+	scx_Nyiakeng_Puachue_Hmong = 246,	//  #410
+	scx_Wancho = 247,	//  #411
+	scx_Chorasmian = 248,	//  #412
+	scx_Dives_Akuru = 249,	//  #413
+	scx_Khitan_Small_Script = 250,	//  #414
+	scx_Yezidi = 327,	//  #415
+	scx_Cypro_Minoan = 328,	//  #416
+	scx_Old_Uyghur = 329,	//  #417
+	scx_Tangsa = 254,	//  #418
+	scx_Toto = 255,	//  #419
+	scx_Vithkuqi = 256,	//  #420
+	scx_Kawi = 257,	//  #421
+	scx_Nag_Mundari = 258,	//  #422
+	scx_Unknown = 259,	//  #423
+	upid_max_property_number = 329,
+	bp_RGI_Emoji = 330,	//  #424
+	bp_Basic_Emoji = 331,	//  #425
+	bp_Emoji_Keycap_Sequence = 332,	//  #426
+	bp_RGI_Emoji_Modifier_Sequence = 333,	//  #427
+	bp_RGI_Emoji_Flag_Sequence = 334,	//  #428
+	bp_RGI_Emoji_Tag_Sequence = 335,	//  #429
+	bp_RGI_Emoji_ZWJ_Sequence = 336,	//  #430
+	upid_max_pos_number = 336
 };
 
-enum up_type
-{
-	uptype_unknown = 0,
-	uptype_binary = 1,
-	uptype_general_category = 2,
-	uptype_script = 3,
-	uptype_script_extensions = 4
-};
-
-template <typename T3, typename T4, typename T5, typename T6>
+template <typename T3, typename T4, typename T5>
 struct unicode_property_data
 {
-	static const T3 propertynametable[];
-	static const T4 rangetable[];
-	static const T5 rangenumbertable[];
-	static const T6 positiontable[];
+	static const T3 propertynumbertable[];
+	static const T4 positiontable[];
+	static const T5 rangetable[];
 };
 
-template <typename T3, typename T4, typename T5, typename T6>
-const T3 unicode_property_data<T3, T4, T5, T6>::propertynametable[] =
+template <typename T3, typename T4, typename T5>
+const T3 unicode_property_data<T3, T4, T5>::propertynumbertable[] =
 {
-	"*",	//  #0:unknown
-	"*",	//  #1:binary
-	"General_Category:gc",	//  #2
-	"Script:sc",	//  #3
-	"Script_Extensions:scx",	//  #4
-	""
+	{ "", 6 },
+	{ "\x47\x65\x6E\x65\x72\x61\x6C\x5F\x43\x61\x74\x65\x67\x6F\x72\x79", 2 },
+	{ "\x53\x63\x72\x69\x70\x74", 3 },
+	{ "\x53\x63\x72\x69\x70\x74\x5F\x45\x78\x74\x65\x6E\x73\x69\x6F\x6E\x73", 4 },
+	{ "\x67\x63", 2 },
+	{ "\x73\x63", 3 },
+	{ "\x73\x63\x78", 4 },
+	//  gc: 80
+	{ "\x43", 5 },
+	{ "\x43\x61\x73\x65\x64\x5F\x4C\x65\x74\x74\x65\x72", 12 },
+	{ "\x43\x63", 6 },
+	{ "\x43\x66", 7 },
+	{ "\x43\x6C\x6F\x73\x65\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 29 },
+	{ "\x43\x6E", 8 },
+	{ "\x43\x6F", 9 },
+	{ "\x43\x6F\x6D\x62\x69\x6E\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 18 },
+	{ "\x43\x6F\x6E\x6E\x65\x63\x74\x6F\x72\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 27 },
+	{ "\x43\x6F\x6E\x74\x72\x6F\x6C", 6 },
+	{ "\x43\x73", 10 },
+	{ "\x43\x75\x72\x72\x65\x6E\x63\x79\x5F\x53\x79\x6D\x62\x6F\x6C", 35 },
+	{ "\x44\x61\x73\x68\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 28 },
+	{ "\x44\x65\x63\x69\x6D\x61\x6C\x5F\x4E\x75\x6D\x62\x65\x72", 23 },
+	{ "\x45\x6E\x63\x6C\x6F\x73\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 20 },
+	{ "\x46\x69\x6E\x61\x6C\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 30 },
+	{ "\x46\x6F\x72\x6D\x61\x74", 7 },
+	{ "\x49\x6E\x69\x74\x69\x61\x6C\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 31 },
+	{ "\x4C", 11 },
+	{ "\x4C\x43", 12 },
+	{ "\x4C\x65\x74\x74\x65\x72", 11 },
+	{ "\x4C\x65\x74\x74\x65\x72\x5F\x4E\x75\x6D\x62\x65\x72", 24 },
+	{ "\x4C\x69\x6E\x65\x5F\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 40 },
+	{ "\x4C\x6C", 13 },
+	{ "\x4C\x6D", 16 },
+	{ "\x4C\x6F", 17 },
+	{ "\x4C\x6F\x77\x65\x72\x63\x61\x73\x65\x5F\x4C\x65\x74\x74\x65\x72", 13 },
+	{ "\x4C\x74", 14 },
+	{ "\x4C\x75", 15 },
+	{ "\x4D", 18 },
+	{ "\x4D\x61\x72\x6B", 18 },
+	{ "\x4D\x61\x74\x68\x5F\x53\x79\x6D\x62\x6F\x6C", 37 },
+	{ "\x4D\x63", 19 },
+	{ "\x4D\x65", 20 },
+	{ "\x4D\x6E", 21 },
+	{ "\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x4C\x65\x74\x74\x65\x72", 16 },
+	{ "\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x53\x79\x6D\x62\x6F\x6C", 36 },
+	{ "\x4E", 22 },
+	{ "\x4E\x64", 23 },
+	{ "\x4E\x6C", 24 },
+	{ "\x4E\x6F", 25 },
+	{ "\x4E\x6F\x6E\x73\x70\x61\x63\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 21 },
+	{ "\x4E\x75\x6D\x62\x65\x72", 22 },
+	{ "\x4F\x70\x65\x6E\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 33 },
+	{ "\x4F\x74\x68\x65\x72", 5 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x4C\x65\x74\x74\x65\x72", 17 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x4E\x75\x6D\x62\x65\x72", 25 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 32 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x53\x79\x6D\x62\x6F\x6C", 38 },
+	{ "\x50", 26 },
+	{ "\x50\x61\x72\x61\x67\x72\x61\x70\x68\x5F\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 41 },
+	{ "\x50\x63", 27 },
+	{ "\x50\x64", 28 },
+	{ "\x50\x65", 29 },
+	{ "\x50\x66", 30 },
+	{ "\x50\x69", 31 },
+	{ "\x50\x6F", 32 },
+	{ "\x50\x72\x69\x76\x61\x74\x65\x5F\x55\x73\x65", 9 },
+	{ "\x50\x73", 33 },
+	{ "\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 26 },
+	{ "\x53", 34 },
+	{ "\x53\x63", 35 },
+	{ "\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 39 },
+	{ "\x53\x6B", 36 },
+	{ "\x53\x6D", 37 },
+	{ "\x53\x6F", 38 },
+	{ "\x53\x70\x61\x63\x65\x5F\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 42 },
+	{ "\x53\x70\x61\x63\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 19 },
+	{ "\x53\x75\x72\x72\x6F\x67\x61\x74\x65", 10 },
+	{ "\x53\x79\x6D\x62\x6F\x6C", 34 },
+	{ "\x54\x69\x74\x6C\x65\x63\x61\x73\x65\x5F\x4C\x65\x74\x74\x65\x72", 14 },
+	{ "\x55\x6E\x61\x73\x73\x69\x67\x6E\x65\x64", 8 },
+	{ "\x55\x70\x70\x65\x72\x63\x61\x73\x65\x5F\x4C\x65\x74\x74\x65\x72", 15 },
+	{ "\x5A", 39 },
+	{ "\x5A\x6C", 40 },
+	{ "\x5A\x70", 41 },
+	{ "\x5A\x73", 42 },
+	{ "\x63\x6E\x74\x72\x6C", 6 },
+	{ "\x64\x69\x67\x69\x74", 23 },
+	{ "\x70\x75\x6E\x63\x74", 26 },
+	//  bp: 105
+	{ "\x41\x48\x65\x78", 44 },
+	{ "\x41\x53\x43\x49\x49", 43 },
+	{ "\x41\x53\x43\x49\x49\x5F\x48\x65\x78\x5F\x44\x69\x67\x69\x74", 44 },
+	{ "\x41\x6C\x70\x68\x61", 45 },
+	{ "\x41\x6C\x70\x68\x61\x62\x65\x74\x69\x63", 45 },
+	{ "\x41\x6E\x79", 46 },
+	{ "\x41\x73\x73\x69\x67\x6E\x65\x64", 47 },
+	{ "\x42\x61\x73\x69\x63\x5F\x45\x6D\x6F\x6A\x69", 331 },
+	{ "\x42\x69\x64\x69\x5F\x43", 48 },
+	{ "\x42\x69\x64\x69\x5F\x43\x6F\x6E\x74\x72\x6F\x6C", 48 },
+	{ "\x42\x69\x64\x69\x5F\x4D", 49 },
+	{ "\x42\x69\x64\x69\x5F\x4D\x69\x72\x72\x6F\x72\x65\x64", 49 },
+	{ "\x43\x49", 50 },
+	{ "\x43\x57\x43\x46", 52 },
+	{ "\x43\x57\x43\x4D", 53 },
+	{ "\x43\x57\x4B\x43\x46", 55 },
+	{ "\x43\x57\x4C", 54 },
+	{ "\x43\x57\x54", 56 },
+	{ "\x43\x57\x55", 57 },
+	{ "\x43\x61\x73\x65\x5F\x49\x67\x6E\x6F\x72\x61\x62\x6C\x65", 50 },
+	{ "\x43\x61\x73\x65\x64", 51 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x43\x61\x73\x65\x66\x6F\x6C\x64\x65\x64", 52 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x43\x61\x73\x65\x6D\x61\x70\x70\x65\x64", 53 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x4C\x6F\x77\x65\x72\x63\x61\x73\x65\x64", 54 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x4E\x46\x4B\x43\x5F\x43\x61\x73\x65\x66\x6F\x6C\x64\x65\x64", 55 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x54\x69\x74\x6C\x65\x63\x61\x73\x65\x64", 56 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x55\x70\x70\x65\x72\x63\x61\x73\x65\x64", 57 },
+	{ "\x44\x49", 59 },
+	{ "\x44\x61\x73\x68", 58 },
+	{ "\x44\x65\x66\x61\x75\x6C\x74\x5F\x49\x67\x6E\x6F\x72\x61\x62\x6C\x65\x5F\x43\x6F\x64\x65\x5F\x50\x6F\x69\x6E\x74", 59 },
+	{ "\x44\x65\x70", 60 },
+	{ "\x44\x65\x70\x72\x65\x63\x61\x74\x65\x64", 60 },
+	{ "\x44\x69\x61", 61 },
+	{ "\x44\x69\x61\x63\x72\x69\x74\x69\x63", 61 },
+	{ "\x45\x42\x61\x73\x65", 65 },
+	{ "\x45\x43\x6F\x6D\x70", 63 },
+	{ "\x45\x4D\x6F\x64", 64 },
+	{ "\x45\x50\x72\x65\x73", 66 },
+	{ "\x45\x6D\x6F\x6A\x69", 62 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x43\x6F\x6D\x70\x6F\x6E\x65\x6E\x74", 63 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x4B\x65\x79\x63\x61\x70\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 332 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x4D\x6F\x64\x69\x66\x69\x65\x72", 64 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x42\x61\x73\x65", 65 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x50\x72\x65\x73\x65\x6E\x74\x61\x74\x69\x6F\x6E", 66 },
+	{ "\x45\x78\x74", 68 },
+	{ "\x45\x78\x74\x50\x69\x63\x74", 67 },
+	{ "\x45\x78\x74\x65\x6E\x64\x65\x64\x5F\x50\x69\x63\x74\x6F\x67\x72\x61\x70\x68\x69\x63", 67 },
+	{ "\x45\x78\x74\x65\x6E\x64\x65\x72", 68 },
+	{ "\x47\x72\x5F\x42\x61\x73\x65", 69 },
+	{ "\x47\x72\x5F\x45\x78\x74", 70 },
+	{ "\x47\x72\x61\x70\x68\x65\x6D\x65\x5F\x42\x61\x73\x65", 69 },
+	{ "\x47\x72\x61\x70\x68\x65\x6D\x65\x5F\x45\x78\x74\x65\x6E\x64", 70 },
+	{ "\x48\x65\x78", 71 },
+	{ "\x48\x65\x78\x5F\x44\x69\x67\x69\x74", 71 },
+	{ "\x49\x44\x43", 74 },
+	{ "\x49\x44\x53", 75 },
+	{ "\x49\x44\x53\x42", 72 },
+	{ "\x49\x44\x53\x54", 73 },
+	{ "\x49\x44\x53\x5F\x42\x69\x6E\x61\x72\x79\x5F\x4F\x70\x65\x72\x61\x74\x6F\x72", 72 },
+	{ "\x49\x44\x53\x5F\x54\x72\x69\x6E\x61\x72\x79\x5F\x4F\x70\x65\x72\x61\x74\x6F\x72", 73 },
+	{ "\x49\x44\x5F\x43\x6F\x6E\x74\x69\x6E\x75\x65", 74 },
+	{ "\x49\x44\x5F\x53\x74\x61\x72\x74", 75 },
+	{ "\x49\x64\x65\x6F", 76 },
+	{ "\x49\x64\x65\x6F\x67\x72\x61\x70\x68\x69\x63", 76 },
+	{ "\x4A\x6F\x69\x6E\x5F\x43", 77 },
+	{ "\x4A\x6F\x69\x6E\x5F\x43\x6F\x6E\x74\x72\x6F\x6C", 77 },
+	{ "\x4C\x4F\x45", 78 },
+	{ "\x4C\x6F\x67\x69\x63\x61\x6C\x5F\x4F\x72\x64\x65\x72\x5F\x45\x78\x63\x65\x70\x74\x69\x6F\x6E", 78 },
+	{ "\x4C\x6F\x77\x65\x72", 79 },
+	{ "\x4C\x6F\x77\x65\x72\x63\x61\x73\x65", 79 },
+	{ "\x4D\x61\x74\x68", 80 },
+	{ "\x4E\x43\x68\x61\x72", 81 },
+	{ "\x4E\x6F\x6E\x63\x68\x61\x72\x61\x63\x74\x65\x72\x5F\x43\x6F\x64\x65\x5F\x50\x6F\x69\x6E\x74", 81 },
+	{ "\x50\x61\x74\x5F\x53\x79\x6E", 82 },
+	{ "\x50\x61\x74\x5F\x57\x53", 83 },
+	{ "\x50\x61\x74\x74\x65\x72\x6E\x5F\x53\x79\x6E\x74\x61\x78", 82 },
+	{ "\x50\x61\x74\x74\x65\x72\x6E\x5F\x57\x68\x69\x74\x65\x5F\x53\x70\x61\x63\x65", 83 },
+	{ "\x51\x4D\x61\x72\x6B", 84 },
+	{ "\x51\x75\x6F\x74\x61\x74\x69\x6F\x6E\x5F\x4D\x61\x72\x6B", 84 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69", 330 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x46\x6C\x61\x67\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 334 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 333 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x54\x61\x67\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 335 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x5A\x57\x4A\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 336 },
+	{ "\x52\x49", 86 },
+	{ "\x52\x61\x64\x69\x63\x61\x6C", 85 },
+	{ "\x52\x65\x67\x69\x6F\x6E\x61\x6C\x5F\x49\x6E\x64\x69\x63\x61\x74\x6F\x72", 86 },
+	{ "\x53\x44", 88 },
+	{ "\x53\x54\x65\x72\x6D", 87 },
+	{ "\x53\x65\x6E\x74\x65\x6E\x63\x65\x5F\x54\x65\x72\x6D\x69\x6E\x61\x6C", 87 },
+	{ "\x53\x6F\x66\x74\x5F\x44\x6F\x74\x74\x65\x64", 88 },
+	{ "\x54\x65\x72\x6D", 89 },
+	{ "\x54\x65\x72\x6D\x69\x6E\x61\x6C\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 89 },
+	{ "\x55\x49\x64\x65\x6F", 90 },
+	{ "\x55\x6E\x69\x66\x69\x65\x64\x5F\x49\x64\x65\x6F\x67\x72\x61\x70\x68", 90 },
+	{ "\x55\x70\x70\x65\x72", 91 },
+	{ "\x55\x70\x70\x65\x72\x63\x61\x73\x65", 91 },
+	{ "\x56\x53", 92 },
+	{ "\x56\x61\x72\x69\x61\x74\x69\x6F\x6E\x5F\x53\x65\x6C\x65\x63\x74\x6F\x72", 92 },
+	{ "\x57\x68\x69\x74\x65\x5F\x53\x70\x61\x63\x65", 93 },
+	{ "\x58\x49\x44\x43", 94 },
+	{ "\x58\x49\x44\x53", 95 },
+	{ "\x58\x49\x44\x5F\x43\x6F\x6E\x74\x69\x6E\x75\x65", 94 },
+	{ "\x58\x49\x44\x5F\x53\x74\x61\x72\x74", 95 },
+	{ "\x73\x70\x61\x63\x65", 93 },
+	//  sc: 322
+	{ "\x41\x64\x6C\x61\x6D", 227 },
+	{ "\x41\x64\x6C\x6D", 227 },
+	{ "\x41\x67\x68\x62", 198 },
+	{ "\x41\x68\x6F\x6D", 221 },
+	{ "\x41\x6E\x61\x74\x6F\x6C\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 222 },
+	{ "\x41\x72\x61\x62", 102 },
+	{ "\x41\x72\x61\x62\x69\x63", 102 },
+	{ "\x41\x72\x6D\x65\x6E\x69\x61\x6E", 100 },
+	{ "\x41\x72\x6D\x69", 182 },
+	{ "\x41\x72\x6D\x6E", 100 },
+	{ "\x41\x76\x65\x73\x74\x61\x6E", 175 },
+	{ "\x41\x76\x73\x74", 175 },
+	{ "\x42\x61\x6C\x69", 157 },
+	{ "\x42\x61\x6C\x69\x6E\x65\x73\x65", 157 },
+	{ "\x42\x61\x6D\x75", 179 },
+	{ "\x42\x61\x6D\x75\x6D", 179 },
+	{ "\x42\x61\x73\x73", 199 },
+	{ "\x42\x61\x73\x73\x61\x5F\x56\x61\x68", 199 },
+	{ "\x42\x61\x74\x61\x6B", 188 },
+	{ "\x42\x61\x74\x6B", 188 },
+	{ "\x42\x65\x6E\x67", 106 },
+	{ "\x42\x65\x6E\x67\x61\x6C\x69", 106 },
+	{ "\x42\x68\x61\x69\x6B\x73\x75\x6B\x69", 228 },
+	{ "\x42\x68\x6B\x73", 228 },
+	{ "\x42\x6F\x70\x6F", 130 },
+	{ "\x42\x6F\x70\x6F\x6D\x6F\x66\x6F", 130 },
+	{ "\x42\x72\x61\x68", 189 },
+	{ "\x42\x72\x61\x68\x6D\x69", 189 },
+	{ "\x42\x72\x61\x69", 148 },
+	{ "\x42\x72\x61\x69\x6C\x6C\x65", 148 },
+	{ "\x42\x75\x67\x69", 149 },
+	{ "\x42\x75\x67\x69\x6E\x65\x73\x65", 149 },
+	{ "\x42\x75\x68\x64", 139 },
+	{ "\x42\x75\x68\x69\x64", 139 },
+	{ "\x43\x61\x6B\x6D", 191 },
+	{ "\x43\x61\x6E\x61\x64\x69\x61\x6E\x5F\x41\x62\x6F\x72\x69\x67\x69\x6E\x61\x6C", 123 },
+	{ "\x43\x61\x6E\x73", 123 },
+	{ "\x43\x61\x72\x69", 170 },
+	{ "\x43\x61\x72\x69\x61\x6E", 170 },
+	{ "\x43\x61\x75\x63\x61\x73\x69\x61\x6E\x5F\x41\x6C\x62\x61\x6E\x69\x61\x6E", 198 },
+	{ "\x43\x68\x61\x6B\x6D\x61", 191 },
+	{ "\x43\x68\x61\x6D", 172 },
+	{ "\x43\x68\x65\x72", 122 },
+	{ "\x43\x68\x65\x72\x6F\x6B\x65\x65", 122 },
+	{ "\x43\x68\x6F\x72\x61\x73\x6D\x69\x61\x6E", 248 },
+	{ "\x43\x68\x72\x73", 248 },
+	{ "\x43\x6F\x6D\x6D\x6F\x6E", 96 },
+	{ "\x43\x6F\x70\x74", 150 },
+	{ "\x43\x6F\x70\x74\x69\x63", 150 },
+	{ "\x43\x70\x6D\x6E", 252 },
+	{ "\x43\x70\x72\x74", 147 },
+	{ "\x43\x75\x6E\x65\x69\x66\x6F\x72\x6D", 158 },
+	{ "\x43\x79\x70\x72\x69\x6F\x74", 147 },
+	{ "\x43\x79\x70\x72\x6F\x5F\x4D\x69\x6E\x6F\x61\x6E", 252 },
+	{ "\x43\x79\x72\x69\x6C\x6C\x69\x63", 99 },
+	{ "\x43\x79\x72\x6C", 99 },
+	{ "\x44\x65\x73\x65\x72\x65\x74", 135 },
+	{ "\x44\x65\x76\x61", 105 },
+	{ "\x44\x65\x76\x61\x6E\x61\x67\x61\x72\x69", 105 },
+	{ "\x44\x69\x61\x6B", 249 },
+	{ "\x44\x69\x76\x65\x73\x5F\x41\x6B\x75\x72\x75", 249 },
+	{ "\x44\x6F\x67\x72", 237 },
+	{ "\x44\x6F\x67\x72\x61", 237 },
+	{ "\x44\x73\x72\x74", 135 },
+	{ "\x44\x75\x70\x6C", 200 },
+	{ "\x44\x75\x70\x6C\x6F\x79\x61\x6E", 200 },
+	{ "\x45\x67\x79\x70", 176 },
+	{ "\x45\x67\x79\x70\x74\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 176 },
+	{ "\x45\x6C\x62\x61", 201 },
+	{ "\x45\x6C\x62\x61\x73\x61\x6E", 201 },
+	{ "\x45\x6C\x79\x6D", 244 },
+	{ "\x45\x6C\x79\x6D\x61\x69\x63", 244 },
+	{ "\x45\x74\x68\x69", 121 },
+	{ "\x45\x74\x68\x69\x6F\x70\x69\x63", 121 },
+	{ "\x47\x65\x6F\x72", 119 },
+	{ "\x47\x65\x6F\x72\x67\x69\x61\x6E", 119 },
+	{ "\x47\x6C\x61\x67", 152 },
+	{ "\x47\x6C\x61\x67\x6F\x6C\x69\x74\x69\x63", 152 },
+	{ "\x47\x6F\x6E\x67", 238 },
+	{ "\x47\x6F\x6E\x6D", 233 },
+	{ "\x47\x6F\x74\x68", 134 },
+	{ "\x47\x6F\x74\x68\x69\x63", 134 },
+	{ "\x47\x72\x61\x6E", 202 },
+	{ "\x47\x72\x61\x6E\x74\x68\x61", 202 },
+	{ "\x47\x72\x65\x65\x6B", 98 },
+	{ "\x47\x72\x65\x6B", 98 },
+	{ "\x47\x75\x6A\x61\x72\x61\x74\x69", 108 },
+	{ "\x47\x75\x6A\x72", 108 },
+	{ "\x47\x75\x6E\x6A\x61\x6C\x61\x5F\x47\x6F\x6E\x64\x69", 238 },
+	{ "\x47\x75\x72\x6D\x75\x6B\x68\x69", 107 },
+	{ "\x47\x75\x72\x75", 107 },
+	{ "\x48\x61\x6E", 131 },
+	{ "\x48\x61\x6E\x67", 120 },
+	{ "\x48\x61\x6E\x67\x75\x6C", 120 },
+	{ "\x48\x61\x6E\x69", 131 },
+	{ "\x48\x61\x6E\x69\x66\x69\x5F\x52\x6F\x68\x69\x6E\x67\x79\x61", 241 },
+	{ "\x48\x61\x6E\x6F", 138 },
+	{ "\x48\x61\x6E\x75\x6E\x6F\x6F", 138 },
+	{ "\x48\x61\x74\x72", 223 },
+	{ "\x48\x61\x74\x72\x61\x6E", 223 },
+	{ "\x48\x65\x62\x72", 101 },
+	{ "\x48\x65\x62\x72\x65\x77", 101 },
+	{ "\x48\x69\x72\x61", 128 },
+	{ "\x48\x69\x72\x61\x67\x61\x6E\x61", 128 },
+	{ "\x48\x6C\x75\x77", 222 },
+	{ "\x48\x6D\x6E\x67", 203 },
+	{ "\x48\x6D\x6E\x70", 246 },
+	{ "\x48\x75\x6E\x67", 225 },
+	{ "\x49\x6D\x70\x65\x72\x69\x61\x6C\x5F\x41\x72\x61\x6D\x61\x69\x63", 182 },
+	{ "\x49\x6E\x68\x65\x72\x69\x74\x65\x64", 136 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x68\x6C\x61\x76\x69", 185 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x72\x74\x68\x69\x61\x6E", 184 },
+	{ "\x49\x74\x61\x6C", 133 },
+	{ "\x4A\x61\x76\x61", 180 },
+	{ "\x4A\x61\x76\x61\x6E\x65\x73\x65", 180 },
+	{ "\x4B\x61\x69\x74\x68\x69", 187 },
+	{ "\x4B\x61\x6C\x69", 167 },
+	{ "\x4B\x61\x6E\x61", 129 },
+	{ "\x4B\x61\x6E\x6E\x61\x64\x61", 112 },
+	{ "\x4B\x61\x74\x61\x6B\x61\x6E\x61", 129 },
+	{ "\x4B\x61\x77\x69", 257 },
+	{ "\x4B\x61\x79\x61\x68\x5F\x4C\x69", 167 },
+	{ "\x4B\x68\x61\x72", 156 },
+	{ "\x4B\x68\x61\x72\x6F\x73\x68\x74\x68\x69", 156 },
+	{ "\x4B\x68\x69\x74\x61\x6E\x5F\x53\x6D\x61\x6C\x6C\x5F\x53\x63\x72\x69\x70\x74", 250 },
+	{ "\x4B\x68\x6D\x65\x72", 126 },
+	{ "\x4B\x68\x6D\x72", 126 },
+	{ "\x4B\x68\x6F\x6A", 204 },
+	{ "\x4B\x68\x6F\x6A\x6B\x69", 204 },
+	{ "\x4B\x68\x75\x64\x61\x77\x61\x64\x69", 218 },
+	{ "\x4B\x69\x74\x73", 250 },
+	{ "\x4B\x6E\x64\x61", 112 },
+	{ "\x4B\x74\x68\x69", 187 },
+	{ "\x4C\x61\x6E\x61", 173 },
+	{ "\x4C\x61\x6F", 116 },
+	{ "\x4C\x61\x6F\x6F", 116 },
+	{ "\x4C\x61\x74\x69\x6E", 97 },
+	{ "\x4C\x61\x74\x6E", 97 },
+	{ "\x4C\x65\x70\x63", 163 },
+	{ "\x4C\x65\x70\x63\x68\x61", 163 },
+	{ "\x4C\x69\x6D\x62", 141 },
+	{ "\x4C\x69\x6D\x62\x75", 141 },
+	{ "\x4C\x69\x6E\x61", 205 },
+	{ "\x4C\x69\x6E\x62", 143 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x41", 205 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x42", 143 },
+	{ "\x4C\x69\x73\x75", 178 },
+	{ "\x4C\x79\x63\x69", 169 },
+	{ "\x4C\x79\x63\x69\x61\x6E", 169 },
+	{ "\x4C\x79\x64\x69", 171 },
+	{ "\x4C\x79\x64\x69\x61\x6E", 171 },
+	{ "\x4D\x61\x68\x61\x6A\x61\x6E\x69", 206 },
+	{ "\x4D\x61\x68\x6A", 206 },
+	{ "\x4D\x61\x6B\x61", 239 },
+	{ "\x4D\x61\x6B\x61\x73\x61\x72", 239 },
+	{ "\x4D\x61\x6C\x61\x79\x61\x6C\x61\x6D", 113 },
+	{ "\x4D\x61\x6E\x64", 190 },
+	{ "\x4D\x61\x6E\x64\x61\x69\x63", 190 },
+	{ "\x4D\x61\x6E\x69", 207 },
+	{ "\x4D\x61\x6E\x69\x63\x68\x61\x65\x61\x6E", 207 },
+	{ "\x4D\x61\x72\x63", 229 },
+	{ "\x4D\x61\x72\x63\x68\x65\x6E", 229 },
+	{ "\x4D\x61\x73\x61\x72\x61\x6D\x5F\x47\x6F\x6E\x64\x69", 233 },
+	{ "\x4D\x65\x64\x65\x66\x61\x69\x64\x72\x69\x6E", 240 },
+	{ "\x4D\x65\x64\x66", 240 },
+	{ "\x4D\x65\x65\x74\x65\x69\x5F\x4D\x61\x79\x65\x6B", 181 },
+	{ "\x4D\x65\x6E\x64", 208 },
+	{ "\x4D\x65\x6E\x64\x65\x5F\x4B\x69\x6B\x61\x6B\x75\x69", 208 },
+	{ "\x4D\x65\x72\x63", 192 },
+	{ "\x4D\x65\x72\x6F", 193 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x43\x75\x72\x73\x69\x76\x65", 192 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 193 },
+	{ "\x4D\x69\x61\x6F", 194 },
+	{ "\x4D\x6C\x79\x6D", 113 },
+	{ "\x4D\x6F\x64\x69", 209 },
+	{ "\x4D\x6F\x6E\x67", 127 },
+	{ "\x4D\x6F\x6E\x67\x6F\x6C\x69\x61\x6E", 127 },
+	{ "\x4D\x72\x6F", 210 },
+	{ "\x4D\x72\x6F\x6F", 210 },
+	{ "\x4D\x74\x65\x69", 181 },
+	{ "\x4D\x75\x6C\x74", 224 },
+	{ "\x4D\x75\x6C\x74\x61\x6E\x69", 224 },
+	{ "\x4D\x79\x61\x6E\x6D\x61\x72", 118 },
+	{ "\x4D\x79\x6D\x72", 118 },
+	{ "\x4E\x61\x62\x61\x74\x61\x65\x61\x6E", 212 },
+	{ "\x4E\x61\x67\x5F\x4D\x75\x6E\x64\x61\x72\x69", 258 },
+	{ "\x4E\x61\x67\x6D", 258 },
+	{ "\x4E\x61\x6E\x64", 245 },
+	{ "\x4E\x61\x6E\x64\x69\x6E\x61\x67\x61\x72\x69", 245 },
+	{ "\x4E\x61\x72\x62", 211 },
+	{ "\x4E\x62\x61\x74", 212 },
+	{ "\x4E\x65\x77\x5F\x54\x61\x69\x5F\x4C\x75\x65", 151 },
+	{ "\x4E\x65\x77\x61", 230 },
+	{ "\x4E\x6B\x6F", 161 },
+	{ "\x4E\x6B\x6F\x6F", 161 },
+	{ "\x4E\x73\x68\x75", 234 },
+	{ "\x4E\x75\x73\x68\x75", 234 },
+	{ "\x4E\x79\x69\x61\x6B\x65\x6E\x67\x5F\x50\x75\x61\x63\x68\x75\x65\x5F\x48\x6D\x6F\x6E\x67", 246 },
+	{ "\x4F\x67\x61\x6D", 124 },
+	{ "\x4F\x67\x68\x61\x6D", 124 },
+	{ "\x4F\x6C\x5F\x43\x68\x69\x6B\x69", 164 },
+	{ "\x4F\x6C\x63\x6B", 164 },
+	{ "\x4F\x6C\x64\x5F\x48\x75\x6E\x67\x61\x72\x69\x61\x6E", 225 },
+	{ "\x4F\x6C\x64\x5F\x49\x74\x61\x6C\x69\x63", 133 },
+	{ "\x4F\x6C\x64\x5F\x4E\x6F\x72\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 211 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x6D\x69\x63", 215 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x73\x69\x61\x6E", 155 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x67\x64\x69\x61\x6E", 243 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x75\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 183 },
+	{ "\x4F\x6C\x64\x5F\x54\x75\x72\x6B\x69\x63", 186 },
+	{ "\x4F\x6C\x64\x5F\x55\x79\x67\x68\x75\x72", 253 },
+	{ "\x4F\x72\x69\x79\x61", 109 },
+	{ "\x4F\x72\x6B\x68", 186 },
+	{ "\x4F\x72\x79\x61", 109 },
+	{ "\x4F\x73\x61\x67\x65", 231 },
+	{ "\x4F\x73\x67\x65", 231 },
+	{ "\x4F\x73\x6D\x61", 146 },
+	{ "\x4F\x73\x6D\x61\x6E\x79\x61", 146 },
+	{ "\x4F\x75\x67\x72", 253 },
+	{ "\x50\x61\x68\x61\x77\x68\x5F\x48\x6D\x6F\x6E\x67", 203 },
+	{ "\x50\x61\x6C\x6D", 213 },
+	{ "\x50\x61\x6C\x6D\x79\x72\x65\x6E\x65", 213 },
+	{ "\x50\x61\x75\x5F\x43\x69\x6E\x5F\x48\x61\x75", 214 },
+	{ "\x50\x61\x75\x63", 214 },
+	{ "\x50\x65\x72\x6D", 215 },
+	{ "\x50\x68\x61\x67", 160 },
+	{ "\x50\x68\x61\x67\x73\x5F\x50\x61", 160 },
+	{ "\x50\x68\x6C\x69", 185 },
+	{ "\x50\x68\x6C\x70", 216 },
+	{ "\x50\x68\x6E\x78", 159 },
+	{ "\x50\x68\x6F\x65\x6E\x69\x63\x69\x61\x6E", 159 },
+	{ "\x50\x6C\x72\x64", 194 },
+	{ "\x50\x72\x74\x69", 184 },
+	{ "\x50\x73\x61\x6C\x74\x65\x72\x5F\x50\x61\x68\x6C\x61\x76\x69", 216 },
+	{ "\x51\x61\x61\x63", 150 },
+	{ "\x51\x61\x61\x69", 136 },
+	{ "\x52\x65\x6A\x61\x6E\x67", 168 },
+	{ "\x52\x6A\x6E\x67", 168 },
+	{ "\x52\x6F\x68\x67", 241 },
+	{ "\x52\x75\x6E\x69\x63", 125 },
+	{ "\x52\x75\x6E\x72", 125 },
+	{ "\x53\x61\x6D\x61\x72\x69\x74\x61\x6E", 177 },
+	{ "\x53\x61\x6D\x72", 177 },
+	{ "\x53\x61\x72\x62", 183 },
+	{ "\x53\x61\x75\x72", 166 },
+	{ "\x53\x61\x75\x72\x61\x73\x68\x74\x72\x61", 166 },
+	{ "\x53\x67\x6E\x77", 226 },
+	{ "\x53\x68\x61\x72\x61\x64\x61", 195 },
+	{ "\x53\x68\x61\x76\x69\x61\x6E", 145 },
+	{ "\x53\x68\x61\x77", 145 },
+	{ "\x53\x68\x72\x64", 195 },
+	{ "\x53\x69\x64\x64", 217 },
+	{ "\x53\x69\x64\x64\x68\x61\x6D", 217 },
+	{ "\x53\x69\x67\x6E\x57\x72\x69\x74\x69\x6E\x67", 226 },
+	{ "\x53\x69\x6E\x64", 218 },
+	{ "\x53\x69\x6E\x68", 114 },
+	{ "\x53\x69\x6E\x68\x61\x6C\x61", 114 },
+	{ "\x53\x6F\x67\x64", 242 },
+	{ "\x53\x6F\x67\x64\x69\x61\x6E", 242 },
+	{ "\x53\x6F\x67\x6F", 243 },
+	{ "\x53\x6F\x72\x61", 196 },
+	{ "\x53\x6F\x72\x61\x5F\x53\x6F\x6D\x70\x65\x6E\x67", 196 },
+	{ "\x53\x6F\x79\x6F", 235 },
+	{ "\x53\x6F\x79\x6F\x6D\x62\x6F", 235 },
+	{ "\x53\x75\x6E\x64", 162 },
+	{ "\x53\x75\x6E\x64\x61\x6E\x65\x73\x65", 162 },
+	{ "\x53\x79\x6C\x6F", 154 },
+	{ "\x53\x79\x6C\x6F\x74\x69\x5F\x4E\x61\x67\x72\x69", 154 },
+	{ "\x53\x79\x72\x63", 103 },
+	{ "\x53\x79\x72\x69\x61\x63", 103 },
+	{ "\x54\x61\x67\x61\x6C\x6F\x67", 137 },
+	{ "\x54\x61\x67\x62", 140 },
+	{ "\x54\x61\x67\x62\x61\x6E\x77\x61", 140 },
+	{ "\x54\x61\x69\x5F\x4C\x65", 142 },
+	{ "\x54\x61\x69\x5F\x54\x68\x61\x6D", 173 },
+	{ "\x54\x61\x69\x5F\x56\x69\x65\x74", 174 },
+	{ "\x54\x61\x6B\x72", 197 },
+	{ "\x54\x61\x6B\x72\x69", 197 },
+	{ "\x54\x61\x6C\x65", 142 },
+	{ "\x54\x61\x6C\x75", 151 },
+	{ "\x54\x61\x6D\x69\x6C", 110 },
+	{ "\x54\x61\x6D\x6C", 110 },
+	{ "\x54\x61\x6E\x67", 232 },
+	{ "\x54\x61\x6E\x67\x73\x61", 254 },
+	{ "\x54\x61\x6E\x67\x75\x74", 232 },
+	{ "\x54\x61\x76\x74", 174 },
+	{ "\x54\x65\x6C\x75", 111 },
+	{ "\x54\x65\x6C\x75\x67\x75", 111 },
+	{ "\x54\x66\x6E\x67", 153 },
+	{ "\x54\x67\x6C\x67", 137 },
+	{ "\x54\x68\x61\x61", 104 },
+	{ "\x54\x68\x61\x61\x6E\x61", 104 },
+	{ "\x54\x68\x61\x69", 115 },
+	{ "\x54\x69\x62\x65\x74\x61\x6E", 117 },
+	{ "\x54\x69\x62\x74", 117 },
+	{ "\x54\x69\x66\x69\x6E\x61\x67\x68", 153 },
+	{ "\x54\x69\x72\x68", 219 },
+	{ "\x54\x69\x72\x68\x75\x74\x61", 219 },
+	{ "\x54\x6E\x73\x61", 254 },
+	{ "\x54\x6F\x74\x6F", 255 },
+	{ "\x55\x67\x61\x72", 144 },
+	{ "\x55\x67\x61\x72\x69\x74\x69\x63", 144 },
+	{ "\x55\x6E\x6B\x6E\x6F\x77\x6E", 259 },
+	{ "\x56\x61\x69", 165 },
+	{ "\x56\x61\x69\x69", 165 },
+	{ "\x56\x69\x74\x68", 256 },
+	{ "\x56\x69\x74\x68\x6B\x75\x71\x69", 256 },
+	{ "\x57\x61\x6E\x63\x68\x6F", 247 },
+	{ "\x57\x61\x72\x61", 220 },
+	{ "\x57\x61\x72\x61\x6E\x67\x5F\x43\x69\x74\x69", 220 },
+	{ "\x57\x63\x68\x6F", 247 },
+	{ "\x58\x70\x65\x6F", 155 },
+	{ "\x58\x73\x75\x78", 158 },
+	{ "\x59\x65\x7A\x69", 251 },
+	{ "\x59\x65\x7A\x69\x64\x69", 251 },
+	{ "\x59\x69", 132 },
+	{ "\x59\x69\x69\x69", 132 },
+	{ "\x5A\x61\x6E\x61\x62\x61\x7A\x61\x72\x5F\x53\x71\x75\x61\x72\x65", 236 },
+	{ "\x5A\x61\x6E\x62", 236 },
+	{ "\x5A\x69\x6E\x68", 136 },
+	{ "\x5A\x79\x79\x79", 96 },
+	{ "\x5A\x7A\x7A\x7A", 259 },
+	//  scx: 322
+	{ "\x41\x64\x6C\x61\x6D", 320 },
+	{ "\x41\x64\x6C\x6D", 320 },
+	{ "\x41\x67\x68\x62", 198 },
+	{ "\x41\x68\x6F\x6D", 221 },
+	{ "\x41\x6E\x61\x74\x6F\x6C\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 222 },
+	{ "\x41\x72\x61\x62", 264 },
+	{ "\x41\x72\x61\x62\x69\x63", 264 },
+	{ "\x41\x72\x6D\x65\x6E\x69\x61\x6E", 100 },
+	{ "\x41\x72\x6D\x69", 182 },
+	{ "\x41\x72\x6D\x6E", 100 },
+	{ "\x41\x76\x65\x73\x74\x61\x6E", 175 },
+	{ "\x41\x76\x73\x74", 175 },
+	{ "\x42\x61\x6C\x69", 157 },
+	{ "\x42\x61\x6C\x69\x6E\x65\x73\x65", 157 },
+	{ "\x42\x61\x6D\x75", 179 },
+	{ "\x42\x61\x6D\x75\x6D", 179 },
+	{ "\x42\x61\x73\x73", 199 },
+	{ "\x42\x61\x73\x73\x61\x5F\x56\x61\x68", 199 },
+	{ "\x42\x61\x74\x61\x6B", 188 },
+	{ "\x42\x61\x74\x6B", 188 },
+	{ "\x42\x65\x6E\x67", 268 },
+	{ "\x42\x65\x6E\x67\x61\x6C\x69", 268 },
+	{ "\x42\x68\x61\x69\x6B\x73\x75\x6B\x69", 228 },
+	{ "\x42\x68\x6B\x73", 228 },
+	{ "\x42\x6F\x70\x6F", 283 },
+	{ "\x42\x6F\x70\x6F\x6D\x6F\x66\x6F", 283 },
+	{ "\x42\x72\x61\x68", 189 },
+	{ "\x42\x72\x61\x68\x6D\x69", 189 },
+	{ "\x42\x72\x61\x69", 148 },
+	{ "\x42\x72\x61\x69\x6C\x6C\x65", 148 },
+	{ "\x42\x75\x67\x69", 295 },
+	{ "\x42\x75\x67\x69\x6E\x65\x73\x65", 295 },
+	{ "\x42\x75\x68\x64", 289 },
+	{ "\x42\x75\x68\x69\x64", 289 },
+	{ "\x43\x61\x6B\x6D", 305 },
+	{ "\x43\x61\x6E\x61\x64\x69\x61\x6E\x5F\x41\x62\x6F\x72\x69\x67\x69\x6E\x61\x6C", 123 },
+	{ "\x43\x61\x6E\x73", 123 },
+	{ "\x43\x61\x72\x69", 170 },
+	{ "\x43\x61\x72\x69\x61\x6E", 170 },
+	{ "\x43\x61\x75\x63\x61\x73\x69\x61\x6E\x5F\x41\x6C\x62\x61\x6E\x69\x61\x6E", 198 },
+	{ "\x43\x68\x61\x6B\x6D\x61", 305 },
+	{ "\x43\x68\x61\x6D", 172 },
+	{ "\x43\x68\x65\x72", 122 },
+	{ "\x43\x68\x65\x72\x6F\x6B\x65\x65", 122 },
+	{ "\x43\x68\x6F\x72\x61\x73\x6D\x69\x61\x6E", 248 },
+	{ "\x43\x68\x72\x73", 248 },
+	{ "\x43\x6F\x6D\x6D\x6F\x6E", 260 },
+	{ "\x43\x6F\x70\x74", 296 },
+	{ "\x43\x6F\x70\x74\x69\x63", 296 },
+	{ "\x43\x70\x6D\x6E", 328 },
+	{ "\x43\x70\x72\x74", 294 },
+	{ "\x43\x75\x6E\x65\x69\x66\x6F\x72\x6D", 158 },
+	{ "\x43\x79\x70\x72\x69\x6F\x74", 294 },
+	{ "\x43\x79\x70\x72\x6F\x5F\x4D\x69\x6E\x6F\x61\x6E", 328 },
+	{ "\x43\x79\x72\x69\x6C\x6C\x69\x63", 263 },
+	{ "\x43\x79\x72\x6C", 263 },
+	{ "\x44\x65\x73\x65\x72\x65\x74", 135 },
+	{ "\x44\x65\x76\x61", 267 },
+	{ "\x44\x65\x76\x61\x6E\x61\x67\x61\x72\x69", 267 },
+	{ "\x44\x69\x61\x6B", 249 },
+	{ "\x44\x69\x76\x65\x73\x5F\x41\x6B\x75\x72\x75", 249 },
+	{ "\x44\x6F\x67\x72", 322 },
+	{ "\x44\x6F\x67\x72\x61", 322 },
+	{ "\x44\x73\x72\x74", 135 },
+	{ "\x44\x75\x70\x6C", 308 },
+	{ "\x44\x75\x70\x6C\x6F\x79\x61\x6E", 308 },
+	{ "\x45\x67\x79\x70", 176 },
+	{ "\x45\x67\x79\x70\x74\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 176 },
+	{ "\x45\x6C\x62\x61", 201 },
+	{ "\x45\x6C\x62\x61\x73\x61\x6E", 201 },
+	{ "\x45\x6C\x79\x6D", 244 },
+	{ "\x45\x6C\x79\x6D\x61\x69\x63", 244 },
+	{ "\x45\x74\x68\x69", 121 },
+	{ "\x45\x74\x68\x69\x6F\x70\x69\x63", 121 },
+	{ "\x47\x65\x6F\x72", 278 },
+	{ "\x47\x65\x6F\x72\x67\x69\x61\x6E", 278 },
+	{ "\x47\x6C\x61\x67", 297 },
+	{ "\x47\x6C\x61\x67\x6F\x6C\x69\x74\x69\x63", 297 },
+	{ "\x47\x6F\x6E\x67", 323 },
+	{ "\x47\x6F\x6E\x6D", 321 },
+	{ "\x47\x6F\x74\x68", 134 },
+	{ "\x47\x6F\x74\x68\x69\x63", 134 },
+	{ "\x47\x72\x61\x6E", 309 },
+	{ "\x47\x72\x61\x6E\x74\x68\x61", 309 },
+	{ "\x47\x72\x65\x65\x6B", 262 },
+	{ "\x47\x72\x65\x6B", 262 },
+	{ "\x47\x75\x6A\x61\x72\x61\x74\x69", 270 },
+	{ "\x47\x75\x6A\x72", 270 },
+	{ "\x47\x75\x6E\x6A\x61\x6C\x61\x5F\x47\x6F\x6E\x64\x69", 323 },
+	{ "\x47\x75\x72\x6D\x75\x6B\x68\x69", 269 },
+	{ "\x47\x75\x72\x75", 269 },
+	{ "\x48\x61\x6E", 284 },
+	{ "\x48\x61\x6E\x67", 279 },
+	{ "\x48\x61\x6E\x67\x75\x6C", 279 },
+	{ "\x48\x61\x6E\x69", 284 },
+	{ "\x48\x61\x6E\x69\x66\x69\x5F\x52\x6F\x68\x69\x6E\x67\x79\x61", 324 },
+	{ "\x48\x61\x6E\x6F", 288 },
+	{ "\x48\x61\x6E\x75\x6E\x6F\x6F", 288 },
+	{ "\x48\x61\x74\x72", 223 },
+	{ "\x48\x61\x74\x72\x61\x6E", 223 },
+	{ "\x48\x65\x62\x72", 101 },
+	{ "\x48\x65\x62\x72\x65\x77", 101 },
+	{ "\x48\x69\x72\x61", 281 },
+	{ "\x48\x69\x72\x61\x67\x61\x6E\x61", 281 },
+	{ "\x48\x6C\x75\x77", 222 },
+	{ "\x48\x6D\x6E\x67", 203 },
+	{ "\x48\x6D\x6E\x70", 246 },
+	{ "\x48\x75\x6E\x67", 225 },
+	{ "\x49\x6D\x70\x65\x72\x69\x61\x6C\x5F\x41\x72\x61\x6D\x61\x69\x63", 182 },
+	{ "\x49\x6E\x68\x65\x72\x69\x74\x65\x64", 286 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x68\x6C\x61\x76\x69", 185 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x72\x74\x68\x69\x61\x6E", 184 },
+	{ "\x49\x74\x61\x6C", 133 },
+	{ "\x4A\x61\x76\x61", 302 },
+	{ "\x4A\x61\x76\x61\x6E\x65\x73\x65", 302 },
+	{ "\x4B\x61\x69\x74\x68\x69", 303 },
+	{ "\x4B\x61\x6C\x69", 301 },
+	{ "\x4B\x61\x6E\x61", 282 },
+	{ "\x4B\x61\x6E\x6E\x61\x64\x61", 274 },
+	{ "\x4B\x61\x74\x61\x6B\x61\x6E\x61", 282 },
+	{ "\x4B\x61\x77\x69", 257 },
+	{ "\x4B\x61\x79\x61\x68\x5F\x4C\x69", 301 },
+	{ "\x4B\x68\x61\x72", 156 },
+	{ "\x4B\x68\x61\x72\x6F\x73\x68\x74\x68\x69", 156 },
+	{ "\x4B\x68\x69\x74\x61\x6E\x5F\x53\x6D\x61\x6C\x6C\x5F\x53\x63\x72\x69\x70\x74", 250 },
+	{ "\x4B\x68\x6D\x65\x72", 126 },
+	{ "\x4B\x68\x6D\x72", 126 },
+	{ "\x4B\x68\x6F\x6A", 310 },
+	{ "\x4B\x68\x6F\x6A\x6B\x69", 310 },
+	{ "\x4B\x68\x75\x64\x61\x77\x61\x64\x69", 317 },
+	{ "\x4B\x69\x74\x73", 250 },
+	{ "\x4B\x6E\x64\x61", 274 },
+	{ "\x4B\x74\x68\x69", 303 },
+	{ "\x4C\x61\x6E\x61", 173 },
+	{ "\x4C\x61\x6F", 116 },
+	{ "\x4C\x61\x6F\x6F", 116 },
+	{ "\x4C\x61\x74\x69\x6E", 261 },
+	{ "\x4C\x61\x74\x6E", 261 },
+	{ "\x4C\x65\x70\x63", 163 },
+	{ "\x4C\x65\x70\x63\x68\x61", 163 },
+	{ "\x4C\x69\x6D\x62", 291 },
+	{ "\x4C\x69\x6D\x62\x75", 291 },
+	{ "\x4C\x69\x6E\x61", 311 },
+	{ "\x4C\x69\x6E\x62", 293 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x41", 311 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x42", 293 },
+	{ "\x4C\x69\x73\x75", 178 },
+	{ "\x4C\x79\x63\x69", 169 },
+	{ "\x4C\x79\x63\x69\x61\x6E", 169 },
+	{ "\x4C\x79\x64\x69", 171 },
+	{ "\x4C\x79\x64\x69\x61\x6E", 171 },
+	{ "\x4D\x61\x68\x61\x6A\x61\x6E\x69", 312 },
+	{ "\x4D\x61\x68\x6A", 312 },
+	{ "\x4D\x61\x6B\x61", 239 },
+	{ "\x4D\x61\x6B\x61\x73\x61\x72", 239 },
+	{ "\x4D\x61\x6C\x61\x79\x61\x6C\x61\x6D", 275 },
+	{ "\x4D\x61\x6E\x64", 304 },
+	{ "\x4D\x61\x6E\x64\x61\x69\x63", 304 },
+	{ "\x4D\x61\x6E\x69", 313 },
+	{ "\x4D\x61\x6E\x69\x63\x68\x61\x65\x61\x6E", 313 },
+	{ "\x4D\x61\x72\x63", 229 },
+	{ "\x4D\x61\x72\x63\x68\x65\x6E", 229 },
+	{ "\x4D\x61\x73\x61\x72\x61\x6D\x5F\x47\x6F\x6E\x64\x69", 321 },
+	{ "\x4D\x65\x64\x65\x66\x61\x69\x64\x72\x69\x6E", 240 },
+	{ "\x4D\x65\x64\x66", 240 },
+	{ "\x4D\x65\x65\x74\x65\x69\x5F\x4D\x61\x79\x65\x6B", 181 },
+	{ "\x4D\x65\x6E\x64", 208 },
+	{ "\x4D\x65\x6E\x64\x65\x5F\x4B\x69\x6B\x61\x6B\x75\x69", 208 },
+	{ "\x4D\x65\x72\x63", 192 },
+	{ "\x4D\x65\x72\x6F", 193 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x43\x75\x72\x73\x69\x76\x65", 192 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 193 },
+	{ "\x4D\x69\x61\x6F", 194 },
+	{ "\x4D\x6C\x79\x6D", 275 },
+	{ "\x4D\x6F\x64\x69", 314 },
+	{ "\x4D\x6F\x6E\x67", 280 },
+	{ "\x4D\x6F\x6E\x67\x6F\x6C\x69\x61\x6E", 280 },
+	{ "\x4D\x72\x6F", 210 },
+	{ "\x4D\x72\x6F\x6F", 210 },
+	{ "\x4D\x74\x65\x69", 181 },
+	{ "\x4D\x75\x6C\x74", 319 },
+	{ "\x4D\x75\x6C\x74\x61\x6E\x69", 319 },
+	{ "\x4D\x79\x61\x6E\x6D\x61\x72", 277 },
+	{ "\x4D\x79\x6D\x72", 277 },
+	{ "\x4E\x61\x62\x61\x74\x61\x65\x61\x6E", 212 },
+	{ "\x4E\x61\x67\x5F\x4D\x75\x6E\x64\x61\x72\x69", 258 },
+	{ "\x4E\x61\x67\x6D", 258 },
+	{ "\x4E\x61\x6E\x64", 326 },
+	{ "\x4E\x61\x6E\x64\x69\x6E\x61\x67\x61\x72\x69", 326 },
+	{ "\x4E\x61\x72\x62", 211 },
+	{ "\x4E\x62\x61\x74", 212 },
+	{ "\x4E\x65\x77\x5F\x54\x61\x69\x5F\x4C\x75\x65", 151 },
+	{ "\x4E\x65\x77\x61", 230 },
+	{ "\x4E\x6B\x6F", 300 },
+	{ "\x4E\x6B\x6F\x6F", 300 },
+	{ "\x4E\x73\x68\x75", 234 },
+	{ "\x4E\x75\x73\x68\x75", 234 },
+	{ "\x4E\x79\x69\x61\x6B\x65\x6E\x67\x5F\x50\x75\x61\x63\x68\x75\x65\x5F\x48\x6D\x6F\x6E\x67", 246 },
+	{ "\x4F\x67\x61\x6D", 124 },
+	{ "\x4F\x67\x68\x61\x6D", 124 },
+	{ "\x4F\x6C\x5F\x43\x68\x69\x6B\x69", 164 },
+	{ "\x4F\x6C\x63\x6B", 164 },
+	{ "\x4F\x6C\x64\x5F\x48\x75\x6E\x67\x61\x72\x69\x61\x6E", 225 },
+	{ "\x4F\x6C\x64\x5F\x49\x74\x61\x6C\x69\x63", 133 },
+	{ "\x4F\x6C\x64\x5F\x4E\x6F\x72\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 211 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x6D\x69\x63", 315 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x73\x69\x61\x6E", 155 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x67\x64\x69\x61\x6E", 243 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x75\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 183 },
+	{ "\x4F\x6C\x64\x5F\x54\x75\x72\x6B\x69\x63", 186 },
+	{ "\x4F\x6C\x64\x5F\x55\x79\x67\x68\x75\x72", 329 },
+	{ "\x4F\x72\x69\x79\x61", 271 },
+	{ "\x4F\x72\x6B\x68", 186 },
+	{ "\x4F\x72\x79\x61", 271 },
+	{ "\x4F\x73\x61\x67\x65", 231 },
+	{ "\x4F\x73\x67\x65", 231 },
+	{ "\x4F\x73\x6D\x61", 146 },
+	{ "\x4F\x73\x6D\x61\x6E\x79\x61", 146 },
+	{ "\x4F\x75\x67\x72", 329 },
+	{ "\x50\x61\x68\x61\x77\x68\x5F\x48\x6D\x6F\x6E\x67", 203 },
+	{ "\x50\x61\x6C\x6D", 213 },
+	{ "\x50\x61\x6C\x6D\x79\x72\x65\x6E\x65", 213 },
+	{ "\x50\x61\x75\x5F\x43\x69\x6E\x5F\x48\x61\x75", 214 },
+	{ "\x50\x61\x75\x63", 214 },
+	{ "\x50\x65\x72\x6D", 315 },
+	{ "\x50\x68\x61\x67", 299 },
+	{ "\x50\x68\x61\x67\x73\x5F\x50\x61", 299 },
+	{ "\x50\x68\x6C\x69", 185 },
+	{ "\x50\x68\x6C\x70", 316 },
+	{ "\x50\x68\x6E\x78", 159 },
+	{ "\x50\x68\x6F\x65\x6E\x69\x63\x69\x61\x6E", 159 },
+	{ "\x50\x6C\x72\x64", 194 },
+	{ "\x50\x72\x74\x69", 184 },
+	{ "\x50\x73\x61\x6C\x74\x65\x72\x5F\x50\x61\x68\x6C\x61\x76\x69", 316 },
+	{ "\x51\x61\x61\x63", 296 },
+	{ "\x51\x61\x61\x69", 286 },
+	{ "\x52\x65\x6A\x61\x6E\x67", 168 },
+	{ "\x52\x6A\x6E\x67", 168 },
+	{ "\x52\x6F\x68\x67", 324 },
+	{ "\x52\x75\x6E\x69\x63", 125 },
+	{ "\x52\x75\x6E\x72", 125 },
+	{ "\x53\x61\x6D\x61\x72\x69\x74\x61\x6E", 177 },
+	{ "\x53\x61\x6D\x72", 177 },
+	{ "\x53\x61\x72\x62", 183 },
+	{ "\x53\x61\x75\x72", 166 },
+	{ "\x53\x61\x75\x72\x61\x73\x68\x74\x72\x61", 166 },
+	{ "\x53\x67\x6E\x77", 226 },
+	{ "\x53\x68\x61\x72\x61\x64\x61", 306 },
+	{ "\x53\x68\x61\x76\x69\x61\x6E", 145 },
+	{ "\x53\x68\x61\x77", 145 },
+	{ "\x53\x68\x72\x64", 306 },
+	{ "\x53\x69\x64\x64", 217 },
+	{ "\x53\x69\x64\x64\x68\x61\x6D", 217 },
+	{ "\x53\x69\x67\x6E\x57\x72\x69\x74\x69\x6E\x67", 226 },
+	{ "\x53\x69\x6E\x64", 317 },
+	{ "\x53\x69\x6E\x68", 276 },
+	{ "\x53\x69\x6E\x68\x61\x6C\x61", 276 },
+	{ "\x53\x6F\x67\x64", 325 },
+	{ "\x53\x6F\x67\x64\x69\x61\x6E", 325 },
+	{ "\x53\x6F\x67\x6F", 243 },
+	{ "\x53\x6F\x72\x61", 196 },
+	{ "\x53\x6F\x72\x61\x5F\x53\x6F\x6D\x70\x65\x6E\x67", 196 },
+	{ "\x53\x6F\x79\x6F", 235 },
+	{ "\x53\x6F\x79\x6F\x6D\x62\x6F", 235 },
+	{ "\x53\x75\x6E\x64", 162 },
+	{ "\x53\x75\x6E\x64\x61\x6E\x65\x73\x65", 162 },
+	{ "\x53\x79\x6C\x6F", 298 },
+	{ "\x53\x79\x6C\x6F\x74\x69\x5F\x4E\x61\x67\x72\x69", 298 },
+	{ "\x53\x79\x72\x63", 265 },
+	{ "\x53\x79\x72\x69\x61\x63", 265 },
+	{ "\x54\x61\x67\x61\x6C\x6F\x67", 287 },
+	{ "\x54\x61\x67\x62", 290 },
+	{ "\x54\x61\x67\x62\x61\x6E\x77\x61", 290 },
+	{ "\x54\x61\x69\x5F\x4C\x65", 292 },
+	{ "\x54\x61\x69\x5F\x54\x68\x61\x6D", 173 },
+	{ "\x54\x61\x69\x5F\x56\x69\x65\x74", 174 },
+	{ "\x54\x61\x6B\x72", 307 },
+	{ "\x54\x61\x6B\x72\x69", 307 },
+	{ "\x54\x61\x6C\x65", 292 },
+	{ "\x54\x61\x6C\x75", 151 },
+	{ "\x54\x61\x6D\x69\x6C", 272 },
+	{ "\x54\x61\x6D\x6C", 272 },
+	{ "\x54\x61\x6E\x67", 232 },
+	{ "\x54\x61\x6E\x67\x73\x61", 254 },
+	{ "\x54\x61\x6E\x67\x75\x74", 232 },
+	{ "\x54\x61\x76\x74", 174 },
+	{ "\x54\x65\x6C\x75", 273 },
+	{ "\x54\x65\x6C\x75\x67\x75", 273 },
+	{ "\x54\x66\x6E\x67", 153 },
+	{ "\x54\x67\x6C\x67", 287 },
+	{ "\x54\x68\x61\x61", 266 },
+	{ "\x54\x68\x61\x61\x6E\x61", 266 },
+	{ "\x54\x68\x61\x69", 115 },
+	{ "\x54\x69\x62\x65\x74\x61\x6E", 117 },
+	{ "\x54\x69\x62\x74", 117 },
+	{ "\x54\x69\x66\x69\x6E\x61\x67\x68", 153 },
+	{ "\x54\x69\x72\x68", 318 },
+	{ "\x54\x69\x72\x68\x75\x74\x61", 318 },
+	{ "\x54\x6E\x73\x61", 254 },
+	{ "\x54\x6F\x74\x6F", 255 },
+	{ "\x55\x67\x61\x72", 144 },
+	{ "\x55\x67\x61\x72\x69\x74\x69\x63", 144 },
+	{ "\x55\x6E\x6B\x6E\x6F\x77\x6E", 259 },
+	{ "\x56\x61\x69", 165 },
+	{ "\x56\x61\x69\x69", 165 },
+	{ "\x56\x69\x74\x68", 256 },
+	{ "\x56\x69\x74\x68\x6B\x75\x71\x69", 256 },
+	{ "\x57\x61\x6E\x63\x68\x6F", 247 },
+	{ "\x57\x61\x72\x61", 220 },
+	{ "\x57\x61\x72\x61\x6E\x67\x5F\x43\x69\x74\x69", 220 },
+	{ "\x57\x63\x68\x6F", 247 },
+	{ "\x58\x70\x65\x6F", 155 },
+	{ "\x58\x73\x75\x78", 158 },
+	{ "\x59\x65\x7A\x69", 327 },
+	{ "\x59\x65\x7A\x69\x64\x69", 327 },
+	{ "\x59\x69", 285 },
+	{ "\x59\x69\x69\x69", 285 },
+	{ "\x5A\x61\x6E\x61\x62\x61\x7A\x61\x72\x5F\x53\x71\x75\x61\x72\x65", 236 },
+	{ "\x5A\x61\x6E\x62", 236 },
+	{ "\x5A\x69\x6E\x68", 286 },
+	{ "\x5A\x79\x79\x79", 260 },
+	{ "\x5A\x7A\x7A\x7A", 259 }
 };
 
-template <typename T3, typename T4, typename T5, typename T6>
-const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
+template <typename T3, typename T4, typename T5>
+const T4 unicode_property_data<T3, T4, T5>::positiontable[] =
 {
-	//  #1 (0+734): gc=Other:C
+	{ 0, 0 },	//  #0 unknown
+	{ 86, 105 },	//  #1 binary
+	{ 6, 80 },	//  #2 General_Category:gc
+	{ 191, 322 },	//  #3 Script:sc
+	{ 513, 322 },	//  #4 Script_Extensions:scx
+	{ 0, 734 },	//  #5 gc=Other:C
+	{ 0, 2 },	//  #6 gc=Control:Cc:cntrl
+	{ 2, 21 },	//  #7 gc=Format:Cf
+	{ 23, 707 },	//  #8 gc=Unassigned:Cn
+	{ 730, 3 },	//  #9 gc=Private_Use:Co
+	{ 733, 1 },	//  #10 gc=Surrogate:Cs
+	{ 734, 1896 },	//  #11 gc=Letter:L
+	{ 734, 1314 },	//  #12 gc=Cased_Letter:LC
+	{ 734, 658 },	//  #13 gc=Lowercase_Letter:Ll
+	{ 1392, 10 },	//  #14 gc=Titlecase_Letter:Lt
+	{ 1402, 646 },	//  #15 gc=Uppercase_Letter:Lu
+	{ 2048, 71 },	//  #16 gc=Modifier_Letter:Lm
+	{ 2119, 511 },	//  #17 gc=Other_Letter:Lo
+	{ 2630, 533 },	//  #18 gc=Mark:M:Combining_Mark
+	{ 2630, 182 },	//  #19 gc=Spacing_Mark:Mc
+	{ 2812, 5 },	//  #20 gc=Enclosing_Mark:Me
+	{ 2817, 346 },	//  #21 gc=Nonspacing_Mark:Mn
+	{ 3163, 148 },	//  #22 gc=Number:N
+	{ 3163, 64 },	//  #23 gc=Decimal_Number:Nd:digit
+	{ 3227, 12 },	//  #24 gc=Letter_Number:Nl
+	{ 3239, 72 },	//  #25 gc=Other_Number:No
+	{ 3311, 388 },	//  #26 gc=Punctuation:P:punct
+	{ 3311, 6 },	//  #27 gc=Connector_Punctuation:Pc
+	{ 3317, 19 },	//  #28 gc=Dash_Punctuation:Pd
+	{ 3336, 76 },	//  #29 gc=Close_Punctuation:Pe
+	{ 3412, 10 },	//  #30 gc=Final_Punctuation:Pf
+	{ 3422, 11 },	//  #31 gc=Initial_Punctuation:Pi
+	{ 3433, 187 },	//  #32 gc=Other_Punctuation:Po
+	{ 3620, 79 },	//  #33 gc=Open_Punctuation:Ps
+	{ 3699, 301 },	//  #34 gc=Symbol:S
+	{ 3699, 21 },	//  #35 gc=Currency_Symbol:Sc
+	{ 3720, 31 },	//  #36 gc=Modifier_Symbol:Sk
+	{ 3751, 64 },	//  #37 gc=Math_Symbol:Sm
+	{ 3815, 185 },	//  #38 gc=Other_Symbol:So
+	{ 4000, 9 },	//  #39 gc=Separator:Z
+	{ 4000, 1 },	//  #40 gc=Line_Separator:Zl
+	{ 4001, 1 },	//  #41 gc=Paragraph_Separator:Zp
+	{ 4002, 7 },	//  #42 gc=Space_Separator:Zs
+	{ 4009, 1 },	//  #43 bp=ASCII
+	{ 4010, 3 },	//  #44 bp=ASCII_Hex_Digit:AHex
+	{ 4013, 733 },	//  #45 bp=Alphabetic:Alpha
+	{ 4746, 1 },	//  #46 bp=Any
+	{ 4747, 0 },	//  #47 bp=Assigned
+	{ 4747, 4 },	//  #48 bp=Bidi_Control:Bidi_C
+	{ 4751, 114 },	//  #49 bp=Bidi_Mirrored:Bidi_M
+	{ 4865, 437 },	//  #50 bp=Case_Ignorable:CI
+	{ 5302, 157 },	//  #51 bp=Cased
+	{ 5459, 622 },	//  #52 bp=Changes_When_Casefolded:CWCF
+	{ 6081, 131 },	//  #53 bp=Changes_When_Casemapped:CWCM
+	{ 6212, 609 },	//  #54 bp=Changes_When_Lowercased:CWL
+	{ 6821, 839 },	//  #55 bp=Changes_When_NFKC_Casefolded:CWKCF
+	{ 7660, 626 },	//  #56 bp=Changes_When_Titlecased:CWT
+	{ 8286, 627 },	//  #57 bp=Changes_When_Uppercased:CWU
+	{ 8913, 23 },	//  #58 bp=Dash
+	{ 8936, 17 },	//  #59 bp=Default_Ignorable_Code_Point:DI
+	{ 8953, 8 },	//  #60 bp=Deprecated:Dep
+	{ 8961, 195 },	//  #61 bp=Diacritic:Dia
+	{ 9156, 151 },	//  #62 bp=Emoji
+	{ 9307, 10 },	//  #63 bp=Emoji_Component:EComp
+	{ 9317, 1 },	//  #64 bp=Emoji_Modifier:EMod
+	{ 9318, 40 },	//  #65 bp=Emoji_Modifier_Base:EBase
+	{ 9358, 81 },	//  #66 bp=Emoji_Presentation:EPres
+	{ 9439, 78 },	//  #67 bp=Extended_Pictographic:ExtPict
+	{ 9517, 33 },	//  #68 bp=Extender:Ext
+	{ 9550, 875 },	//  #69 bp=Grapheme_Base:Gr_Base
+	{ 10425, 363 },	//  #70 bp=Grapheme_Extend:Gr_Ext
+	{ 10788, 6 },	//  #71 bp=Hex_Digit:Hex
+	{ 10794, 3 },	//  #72 bp=IDS_Binary_Operator:IDSB
+	{ 10797, 1 },	//  #73 bp=IDS_Trinary_Operator:IDST
+	{ 10798, 769 },	//  #74 bp=ID_Continue:IDC
+	{ 11567, 660 },	//  #75 bp=ID_Start:IDS
+	{ 12227, 21 },	//  #76 bp=Ideographic:Ideo
+	{ 12248, 1 },	//  #77 bp=Join_Control:Join_C
+	{ 12249, 7 },	//  #78 bp=Logical_Order_Exception:LOE
+	{ 12256, 671 },	//  #79 bp=Lowercase:Lower
+	{ 12927, 138 },	//  #80 bp=Math
+	{ 13065, 18 },	//  #81 bp=Noncharacter_Code_Point:NChar
+	{ 13083, 28 },	//  #82 bp=Pattern_Syntax:Pat_Syn
+	{ 13111, 5 },	//  #83 bp=Pattern_White_Space:Pat_WS
+	{ 13116, 13 },	//  #84 bp=Quotation_Mark:QMark
+	{ 13129, 3 },	//  #85 bp=Radical
+	{ 13132, 1 },	//  #86 bp=Regional_Indicator:RI
+	{ 13133, 81 },	//  #87 bp=Sentence_Terminal:STerm
+	{ 13214, 34 },	//  #88 bp=Soft_Dotted:SD
+	{ 13248, 108 },	//  #89 bp=Terminal_Punctuation:Term
+	{ 13356, 17 },	//  #90 bp=Unified_Ideograph:UIdeo
+	{ 13373, 651 },	//  #91 bp=Uppercase:Upper
+	{ 14024, 4 },	//  #92 bp=Variation_Selector:VS
+	{ 14028, 10 },	//  #93 bp=White_Space:space
+	{ 14038, 776 },	//  #94 bp=XID_Continue:XIDC
+	{ 14814, 667 },	//  #95 bp=XID_Start:XIDS
+	{ 15481, 173 },	//  #96 sc=Common:Zyyy
+	{ 15654, 39 },	//  #97 sc=Latin:Latn
+	{ 15693, 36 },	//  #98 sc=Greek:Grek
+	{ 15729, 10 },	//  #99 sc=Cyrillic:Cyrl
+	{ 15739, 4 },	//  #100 sc=Armenian:Armn scx=Armenian:Armn
+	{ 15743, 9 },	//  #101 sc=Hebrew:Hebr scx=Hebrew:Hebr
+	{ 15752, 58 },	//  #102 sc=Arabic:Arab
+	{ 15810, 4 },	//  #103 sc=Syriac:Syrc
+	{ 15814, 1 },	//  #104 sc=Thaana:Thaa
+	{ 15815, 5 },	//  #105 sc=Devanagari:Deva
+	{ 15820, 14 },	//  #106 sc=Bengali:Beng
+	{ 15834, 16 },	//  #107 sc=Gurmukhi:Guru
+	{ 15850, 14 },	//  #108 sc=Gujarati:Gujr
+	{ 15864, 14 },	//  #109 sc=Oriya:Orya
+	{ 15878, 18 },	//  #110 sc=Tamil:Taml
+	{ 15896, 13 },	//  #111 sc=Telugu:Telu
+	{ 15909, 13 },	//  #112 sc=Kannada:Knda
+	{ 15922, 7 },	//  #113 sc=Malayalam:Mlym
+	{ 15929, 13 },	//  #114 sc=Sinhala:Sinh
+	{ 15942, 2 },	//  #115 sc=Thai scx=Thai
+	{ 15944, 11 },	//  #116 sc=Lao:Laoo scx=Lao:Laoo
+	{ 15955, 7 },	//  #117 sc=Tibetan:Tibt scx=Tibetan:Tibt
+	{ 15962, 3 },	//  #118 sc=Myanmar:Mymr
+	{ 15965, 10 },	//  #119 sc=Georgian:Geor
+	{ 15975, 14 },	//  #120 sc=Hangul:Hang
+	{ 15989, 36 },	//  #121 sc=Ethiopic:Ethi scx=Ethiopic:Ethi
+	{ 16025, 3 },	//  #122 sc=Cherokee:Cher scx=Cherokee:Cher
+	{ 16028, 3 },	//  #123 sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
+	{ 16031, 1 },	//  #124 sc=Ogham:Ogam scx=Ogham:Ogam
+	{ 16032, 2 },	//  #125 sc=Runic:Runr scx=Runic:Runr
+	{ 16034, 4 },	//  #126 sc=Khmer:Khmr scx=Khmer:Khmr
+	{ 16038, 6 },	//  #127 sc=Mongolian:Mong
+	{ 16044, 6 },	//  #128 sc=Hiragana:Hira
+	{ 16050, 14 },	//  #129 sc=Katakana:Kana
+	{ 16064, 3 },	//  #130 sc=Bopomofo:Bopo
+	{ 16067, 22 },	//  #131 sc=Han:Hani
+	{ 16089, 2 },	//  #132 sc=Yi:Yiii
+	{ 16091, 2 },	//  #133 sc=Old_Italic:Ital scx=Old_Italic:Ital
+	{ 16093, 1 },	//  #134 sc=Gothic:Goth scx=Gothic:Goth
+	{ 16094, 1 },	//  #135 sc=Deseret:Dsrt scx=Deseret:Dsrt
+	{ 16095, 29 },	//  #136 sc=Inherited:Zinh:Qaai
+	{ 16124, 2 },	//  #137 sc=Tagalog:Tglg
+	{ 16126, 1 },	//  #138 sc=Hanunoo:Hano
+	{ 16127, 1 },	//  #139 sc=Buhid:Buhd
+	{ 16128, 3 },	//  #140 sc=Tagbanwa:Tagb
+	{ 16131, 5 },	//  #141 sc=Limbu:Limb
+	{ 16136, 2 },	//  #142 sc=Tai_Le:Tale
+	{ 16138, 7 },	//  #143 sc=Linear_B:Linb
+	{ 16145, 2 },	//  #144 sc=Ugaritic:Ugar scx=Ugaritic:Ugar
+	{ 16147, 1 },	//  #145 sc=Shavian:Shaw scx=Shavian:Shaw
+	{ 16148, 2 },	//  #146 sc=Osmanya:Osma scx=Osmanya:Osma
+	{ 16150, 6 },	//  #147 sc=Cypriot:Cprt
+	{ 16156, 1 },	//  #148 sc=Braille:Brai scx=Braille:Brai
+	{ 16157, 2 },	//  #149 sc=Buginese:Bugi
+	{ 16159, 3 },	//  #150 sc=Coptic:Copt:Qaac
+	{ 16162, 4 },	//  #151 sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
+	{ 16166, 6 },	//  #152 sc=Glagolitic:Glag
+	{ 16172, 3 },	//  #153 sc=Tifinagh:Tfng scx=Tifinagh:Tfng
+	{ 16175, 1 },	//  #154 sc=Syloti_Nagri:Sylo
+	{ 16176, 2 },	//  #155 sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
+	{ 16178, 8 },	//  #156 sc=Kharoshthi:Khar scx=Kharoshthi:Khar
+	{ 16186, 2 },	//  #157 sc=Balinese:Bali scx=Balinese:Bali
+	{ 16188, 4 },	//  #158 sc=Cuneiform:Xsux scx=Cuneiform:Xsux
+	{ 16192, 2 },	//  #159 sc=Phoenician:Phnx scx=Phoenician:Phnx
+	{ 16194, 1 },	//  #160 sc=Phags_Pa:Phag
+	{ 16195, 2 },	//  #161 sc=Nko:Nkoo
+	{ 16197, 2 },	//  #162 sc=Sundanese:Sund scx=Sundanese:Sund
+	{ 16199, 3 },	//  #163 sc=Lepcha:Lepc scx=Lepcha:Lepc
+	{ 16202, 1 },	//  #164 sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
+	{ 16203, 1 },	//  #165 sc=Vai:Vaii scx=Vai:Vaii
+	{ 16204, 2 },	//  #166 sc=Saurashtra:Saur scx=Saurashtra:Saur
+	{ 16206, 2 },	//  #167 sc=Kayah_Li:Kali
+	{ 16208, 2 },	//  #168 sc=Rejang:Rjng scx=Rejang:Rjng
+	{ 16210, 1 },	//  #169 sc=Lycian:Lyci scx=Lycian:Lyci
+	{ 16211, 1 },	//  #170 sc=Carian:Cari scx=Carian:Cari
+	{ 16212, 2 },	//  #171 sc=Lydian:Lydi scx=Lydian:Lydi
+	{ 16214, 4 },	//  #172 sc=Cham scx=Cham
+	{ 16218, 5 },	//  #173 sc=Tai_Tham:Lana scx=Tai_Tham:Lana
+	{ 16223, 2 },	//  #174 sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
+	{ 16225, 2 },	//  #175 sc=Avestan:Avst scx=Avestan:Avst
+	{ 16227, 1 },	//  #176 sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
+	{ 16228, 2 },	//  #177 sc=Samaritan:Samr scx=Samaritan:Samr
+	{ 16230, 2 },	//  #178 sc=Lisu scx=Lisu
+	{ 16232, 2 },	//  #179 sc=Bamum:Bamu scx=Bamum:Bamu
+	{ 16234, 3 },	//  #180 sc=Javanese:Java
+	{ 16237, 3 },	//  #181 sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
+	{ 16240, 2 },	//  #182 sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
+	{ 16242, 1 },	//  #183 sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
+	{ 16243, 2 },	//  #184 sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
+	{ 16245, 2 },	//  #185 sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
+	{ 16247, 1 },	//  #186 sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
+	{ 16248, 2 },	//  #187 sc=Kaithi:Kthi
+	{ 16250, 2 },	//  #188 sc=Batak:Batk scx=Batak:Batk
+	{ 16252, 3 },	//  #189 sc=Brahmi:Brah scx=Brahmi:Brah
+	{ 16255, 2 },	//  #190 sc=Mandaic:Mand
+	{ 16257, 2 },	//  #191 sc=Chakma:Cakm
+	{ 16259, 3 },	//  #192 sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
+	{ 16262, 1 },	//  #193 sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
+	{ 16263, 3 },	//  #194 sc=Miao:Plrd scx=Miao:Plrd
+	{ 16266, 1 },	//  #195 sc=Sharada:Shrd
+	{ 16267, 2 },	//  #196 sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
+	{ 16269, 2 },	//  #197 sc=Takri:Takr
+	{ 16271, 2 },	//  #198 sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
+	{ 16273, 2 },	//  #199 sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
+	{ 16275, 5 },	//  #200 sc=Duployan:Dupl
+	{ 16280, 1 },	//  #201 sc=Elbasan:Elba scx=Elbasan:Elba
+	{ 16281, 15 },	//  #202 sc=Grantha:Gran
+	{ 16296, 5 },	//  #203 sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
+	{ 16301, 2 },	//  #204 sc=Khojki:Khoj
+	{ 16303, 3 },	//  #205 sc=Linear_A:Lina
+	{ 16306, 1 },	//  #206 sc=Mahajani:Mahj
+	{ 16307, 2 },	//  #207 sc=Manichaean:Mani
+	{ 16309, 2 },	//  #208 sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
+	{ 16311, 2 },	//  #209 sc=Modi
+	{ 16313, 3 },	//  #210 sc=Mro:Mroo scx=Mro:Mroo
+	{ 16316, 1 },	//  #211 sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
+	{ 16317, 2 },	//  #212 sc=Nabataean:Nbat scx=Nabataean:Nbat
+	{ 16319, 1 },	//  #213 sc=Palmyrene:Palm scx=Palmyrene:Palm
+	{ 16320, 1 },	//  #214 sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
+	{ 16321, 1 },	//  #215 sc=Old_Permic:Perm
+	{ 16322, 3 },	//  #216 sc=Psalter_Pahlavi:Phlp
+	{ 16325, 2 },	//  #217 sc=Siddham:Sidd scx=Siddham:Sidd
+	{ 16327, 2 },	//  #218 sc=Khudawadi:Sind
+	{ 16329, 2 },	//  #219 sc=Tirhuta:Tirh
+	{ 16331, 2 },	//  #220 sc=Warang_Citi:Wara scx=Warang_Citi:Wara
+	{ 16333, 3 },	//  #221 sc=Ahom scx=Ahom
+	{ 16336, 1 },	//  #222 sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
+	{ 16337, 3 },	//  #223 sc=Hatran:Hatr scx=Hatran:Hatr
+	{ 16340, 5 },	//  #224 sc=Multani:Mult
+	{ 16345, 3 },	//  #225 sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
+	{ 16348, 3 },	//  #226 sc=SignWriting:Sgnw scx=SignWriting:Sgnw
+	{ 16351, 3 },	//  #227 sc=Adlam:Adlm
+	{ 16354, 4 },	//  #228 sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
+	{ 16358, 3 },	//  #229 sc=Marchen:Marc scx=Marchen:Marc
+	{ 16361, 2 },	//  #230 sc=Newa scx=Newa
+	{ 16363, 2 },	//  #231 sc=Osage:Osge scx=Osage:Osge
+	{ 16365, 4 },	//  #232 sc=Tangut:Tang scx=Tangut:Tang
+	{ 16369, 7 },	//  #233 sc=Masaram_Gondi:Gonm
+	{ 16376, 2 },	//  #234 sc=Nushu:Nshu scx=Nushu:Nshu
+	{ 16378, 1 },	//  #235 sc=Soyombo:Soyo scx=Soyombo:Soyo
+	{ 16379, 1 },	//  #236 sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
+	{ 16380, 1 },	//  #237 sc=Dogra:Dogr
+	{ 16381, 6 },	//  #238 sc=Gunjala_Gondi:Gong
+	{ 16387, 1 },	//  #239 sc=Makasar:Maka scx=Makasar:Maka
+	{ 16388, 1 },	//  #240 sc=Medefaidrin:Medf scx=Medefaidrin:Medf
+	{ 16389, 2 },	//  #241 sc=Hanifi_Rohingya:Rohg
+	{ 16391, 1 },	//  #242 sc=Sogdian:Sogd
+	{ 16392, 1 },	//  #243 sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
+	{ 16393, 1 },	//  #244 sc=Elymaic:Elym scx=Elymaic:Elym
+	{ 16394, 3 },	//  #245 sc=Nandinagari:Nand
+	{ 16397, 4 },	//  #246 sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
+	{ 16401, 2 },	//  #247 sc=Wancho:Wcho scx=Wancho:Wcho
+	{ 16403, 1 },	//  #248 sc=Chorasmian:Chrs scx=Chorasmian:Chrs
+	{ 16404, 8 },	//  #249 sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
+	{ 16412, 2 },	//  #250 sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
+	{ 16414, 3 },	//  #251 sc=Yezidi:Yezi
+	{ 16417, 1 },	//  #252 sc=Cypro_Minoan:Cpmn
+	{ 16418, 1 },	//  #253 sc=Old_Uyghur:Ougr
+	{ 16419, 2 },	//  #254 sc=Tangsa:Tnsa scx=Tangsa:Tnsa
+	{ 16421, 1 },	//  #255 sc=Toto scx=Toto
+	{ 16422, 8 },	//  #256 sc=Vithkuqi:Vith scx=Vithkuqi:Vith
+	{ 16430, 3 },	//  #257 sc=Kawi scx=Kawi
+	{ 16433, 1 },	//  #258 sc=Nag_Mundari:Nagm scx=Nag_Mundari:Nagm
+	{ 16434, 705 },	//  #259 sc=Unknown:Zzzz scx=Unknown:Zzzz
+	{ 17139, 147 },	//  #260 scx=Common:Zyyy
+	{ 17286, 47 },	//  #261 scx=Latin:Latn
+	{ 17333, 38 },	//  #262 scx=Greek:Grek
+	{ 17371, 11 },	//  #263 scx=Cyrillic:Cyrl
+	{ 17382, 52 },	//  #264 scx=Arabic:Arab
+	{ 17434, 12 },	//  #265 scx=Syriac:Syrc
+	{ 17446, 7 },	//  #266 scx=Thaana:Thaa
+	{ 17453, 8 },	//  #267 scx=Devanagari:Deva
+	{ 17461, 26 },	//  #268 scx=Bengali:Beng
+	{ 17487, 19 },	//  #269 scx=Gurmukhi:Guru
+	{ 17506, 17 },	//  #270 scx=Gujarati:Gujr
+	{ 17523, 18 },	//  #271 scx=Oriya:Orya
+	{ 17541, 25 },	//  #272 scx=Tamil:Taml
+	{ 17566, 17 },	//  #273 scx=Telugu:Telu
+	{ 17583, 21 },	//  #274 scx=Kannada:Knda
+	{ 17604, 12 },	//  #275 scx=Malayalam:Mlym
+	{ 17616, 15 },	//  #276 scx=Sinhala:Sinh
+	{ 17631, 4 },	//  #277 scx=Myanmar:Mymr
+	{ 17635, 9 },	//  #278 scx=Georgian:Geor
+	{ 17644, 21 },	//  #279 scx=Hangul:Hang
+	{ 17665, 5 },	//  #280 scx=Mongolian:Mong
+	{ 17670, 17 },	//  #281 scx=Hiragana:Hira
+	{ 17687, 20 },	//  #282 scx=Katakana:Kana
+	{ 17707, 12 },	//  #283 scx=Bopomofo:Bopo
+	{ 17719, 39 },	//  #284 scx=Han:Hani
+	{ 17758, 7 },	//  #285 scx=Yi:Yiii
+	{ 17765, 20 },	//  #286 scx=Inherited:Zinh:Qaai
+	{ 17785, 3 },	//  #287 scx=Tagalog:Tglg
+	{ 17788, 1 },	//  #288 scx=Hanunoo:Hano
+	{ 17789, 2 },	//  #289 scx=Buhid:Buhd
+	{ 17791, 4 },	//  #290 scx=Tagbanwa:Tagb
+	{ 17795, 6 },	//  #291 scx=Limbu:Limb
+	{ 17801, 3 },	//  #292 scx=Tai_Le:Tale
+	{ 17804, 10 },	//  #293 scx=Linear_B:Linb
+	{ 17814, 9 },	//  #294 scx=Cypriot:Cprt
+	{ 17823, 3 },	//  #295 scx=Buginese:Bugi
+	{ 17826, 4 },	//  #296 scx=Coptic:Copt:Qaac
+	{ 17830, 10 },	//  #297 scx=Glagolitic:Glag
+	{ 17840, 3 },	//  #298 scx=Syloti_Nagri:Sylo
+	{ 17843, 3 },	//  #299 scx=Phags_Pa:Phag
+	{ 17846, 6 },	//  #300 scx=Nko:Nkoo
+	{ 17852, 1 },	//  #301 scx=Kayah_Li:Kali
+	{ 17853, 3 },	//  #302 scx=Javanese:Java
+	{ 17856, 4 },	//  #303 scx=Kaithi:Kthi
+	{ 17860, 3 },	//  #304 scx=Mandaic:Mand
+	{ 17863, 4 },	//  #305 scx=Chakma:Cakm
+	{ 17867, 8 },	//  #306 scx=Sharada:Shrd
+	{ 17875, 4 },	//  #307 scx=Takri:Takr
+	{ 17879, 5 },	//  #308 scx=Duployan:Dupl
+	{ 17884, 25 },	//  #309 scx=Grantha:Gran
+	{ 17909, 4 },	//  #310 scx=Khojki:Khoj
+	{ 17913, 4 },	//  #311 scx=Linear_A:Lina
+	{ 17917, 3 },	//  #312 scx=Mahajani:Mahj
+	{ 17920, 3 },	//  #313 scx=Manichaean:Mani
+	{ 17923, 3 },	//  #314 scx=Modi
+	{ 17926, 2 },	//  #315 scx=Old_Permic:Perm
+	{ 17928, 4 },	//  #316 scx=Psalter_Pahlavi:Phlp
+	{ 17932, 4 },	//  #317 scx=Khudawadi:Sind
+	{ 17936, 6 },	//  #318 scx=Tirhuta:Tirh
+	{ 17942, 6 },	//  #319 scx=Multani:Mult
+	{ 17948, 5 },	//  #320 scx=Adlam:Adlm
+	{ 17953, 8 },	//  #321 scx=Masaram_Gondi:Gonm
+	{ 17961, 3 },	//  #322 scx=Dogra:Dogr
+	{ 17964, 7 },	//  #323 scx=Gunjala_Gondi:Gong
+	{ 17971, 7 },	//  #324 scx=Hanifi_Rohingya:Rohg
+	{ 17978, 2 },	//  #325 scx=Sogdian:Sogd
+	{ 17980, 9 },	//  #326 scx=Nandinagari:Nand
+	{ 17989, 7 },	//  #327 scx=Yezidi:Yezi
+	{ 17996, 2 },	//  #328 scx=Cypro_Minoan:Cpmn
+	{ 17998, 3 },	//  #329 scx=Old_Uyghur:Ougr
+	{ 18001, 6766 },	//  #330 bp=RGI_Emoji
+	{ 18001, 669 },	//  #331 bp=Basic_Emoji
+	{ 18670, 24 },	//  #332 bp=Emoji_Keycap_Sequence
+	{ 18694, 983 },	//  #333 bp=RGI_Emoji_Modifier_Sequence
+	{ 19677, 387 },	//  #334 bp=RGI_Emoji_Flag_Sequence
+	{ 20064, 12 },	//  #335 bp=RGI_Emoji_Tag_Sequence
+	{ 20076, 4691 }	//  #336 bp=RGI_Emoji_ZWJ_Sequence
+};
+
+template <typename T3, typename T4, typename T5>
+const T5 unicode_property_data<T3, T4, T5>::rangetable[] =
+{
+	//  #5 (0+734): gc=Other:C
 	//  Cc:2 + Cf:21 + Cn:707 + Co:3 + Cs:1
-	//  #2 (0+2): gc=Control:Cc:cntrl
+	//  #6 (0+2): gc=Control:Cc:cntrl
 	0x0000, 0x001F, 0x007F, 0x009F,
-	//  #3 (2+21): gc=Format:Cf
+	//  #7 (2+21): gc=Format:Cf
 	0x00AD, 0x00AD, 0x0600, 0x0605, 0x061C, 0x061C, 0x06DD, 0x06DD,
 	0x070F, 0x070F, 0x0890, 0x0891, 0x08E2, 0x08E2, 0x180E, 0x180E,
 	0x200B, 0x200F, 0x202A, 0x202E, 0x2060, 0x2064, 0x2066, 0x206F,
 	0xFEFF, 0xFEFF, 0xFFF9, 0xFFFB, 0x110BD, 0x110BD, 0x110CD, 0x110CD,
 	0x13430, 0x1343F, 0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A, 0xE0001, 0xE0001,
 	0xE0020, 0xE007F,
-	//  #4 (23+707): gc=Unassigned:Cn
+	//  #8 (23+707): gc=Unassigned:Cn
 	0x0378, 0x0379, 0x0380, 0x0383, 0x038B, 0x038B, 0x038D, 0x038D,
 	0x03A2, 0x03A2, 0x0530, 0x0530, 0x0557, 0x0558, 0x058B, 0x058C,
 	0x0590, 0x0590, 0x05C8, 0x05CF, 0x05EB, 0x05EE, 0x05F5, 0x05FF,
@@ -4946,125 +6122,125 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2D97, 0x2D9F, 0x2DA7, 0x2DA7, 0x2DAF, 0x2DAF, 0x2DB7, 0x2DB7,
 	0x2DBF, 0x2DBF, 0x2DC7, 0x2DC7, 0x2DCF, 0x2DCF, 0x2DD7, 0x2DD7,
 	0x2DDF, 0x2DDF, 0x2E5E, 0x2E7F, 0x2E9A, 0x2E9A, 0x2EF4, 0x2EFF,
-	0x2FD6, 0x2FEF, 0x2FFC, 0x2FFF, 0x3040, 0x3040, 0x3097, 0x3098,
-	0x3100, 0x3104, 0x3130, 0x3130, 0x318F, 0x318F, 0x31E4, 0x31EF,
-	0x321F, 0x321F, 0xA48D, 0xA48F, 0xA4C7, 0xA4CF, 0xA62C, 0xA63F,
-	0xA6F8, 0xA6FF, 0xA7CB, 0xA7CF, 0xA7D2, 0xA7D2, 0xA7D4, 0xA7D4,
-	0xA7DA, 0xA7F1, 0xA82D, 0xA82F, 0xA83A, 0xA83F, 0xA878, 0xA87F,
-	0xA8C6, 0xA8CD, 0xA8DA, 0xA8DF, 0xA954, 0xA95E, 0xA97D, 0xA97F,
-	0xA9CE, 0xA9CE, 0xA9DA, 0xA9DD, 0xA9FF, 0xA9FF, 0xAA37, 0xAA3F,
-	0xAA4E, 0xAA4F, 0xAA5A, 0xAA5B, 0xAAC3, 0xAADA, 0xAAF7, 0xAB00,
-	0xAB07, 0xAB08, 0xAB0F, 0xAB10, 0xAB17, 0xAB1F, 0xAB27, 0xAB27,
-	0xAB2F, 0xAB2F, 0xAB6C, 0xAB6F, 0xABEE, 0xABEF, 0xABFA, 0xABFF,
-	0xD7A4, 0xD7AF, 0xD7C7, 0xD7CA, 0xD7FC, 0xD7FF, 0xFA6E, 0xFA6F,
-	0xFADA, 0xFAFF, 0xFB07, 0xFB12, 0xFB18, 0xFB1C, 0xFB37, 0xFB37,
-	0xFB3D, 0xFB3D, 0xFB3F, 0xFB3F, 0xFB42, 0xFB42, 0xFB45, 0xFB45,
-	0xFBC3, 0xFBD2, 0xFD90, 0xFD91, 0xFDC8, 0xFDCE, 0xFDD0, 0xFDEF,
-	0xFE1A, 0xFE1F, 0xFE53, 0xFE53, 0xFE67, 0xFE67, 0xFE6C, 0xFE6F,
-	0xFE75, 0xFE75, 0xFEFD, 0xFEFE, 0xFF00, 0xFF00, 0xFFBF, 0xFFC1,
-	0xFFC8, 0xFFC9, 0xFFD0, 0xFFD1, 0xFFD8, 0xFFD9, 0xFFDD, 0xFFDF,
-	0xFFE7, 0xFFE7, 0xFFEF, 0xFFF8, 0xFFFE, 0xFFFF, 0x1000C, 0x1000C,
-	0x10027, 0x10027, 0x1003B, 0x1003B, 0x1003E, 0x1003E, 0x1004E, 0x1004F,
-	0x1005E, 0x1007F, 0x100FB, 0x100FF, 0x10103, 0x10106, 0x10134, 0x10136,
-	0x1018F, 0x1018F, 0x1019D, 0x1019F, 0x101A1, 0x101CF, 0x101FE, 0x1027F,
-	0x1029D, 0x1029F, 0x102D1, 0x102DF, 0x102FC, 0x102FF, 0x10324, 0x1032C,
-	0x1034B, 0x1034F, 0x1037B, 0x1037F, 0x1039E, 0x1039E, 0x103C4, 0x103C7,
-	0x103D6, 0x103FF, 0x1049E, 0x1049F, 0x104AA, 0x104AF, 0x104D4, 0x104D7,
-	0x104FC, 0x104FF, 0x10528, 0x1052F, 0x10564, 0x1056E, 0x1057B, 0x1057B,
-	0x1058B, 0x1058B, 0x10593, 0x10593, 0x10596, 0x10596, 0x105A2, 0x105A2,
-	0x105B2, 0x105B2, 0x105BA, 0x105BA, 0x105BD, 0x105FF, 0x10737, 0x1073F,
-	0x10756, 0x1075F, 0x10768, 0x1077F, 0x10786, 0x10786, 0x107B1, 0x107B1,
-	0x107BB, 0x107FF, 0x10806, 0x10807, 0x10809, 0x10809, 0x10836, 0x10836,
-	0x10839, 0x1083B, 0x1083D, 0x1083E, 0x10856, 0x10856, 0x1089F, 0x108A6,
-	0x108B0, 0x108DF, 0x108F3, 0x108F3, 0x108F6, 0x108FA, 0x1091C, 0x1091E,
-	0x1093A, 0x1093E, 0x10940, 0x1097F, 0x109B8, 0x109BB, 0x109D0, 0x109D1,
-	0x10A04, 0x10A04, 0x10A07, 0x10A0B, 0x10A14, 0x10A14, 0x10A18, 0x10A18,
-	0x10A36, 0x10A37, 0x10A3B, 0x10A3E, 0x10A49, 0x10A4F, 0x10A59, 0x10A5F,
-	0x10AA0, 0x10ABF, 0x10AE7, 0x10AEA, 0x10AF7, 0x10AFF, 0x10B36, 0x10B38,
-	0x10B56, 0x10B57, 0x10B73, 0x10B77, 0x10B92, 0x10B98, 0x10B9D, 0x10BA8,
-	0x10BB0, 0x10BFF, 0x10C49, 0x10C7F, 0x10CB3, 0x10CBF, 0x10CF3, 0x10CF9,
-	0x10D28, 0x10D2F, 0x10D3A, 0x10E5F, 0x10E7F, 0x10E7F, 0x10EAA, 0x10EAA,
-	0x10EAE, 0x10EAF, 0x10EB2, 0x10EFC, 0x10F28, 0x10F2F, 0x10F5A, 0x10F6F,
-	0x10F8A, 0x10FAF, 0x10FCC, 0x10FDF, 0x10FF7, 0x10FFF, 0x1104E, 0x11051,
-	0x11076, 0x1107E, 0x110C3, 0x110CC, 0x110CE, 0x110CF, 0x110E9, 0x110EF,
-	0x110FA, 0x110FF, 0x11135, 0x11135, 0x11148, 0x1114F, 0x11177, 0x1117F,
-	0x111E0, 0x111E0, 0x111F5, 0x111FF, 0x11212, 0x11212, 0x11242, 0x1127F,
-	0x11287, 0x11287, 0x11289, 0x11289, 0x1128E, 0x1128E, 0x1129E, 0x1129E,
-	0x112AA, 0x112AF, 0x112EB, 0x112EF, 0x112FA, 0x112FF, 0x11304, 0x11304,
-	0x1130D, 0x1130E, 0x11311, 0x11312, 0x11329, 0x11329, 0x11331, 0x11331,
-	0x11334, 0x11334, 0x1133A, 0x1133A, 0x11345, 0x11346, 0x11349, 0x1134A,
-	0x1134E, 0x1134F, 0x11351, 0x11356, 0x11358, 0x1135C, 0x11364, 0x11365,
-	0x1136D, 0x1136F, 0x11375, 0x113FF, 0x1145C, 0x1145C, 0x11462, 0x1147F,
-	0x114C8, 0x114CF, 0x114DA, 0x1157F, 0x115B6, 0x115B7, 0x115DE, 0x115FF,
-	0x11645, 0x1164F, 0x1165A, 0x1165F, 0x1166D, 0x1167F, 0x116BA, 0x116BF,
-	0x116CA, 0x116FF, 0x1171B, 0x1171C, 0x1172C, 0x1172F, 0x11747, 0x117FF,
-	0x1183C, 0x1189F, 0x118F3, 0x118FE, 0x11907, 0x11908, 0x1190A, 0x1190B,
-	0x11914, 0x11914, 0x11917, 0x11917, 0x11936, 0x11936, 0x11939, 0x1193A,
-	0x11947, 0x1194F, 0x1195A, 0x1199F, 0x119A8, 0x119A9, 0x119D8, 0x119D9,
-	0x119E5, 0x119FF, 0x11A48, 0x11A4F, 0x11AA3, 0x11AAF, 0x11AF9, 0x11AFF,
-	0x11B0A, 0x11BFF, 0x11C09, 0x11C09, 0x11C37, 0x11C37, 0x11C46, 0x11C4F,
-	0x11C6D, 0x11C6F, 0x11C90, 0x11C91, 0x11CA8, 0x11CA8, 0x11CB7, 0x11CFF,
-	0x11D07, 0x11D07, 0x11D0A, 0x11D0A, 0x11D37, 0x11D39, 0x11D3B, 0x11D3B,
-	0x11D3E, 0x11D3E, 0x11D48, 0x11D4F, 0x11D5A, 0x11D5F, 0x11D66, 0x11D66,
-	0x11D69, 0x11D69, 0x11D8F, 0x11D8F, 0x11D92, 0x11D92, 0x11D99, 0x11D9F,
-	0x11DAA, 0x11EDF, 0x11EF9, 0x11EFF, 0x11F11, 0x11F11, 0x11F3B, 0x11F3D,
-	0x11F5A, 0x11FAF, 0x11FB1, 0x11FBF, 0x11FF2, 0x11FFE, 0x1239A, 0x123FF,
-	0x1246F, 0x1246F, 0x12475, 0x1247F, 0x12544, 0x12F8F, 0x12FF3, 0x12FFF,
-	0x13456, 0x143FF, 0x14647, 0x167FF, 0x16A39, 0x16A3F, 0x16A5F, 0x16A5F,
-	0x16A6A, 0x16A6D, 0x16ABF, 0x16ABF, 0x16ACA, 0x16ACF, 0x16AEE, 0x16AEF,
-	0x16AF6, 0x16AFF, 0x16B46, 0x16B4F, 0x16B5A, 0x16B5A, 0x16B62, 0x16B62,
-	0x16B78, 0x16B7C, 0x16B90, 0x16E3F, 0x16E9B, 0x16EFF, 0x16F4B, 0x16F4E,
-	0x16F88, 0x16F8E, 0x16FA0, 0x16FDF, 0x16FE5, 0x16FEF, 0x16FF2, 0x16FFF,
-	0x187F8, 0x187FF, 0x18CD6, 0x18CFF, 0x18D09, 0x1AFEF, 0x1AFF4, 0x1AFF4,
-	0x1AFFC, 0x1AFFC, 0x1AFFF, 0x1AFFF, 0x1B123, 0x1B131, 0x1B133, 0x1B14F,
-	0x1B153, 0x1B154, 0x1B156, 0x1B163, 0x1B168, 0x1B16F, 0x1B2FC, 0x1BBFF,
-	0x1BC6B, 0x1BC6F, 0x1BC7D, 0x1BC7F, 0x1BC89, 0x1BC8F, 0x1BC9A, 0x1BC9B,
-	0x1BCA4, 0x1CEFF, 0x1CF2E, 0x1CF2F, 0x1CF47, 0x1CF4F, 0x1CFC4, 0x1CFFF,
-	0x1D0F6, 0x1D0FF, 0x1D127, 0x1D128, 0x1D1EB, 0x1D1FF, 0x1D246, 0x1D2BF,
-	0x1D2D4, 0x1D2DF, 0x1D2F4, 0x1D2FF, 0x1D357, 0x1D35F, 0x1D379, 0x1D3FF,
-	0x1D455, 0x1D455, 0x1D49D, 0x1D49D, 0x1D4A0, 0x1D4A1, 0x1D4A3, 0x1D4A4,
-	0x1D4A7, 0x1D4A8, 0x1D4AD, 0x1D4AD, 0x1D4BA, 0x1D4BA, 0x1D4BC, 0x1D4BC,
-	0x1D4C4, 0x1D4C4, 0x1D506, 0x1D506, 0x1D50B, 0x1D50C, 0x1D515, 0x1D515,
-	0x1D51D, 0x1D51D, 0x1D53A, 0x1D53A, 0x1D53F, 0x1D53F, 0x1D545, 0x1D545,
-	0x1D547, 0x1D549, 0x1D551, 0x1D551, 0x1D6A6, 0x1D6A7, 0x1D7CC, 0x1D7CD,
-	0x1DA8C, 0x1DA9A, 0x1DAA0, 0x1DAA0, 0x1DAB0, 0x1DEFF, 0x1DF1F, 0x1DF24,
-	0x1DF2B, 0x1DFFF, 0x1E007, 0x1E007, 0x1E019, 0x1E01A, 0x1E022, 0x1E022,
-	0x1E025, 0x1E025, 0x1E02B, 0x1E02F, 0x1E06E, 0x1E08E, 0x1E090, 0x1E0FF,
-	0x1E12D, 0x1E12F, 0x1E13E, 0x1E13F, 0x1E14A, 0x1E14D, 0x1E150, 0x1E28F,
-	0x1E2AF, 0x1E2BF, 0x1E2FA, 0x1E2FE, 0x1E300, 0x1E4CF, 0x1E4FA, 0x1E7DF,
-	0x1E7E7, 0x1E7E7, 0x1E7EC, 0x1E7EC, 0x1E7EF, 0x1E7EF, 0x1E7FF, 0x1E7FF,
-	0x1E8C5, 0x1E8C6, 0x1E8D7, 0x1E8FF, 0x1E94C, 0x1E94F, 0x1E95A, 0x1E95D,
-	0x1E960, 0x1EC70, 0x1ECB5, 0x1ED00, 0x1ED3E, 0x1EDFF, 0x1EE04, 0x1EE04,
-	0x1EE20, 0x1EE20, 0x1EE23, 0x1EE23, 0x1EE25, 0x1EE26, 0x1EE28, 0x1EE28,
-	0x1EE33, 0x1EE33, 0x1EE38, 0x1EE38, 0x1EE3A, 0x1EE3A, 0x1EE3C, 0x1EE41,
-	0x1EE43, 0x1EE46, 0x1EE48, 0x1EE48, 0x1EE4A, 0x1EE4A, 0x1EE4C, 0x1EE4C,
-	0x1EE50, 0x1EE50, 0x1EE53, 0x1EE53, 0x1EE55, 0x1EE56, 0x1EE58, 0x1EE58,
-	0x1EE5A, 0x1EE5A, 0x1EE5C, 0x1EE5C, 0x1EE5E, 0x1EE5E, 0x1EE60, 0x1EE60,
-	0x1EE63, 0x1EE63, 0x1EE65, 0x1EE66, 0x1EE6B, 0x1EE6B, 0x1EE73, 0x1EE73,
-	0x1EE78, 0x1EE78, 0x1EE7D, 0x1EE7D, 0x1EE7F, 0x1EE7F, 0x1EE8A, 0x1EE8A,
-	0x1EE9C, 0x1EEA0, 0x1EEA4, 0x1EEA4, 0x1EEAA, 0x1EEAA, 0x1EEBC, 0x1EEEF,
-	0x1EEF2, 0x1EFFF, 0x1F02C, 0x1F02F, 0x1F094, 0x1F09F, 0x1F0AF, 0x1F0B0,
-	0x1F0C0, 0x1F0C0, 0x1F0D0, 0x1F0D0, 0x1F0F6, 0x1F0FF, 0x1F1AE, 0x1F1E5,
-	0x1F203, 0x1F20F, 0x1F23C, 0x1F23F, 0x1F249, 0x1F24F, 0x1F252, 0x1F25F,
-	0x1F266, 0x1F2FF, 0x1F6D8, 0x1F6DB, 0x1F6ED, 0x1F6EF, 0x1F6FD, 0x1F6FF,
-	0x1F777, 0x1F77A, 0x1F7DA, 0x1F7DF, 0x1F7EC, 0x1F7EF, 0x1F7F1, 0x1F7FF,
-	0x1F80C, 0x1F80F, 0x1F848, 0x1F84F, 0x1F85A, 0x1F85F, 0x1F888, 0x1F88F,
-	0x1F8AE, 0x1F8AF, 0x1F8B2, 0x1F8FF, 0x1FA54, 0x1FA5F, 0x1FA6E, 0x1FA6F,
-	0x1FA7D, 0x1FA7F, 0x1FA89, 0x1FA8F, 0x1FABE, 0x1FABE, 0x1FAC6, 0x1FACD,
-	0x1FADC, 0x1FADF, 0x1FAE9, 0x1FAEF, 0x1FAF9, 0x1FAFF, 0x1FB93, 0x1FB93,
-	0x1FBCB, 0x1FBEF, 0x1FBFA, 0x1FFFF, 0x2A6E0, 0x2A6FF, 0x2B73A, 0x2B73F,
-	0x2B81E, 0x2B81F, 0x2CEA2, 0x2CEAF, 0x2EBE1, 0x2F7FF, 0x2FA1E, 0x2FFFF,
+	0x2FD6, 0x2FEF, 0x3040, 0x3040, 0x3097, 0x3098, 0x3100, 0x3104,
+	0x3130, 0x3130, 0x318F, 0x318F, 0x31E4, 0x31EE, 0x321F, 0x321F,
+	0xA48D, 0xA48F, 0xA4C7, 0xA4CF, 0xA62C, 0xA63F, 0xA6F8, 0xA6FF,
+	0xA7CB, 0xA7CF, 0xA7D2, 0xA7D2, 0xA7D4, 0xA7D4, 0xA7DA, 0xA7F1,
+	0xA82D, 0xA82F, 0xA83A, 0xA83F, 0xA878, 0xA87F, 0xA8C6, 0xA8CD,
+	0xA8DA, 0xA8DF, 0xA954, 0xA95E, 0xA97D, 0xA97F, 0xA9CE, 0xA9CE,
+	0xA9DA, 0xA9DD, 0xA9FF, 0xA9FF, 0xAA37, 0xAA3F, 0xAA4E, 0xAA4F,
+	0xAA5A, 0xAA5B, 0xAAC3, 0xAADA, 0xAAF7, 0xAB00, 0xAB07, 0xAB08,
+	0xAB0F, 0xAB10, 0xAB17, 0xAB1F, 0xAB27, 0xAB27, 0xAB2F, 0xAB2F,
+	0xAB6C, 0xAB6F, 0xABEE, 0xABEF, 0xABFA, 0xABFF, 0xD7A4, 0xD7AF,
+	0xD7C7, 0xD7CA, 0xD7FC, 0xD7FF, 0xFA6E, 0xFA6F, 0xFADA, 0xFAFF,
+	0xFB07, 0xFB12, 0xFB18, 0xFB1C, 0xFB37, 0xFB37, 0xFB3D, 0xFB3D,
+	0xFB3F, 0xFB3F, 0xFB42, 0xFB42, 0xFB45, 0xFB45, 0xFBC3, 0xFBD2,
+	0xFD90, 0xFD91, 0xFDC8, 0xFDCE, 0xFDD0, 0xFDEF, 0xFE1A, 0xFE1F,
+	0xFE53, 0xFE53, 0xFE67, 0xFE67, 0xFE6C, 0xFE6F, 0xFE75, 0xFE75,
+	0xFEFD, 0xFEFE, 0xFF00, 0xFF00, 0xFFBF, 0xFFC1, 0xFFC8, 0xFFC9,
+	0xFFD0, 0xFFD1, 0xFFD8, 0xFFD9, 0xFFDD, 0xFFDF, 0xFFE7, 0xFFE7,
+	0xFFEF, 0xFFF8, 0xFFFE, 0xFFFF, 0x1000C, 0x1000C, 0x10027, 0x10027,
+	0x1003B, 0x1003B, 0x1003E, 0x1003E, 0x1004E, 0x1004F, 0x1005E, 0x1007F,
+	0x100FB, 0x100FF, 0x10103, 0x10106, 0x10134, 0x10136, 0x1018F, 0x1018F,
+	0x1019D, 0x1019F, 0x101A1, 0x101CF, 0x101FE, 0x1027F, 0x1029D, 0x1029F,
+	0x102D1, 0x102DF, 0x102FC, 0x102FF, 0x10324, 0x1032C, 0x1034B, 0x1034F,
+	0x1037B, 0x1037F, 0x1039E, 0x1039E, 0x103C4, 0x103C7, 0x103D6, 0x103FF,
+	0x1049E, 0x1049F, 0x104AA, 0x104AF, 0x104D4, 0x104D7, 0x104FC, 0x104FF,
+	0x10528, 0x1052F, 0x10564, 0x1056E, 0x1057B, 0x1057B, 0x1058B, 0x1058B,
+	0x10593, 0x10593, 0x10596, 0x10596, 0x105A2, 0x105A2, 0x105B2, 0x105B2,
+	0x105BA, 0x105BA, 0x105BD, 0x105FF, 0x10737, 0x1073F, 0x10756, 0x1075F,
+	0x10768, 0x1077F, 0x10786, 0x10786, 0x107B1, 0x107B1, 0x107BB, 0x107FF,
+	0x10806, 0x10807, 0x10809, 0x10809, 0x10836, 0x10836, 0x10839, 0x1083B,
+	0x1083D, 0x1083E, 0x10856, 0x10856, 0x1089F, 0x108A6, 0x108B0, 0x108DF,
+	0x108F3, 0x108F3, 0x108F6, 0x108FA, 0x1091C, 0x1091E, 0x1093A, 0x1093E,
+	0x10940, 0x1097F, 0x109B8, 0x109BB, 0x109D0, 0x109D1, 0x10A04, 0x10A04,
+	0x10A07, 0x10A0B, 0x10A14, 0x10A14, 0x10A18, 0x10A18, 0x10A36, 0x10A37,
+	0x10A3B, 0x10A3E, 0x10A49, 0x10A4F, 0x10A59, 0x10A5F, 0x10AA0, 0x10ABF,
+	0x10AE7, 0x10AEA, 0x10AF7, 0x10AFF, 0x10B36, 0x10B38, 0x10B56, 0x10B57,
+	0x10B73, 0x10B77, 0x10B92, 0x10B98, 0x10B9D, 0x10BA8, 0x10BB0, 0x10BFF,
+	0x10C49, 0x10C7F, 0x10CB3, 0x10CBF, 0x10CF3, 0x10CF9, 0x10D28, 0x10D2F,
+	0x10D3A, 0x10E5F, 0x10E7F, 0x10E7F, 0x10EAA, 0x10EAA, 0x10EAE, 0x10EAF,
+	0x10EB2, 0x10EFC, 0x10F28, 0x10F2F, 0x10F5A, 0x10F6F, 0x10F8A, 0x10FAF,
+	0x10FCC, 0x10FDF, 0x10FF7, 0x10FFF, 0x1104E, 0x11051, 0x11076, 0x1107E,
+	0x110C3, 0x110CC, 0x110CE, 0x110CF, 0x110E9, 0x110EF, 0x110FA, 0x110FF,
+	0x11135, 0x11135, 0x11148, 0x1114F, 0x11177, 0x1117F, 0x111E0, 0x111E0,
+	0x111F5, 0x111FF, 0x11212, 0x11212, 0x11242, 0x1127F, 0x11287, 0x11287,
+	0x11289, 0x11289, 0x1128E, 0x1128E, 0x1129E, 0x1129E, 0x112AA, 0x112AF,
+	0x112EB, 0x112EF, 0x112FA, 0x112FF, 0x11304, 0x11304, 0x1130D, 0x1130E,
+	0x11311, 0x11312, 0x11329, 0x11329, 0x11331, 0x11331, 0x11334, 0x11334,
+	0x1133A, 0x1133A, 0x11345, 0x11346, 0x11349, 0x1134A, 0x1134E, 0x1134F,
+	0x11351, 0x11356, 0x11358, 0x1135C, 0x11364, 0x11365, 0x1136D, 0x1136F,
+	0x11375, 0x113FF, 0x1145C, 0x1145C, 0x11462, 0x1147F, 0x114C8, 0x114CF,
+	0x114DA, 0x1157F, 0x115B6, 0x115B7, 0x115DE, 0x115FF, 0x11645, 0x1164F,
+	0x1165A, 0x1165F, 0x1166D, 0x1167F, 0x116BA, 0x116BF, 0x116CA, 0x116FF,
+	0x1171B, 0x1171C, 0x1172C, 0x1172F, 0x11747, 0x117FF, 0x1183C, 0x1189F,
+	0x118F3, 0x118FE, 0x11907, 0x11908, 0x1190A, 0x1190B, 0x11914, 0x11914,
+	0x11917, 0x11917, 0x11936, 0x11936, 0x11939, 0x1193A, 0x11947, 0x1194F,
+	0x1195A, 0x1199F, 0x119A8, 0x119A9, 0x119D8, 0x119D9, 0x119E5, 0x119FF,
+	0x11A48, 0x11A4F, 0x11AA3, 0x11AAF, 0x11AF9, 0x11AFF, 0x11B0A, 0x11BFF,
+	0x11C09, 0x11C09, 0x11C37, 0x11C37, 0x11C46, 0x11C4F, 0x11C6D, 0x11C6F,
+	0x11C90, 0x11C91, 0x11CA8, 0x11CA8, 0x11CB7, 0x11CFF, 0x11D07, 0x11D07,
+	0x11D0A, 0x11D0A, 0x11D37, 0x11D39, 0x11D3B, 0x11D3B, 0x11D3E, 0x11D3E,
+	0x11D48, 0x11D4F, 0x11D5A, 0x11D5F, 0x11D66, 0x11D66, 0x11D69, 0x11D69,
+	0x11D8F, 0x11D8F, 0x11D92, 0x11D92, 0x11D99, 0x11D9F, 0x11DAA, 0x11EDF,
+	0x11EF9, 0x11EFF, 0x11F11, 0x11F11, 0x11F3B, 0x11F3D, 0x11F5A, 0x11FAF,
+	0x11FB1, 0x11FBF, 0x11FF2, 0x11FFE, 0x1239A, 0x123FF, 0x1246F, 0x1246F,
+	0x12475, 0x1247F, 0x12544, 0x12F8F, 0x12FF3, 0x12FFF, 0x13456, 0x143FF,
+	0x14647, 0x167FF, 0x16A39, 0x16A3F, 0x16A5F, 0x16A5F, 0x16A6A, 0x16A6D,
+	0x16ABF, 0x16ABF, 0x16ACA, 0x16ACF, 0x16AEE, 0x16AEF, 0x16AF6, 0x16AFF,
+	0x16B46, 0x16B4F, 0x16B5A, 0x16B5A, 0x16B62, 0x16B62, 0x16B78, 0x16B7C,
+	0x16B90, 0x16E3F, 0x16E9B, 0x16EFF, 0x16F4B, 0x16F4E, 0x16F88, 0x16F8E,
+	0x16FA0, 0x16FDF, 0x16FE5, 0x16FEF, 0x16FF2, 0x16FFF, 0x187F8, 0x187FF,
+	0x18CD6, 0x18CFF, 0x18D09, 0x1AFEF, 0x1AFF4, 0x1AFF4, 0x1AFFC, 0x1AFFC,
+	0x1AFFF, 0x1AFFF, 0x1B123, 0x1B131, 0x1B133, 0x1B14F, 0x1B153, 0x1B154,
+	0x1B156, 0x1B163, 0x1B168, 0x1B16F, 0x1B2FC, 0x1BBFF, 0x1BC6B, 0x1BC6F,
+	0x1BC7D, 0x1BC7F, 0x1BC89, 0x1BC8F, 0x1BC9A, 0x1BC9B, 0x1BCA4, 0x1CEFF,
+	0x1CF2E, 0x1CF2F, 0x1CF47, 0x1CF4F, 0x1CFC4, 0x1CFFF, 0x1D0F6, 0x1D0FF,
+	0x1D127, 0x1D128, 0x1D1EB, 0x1D1FF, 0x1D246, 0x1D2BF, 0x1D2D4, 0x1D2DF,
+	0x1D2F4, 0x1D2FF, 0x1D357, 0x1D35F, 0x1D379, 0x1D3FF, 0x1D455, 0x1D455,
+	0x1D49D, 0x1D49D, 0x1D4A0, 0x1D4A1, 0x1D4A3, 0x1D4A4, 0x1D4A7, 0x1D4A8,
+	0x1D4AD, 0x1D4AD, 0x1D4BA, 0x1D4BA, 0x1D4BC, 0x1D4BC, 0x1D4C4, 0x1D4C4,
+	0x1D506, 0x1D506, 0x1D50B, 0x1D50C, 0x1D515, 0x1D515, 0x1D51D, 0x1D51D,
+	0x1D53A, 0x1D53A, 0x1D53F, 0x1D53F, 0x1D545, 0x1D545, 0x1D547, 0x1D549,
+	0x1D551, 0x1D551, 0x1D6A6, 0x1D6A7, 0x1D7CC, 0x1D7CD, 0x1DA8C, 0x1DA9A,
+	0x1DAA0, 0x1DAA0, 0x1DAB0, 0x1DEFF, 0x1DF1F, 0x1DF24, 0x1DF2B, 0x1DFFF,
+	0x1E007, 0x1E007, 0x1E019, 0x1E01A, 0x1E022, 0x1E022, 0x1E025, 0x1E025,
+	0x1E02B, 0x1E02F, 0x1E06E, 0x1E08E, 0x1E090, 0x1E0FF, 0x1E12D, 0x1E12F,
+	0x1E13E, 0x1E13F, 0x1E14A, 0x1E14D, 0x1E150, 0x1E28F, 0x1E2AF, 0x1E2BF,
+	0x1E2FA, 0x1E2FE, 0x1E300, 0x1E4CF, 0x1E4FA, 0x1E7DF, 0x1E7E7, 0x1E7E7,
+	0x1E7EC, 0x1E7EC, 0x1E7EF, 0x1E7EF, 0x1E7FF, 0x1E7FF, 0x1E8C5, 0x1E8C6,
+	0x1E8D7, 0x1E8FF, 0x1E94C, 0x1E94F, 0x1E95A, 0x1E95D, 0x1E960, 0x1EC70,
+	0x1ECB5, 0x1ED00, 0x1ED3E, 0x1EDFF, 0x1EE04, 0x1EE04, 0x1EE20, 0x1EE20,
+	0x1EE23, 0x1EE23, 0x1EE25, 0x1EE26, 0x1EE28, 0x1EE28, 0x1EE33, 0x1EE33,
+	0x1EE38, 0x1EE38, 0x1EE3A, 0x1EE3A, 0x1EE3C, 0x1EE41, 0x1EE43, 0x1EE46,
+	0x1EE48, 0x1EE48, 0x1EE4A, 0x1EE4A, 0x1EE4C, 0x1EE4C, 0x1EE50, 0x1EE50,
+	0x1EE53, 0x1EE53, 0x1EE55, 0x1EE56, 0x1EE58, 0x1EE58, 0x1EE5A, 0x1EE5A,
+	0x1EE5C, 0x1EE5C, 0x1EE5E, 0x1EE5E, 0x1EE60, 0x1EE60, 0x1EE63, 0x1EE63,
+	0x1EE65, 0x1EE66, 0x1EE6B, 0x1EE6B, 0x1EE73, 0x1EE73, 0x1EE78, 0x1EE78,
+	0x1EE7D, 0x1EE7D, 0x1EE7F, 0x1EE7F, 0x1EE8A, 0x1EE8A, 0x1EE9C, 0x1EEA0,
+	0x1EEA4, 0x1EEA4, 0x1EEAA, 0x1EEAA, 0x1EEBC, 0x1EEEF, 0x1EEF2, 0x1EFFF,
+	0x1F02C, 0x1F02F, 0x1F094, 0x1F09F, 0x1F0AF, 0x1F0B0, 0x1F0C0, 0x1F0C0,
+	0x1F0D0, 0x1F0D0, 0x1F0F6, 0x1F0FF, 0x1F1AE, 0x1F1E5, 0x1F203, 0x1F20F,
+	0x1F23C, 0x1F23F, 0x1F249, 0x1F24F, 0x1F252, 0x1F25F, 0x1F266, 0x1F2FF,
+	0x1F6D8, 0x1F6DB, 0x1F6ED, 0x1F6EF, 0x1F6FD, 0x1F6FF, 0x1F777, 0x1F77A,
+	0x1F7DA, 0x1F7DF, 0x1F7EC, 0x1F7EF, 0x1F7F1, 0x1F7FF, 0x1F80C, 0x1F80F,
+	0x1F848, 0x1F84F, 0x1F85A, 0x1F85F, 0x1F888, 0x1F88F, 0x1F8AE, 0x1F8AF,
+	0x1F8B2, 0x1F8FF, 0x1FA54, 0x1FA5F, 0x1FA6E, 0x1FA6F, 0x1FA7D, 0x1FA7F,
+	0x1FA89, 0x1FA8F, 0x1FABE, 0x1FABE, 0x1FAC6, 0x1FACD, 0x1FADC, 0x1FADF,
+	0x1FAE9, 0x1FAEF, 0x1FAF9, 0x1FAFF, 0x1FB93, 0x1FB93, 0x1FBCB, 0x1FBEF,
+	0x1FBFA, 0x1FFFF, 0x2A6E0, 0x2A6FF, 0x2B73A, 0x2B73F, 0x2B81E, 0x2B81F,
+	0x2CEA2, 0x2CEAF, 0x2EBE1, 0x2EBEF, 0x2EE5E, 0x2F7FF, 0x2FA1E, 0x2FFFF,
 	0x3134B, 0x3134F, 0x323B0, 0xE0000, 0xE0002, 0xE001F, 0xE0080, 0xE00FF,
 	0xE01F0, 0xEFFFF, 0xFFFFE, 0xFFFFF, 0x10FFFE, 0x10FFFF,
-	//  #5 (730+3): gc=Private_Use:Co
+	//  #9 (730+3): gc=Private_Use:Co
 	0xE000, 0xF8FF, 0xF0000, 0xFFFFD, 0x100000, 0x10FFFD,
-	//  #6 (733+1): gc=Surrogate:Cs
+	//  #10 (733+1): gc=Surrogate:Cs
 	0xD800, 0xDFFF,
-	//  #7 (734+1895): gc=Letter:L
-	//  Ll:658 + Lt:10 + Lu:646 + Lm:71 + Lo:510
-	//  #8 (734+1314): gc=Cased_Letter:LC
+	//  #11 (734+1896): gc=Letter:L
+	//  Ll:658 + Lt:10 + Lu:646 + Lm:71 + Lo:511
+	//  #12 (734+1314): gc=Cased_Letter:LC
 	//  Ll:658 + Lt:10 + Lu:646
-	//  #9 (734+658): gc=Lowercase_Letter:Ll
+	//  #13 (734+658): gc=Lowercase_Letter:Ll
 	0x0061, 0x007A, 0x00B5, 0x00B5, 0x00DF, 0x00F6, 0x00F8, 0x00FF,
 	0x0101, 0x0101, 0x0103, 0x0103, 0x0105, 0x0105, 0x0107, 0x0107,
 	0x0109, 0x0109, 0x010B, 0x010B, 0x010D, 0x010D, 0x010F, 0x010F,
@@ -5230,11 +6406,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D750, 0x1D755, 0x1D770, 0x1D788, 0x1D78A, 0x1D78F, 0x1D7AA, 0x1D7C2,
 	0x1D7C4, 0x1D7C9, 0x1D7CB, 0x1D7CB, 0x1DF00, 0x1DF09, 0x1DF0B, 0x1DF1E,
 	0x1DF25, 0x1DF2A, 0x1E922, 0x1E943,
-	//  #10 (1392+10): gc=Titlecase_Letter:Lt
+	//  #14 (1392+10): gc=Titlecase_Letter:Lt
 	0x01C5, 0x01C5, 0x01C8, 0x01C8, 0x01CB, 0x01CB, 0x01F2, 0x01F2,
 	0x1F88, 0x1F8F, 0x1F98, 0x1F9F, 0x1FA8, 0x1FAF, 0x1FBC, 0x1FBC,
 	0x1FCC, 0x1FCC, 0x1FFC, 0x1FFC,
-	//  #11 (1402+646): gc=Uppercase_Letter:Lu
+	//  #15 (1402+646): gc=Uppercase_Letter:Lu
 	0x0041, 0x005A, 0x00C0, 0x00D6, 0x00D8, 0x00DE, 0x0100, 0x0100,
 	0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106, 0x0108, 0x0108,
 	0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E, 0x0110, 0x0110,
@@ -5397,7 +6573,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D608, 0x1D621, 0x1D63C, 0x1D655, 0x1D670, 0x1D689, 0x1D6A8, 0x1D6C0,
 	0x1D6E2, 0x1D6FA, 0x1D71C, 0x1D734, 0x1D756, 0x1D76E, 0x1D790, 0x1D7A8,
 	0x1D7CA, 0x1D7CA, 0x1E900, 0x1E921,
-	//  #12 (2048+71): gc=Modifier_Letter:Lm
+	//  #16 (2048+71): gc=Modifier_Letter:Lm
 	0x02B0, 0x02C1, 0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC,
 	0x02EE, 0x02EE, 0x0374, 0x0374, 0x037A, 0x037A, 0x0559, 0x0559,
 	0x0640, 0x0640, 0x06E5, 0x06E6, 0x07F4, 0x07F5, 0x07FA, 0x07FA,
@@ -5416,7 +6592,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x16B40, 0x16B43, 0x16F93, 0x16F9F, 0x16FE0, 0x16FE1, 0x16FE3, 0x16FE3,
 	0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1E030, 0x1E06D,
 	0x1E137, 0x1E13D, 0x1E4EB, 0x1E4EB, 0x1E94B, 0x1E94B,
-	//  #13 (2119+510): gc=Other_Letter:Lo
+	//  #17 (2119+511): gc=Other_Letter:Lo
 	0x00AA, 0x00AA, 0x00BA, 0x00BA, 0x01BB, 0x01BB, 0x01C0, 0x01C3,
 	0x0294, 0x0294, 0x05D0, 0x05EA, 0x05EF, 0x05F2, 0x0620, 0x063F,
 	0x0641, 0x064A, 0x066E, 0x066F, 0x0671, 0x06D3, 0x06D5, 0x06D5,
@@ -5543,11 +6719,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C,
 	0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3,
 	0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
-	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
-	0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #14 (2629+533): gc=Mark:M:Combining_Mark
+	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D,
+	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
+	//  #18 (2630+533): gc=Mark:M:Combining_Mark
 	//  Mc:182 + Me:5 + Mn:346
-	//  #15 (2629+182): gc=Spacing_Mark:Mc
+	//  #19 (2630+182): gc=Spacing_Mark:Mc
 	0x0903, 0x0903, 0x093B, 0x093B, 0x093E, 0x0940, 0x0949, 0x094C,
 	0x094E, 0x094F, 0x0982, 0x0983, 0x09BE, 0x09C0, 0x09C7, 0x09C8,
 	0x09CB, 0x09CC, 0x09D7, 0x09D7, 0x0A03, 0x0A03, 0x0A3E, 0x0A40,
@@ -5594,10 +6770,10 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11D96, 0x11D96, 0x11EF5, 0x11EF6, 0x11F03, 0x11F03, 0x11F34, 0x11F35,
 	0x11F3E, 0x11F3F, 0x11F41, 0x11F41, 0x16F51, 0x16F87, 0x16FF0, 0x16FF1,
 	0x1D165, 0x1D166, 0x1D16D, 0x1D172,
-	//  #16 (2811+5): gc=Enclosing_Mark:Me
+	//  #20 (2812+5): gc=Enclosing_Mark:Me
 	0x0488, 0x0489, 0x1ABE, 0x1ABE, 0x20DD, 0x20E0, 0x20E2, 0x20E4,
 	0xA670, 0xA672,
-	//  #17 (2816+346): gc=Nonspacing_Mark:Mn
+	//  #21 (2817+346): gc=Nonspacing_Mark:Mn
 	0x0300, 0x036F, 0x0483, 0x0487, 0x0591, 0x05BD, 0x05BF, 0x05BF,
 	0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7, 0x05C7, 0x0610, 0x061A,
 	0x064B, 0x065F, 0x0670, 0x0670, 0x06D6, 0x06DC, 0x06DF, 0x06E4,
@@ -5685,9 +6861,9 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1E023, 0x1E024, 0x1E026, 0x1E02A, 0x1E08F, 0x1E08F, 0x1E130, 0x1E136,
 	0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF, 0x1E4EC, 0x1E4EF, 0x1E8D0, 0x1E8D6,
 	0x1E944, 0x1E94A, 0xE0100, 0xE01EF,
-	//  #18 (3162+148): gc=Number:N
+	//  #22 (3163+148): gc=Number:N
 	//  Nd:64 + Nl:12 + No:72
-	//  #19 (3162+64): gc=Decimal_Number:Nd:digit
+	//  #23 (3163+64): gc=Decimal_Number:Nd:digit
 	0x0030, 0x0039, 0x0660, 0x0669, 0x06F0, 0x06F9, 0x07C0, 0x07C9,
 	0x0966, 0x096F, 0x09E6, 0x09EF, 0x0A66, 0x0A6F, 0x0AE6, 0x0AEF,
 	0x0B66, 0x0B6F, 0x0BE6, 0x0BEF, 0x0C66, 0x0C6F, 0x0CE6, 0x0CEF,
@@ -5704,11 +6880,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11D50, 0x11D59, 0x11DA0, 0x11DA9, 0x11F50, 0x11F59, 0x16A60, 0x16A69,
 	0x16AC0, 0x16AC9, 0x16B50, 0x16B59, 0x1D7CE, 0x1D7FF, 0x1E140, 0x1E149,
 	0x1E2F0, 0x1E2F9, 0x1E4F0, 0x1E4F9, 0x1E950, 0x1E959, 0x1FBF0, 0x1FBF9,
-	//  #20 (3226+12): gc=Letter_Number:Nl
+	//  #24 (3227+12): gc=Letter_Number:Nl
 	0x16EE, 0x16F0, 0x2160, 0x2182, 0x2185, 0x2188, 0x3007, 0x3007,
 	0x3021, 0x3029, 0x3038, 0x303A, 0xA6E6, 0xA6EF, 0x10140, 0x10174,
 	0x10341, 0x10341, 0x1034A, 0x1034A, 0x103D1, 0x103D5, 0x12400, 0x1246E,
-	//  #21 (3238+72): gc=Other_Number:No
+	//  #25 (3239+72): gc=Other_Number:No
 	0x00B2, 0x00B3, 0x00B9, 0x00B9, 0x00BC, 0x00BE, 0x09F4, 0x09F9,
 	0x0B72, 0x0B77, 0x0BF0, 0x0BF2, 0x0C78, 0x0C7E, 0x0D58, 0x0D5E,
 	0x0D70, 0x0D78, 0x0F2A, 0x0F33, 0x1369, 0x137C, 0x17F0, 0x17F9,
@@ -5727,18 +6903,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x16B5B, 0x16B61, 0x16E80, 0x16E96, 0x1D2C0, 0x1D2D3, 0x1D2E0, 0x1D2F3,
 	0x1D360, 0x1D378, 0x1E8C7, 0x1E8CF, 0x1EC71, 0x1ECAB, 0x1ECAD, 0x1ECAF,
 	0x1ECB1, 0x1ECB4, 0x1ED01, 0x1ED2D, 0x1ED2F, 0x1ED3D, 0x1F100, 0x1F10C,
-	//  #22 (3310+388): gc=Punctuation:P:punct
+	//  #26 (3311+388): gc=Punctuation:P:punct
 	//  Pc:6 + Pd:19 + Pe:76 + Pf:10 + Pi:11 + Po:187 + Ps:79
-	//  #23 (3310+6): gc=Connector_Punctuation:Pc
+	//  #27 (3311+6): gc=Connector_Punctuation:Pc
 	0x005F, 0x005F, 0x203F, 0x2040, 0x2054, 0x2054, 0xFE33, 0xFE34,
 	0xFE4D, 0xFE4F, 0xFF3F, 0xFF3F,
-	//  #24 (3316+19): gc=Dash_Punctuation:Pd
+	//  #28 (3317+19): gc=Dash_Punctuation:Pd
 	0x002D, 0x002D, 0x058A, 0x058A, 0x05BE, 0x05BE, 0x1400, 0x1400,
 	0x1806, 0x1806, 0x2010, 0x2015, 0x2E17, 0x2E17, 0x2E1A, 0x2E1A,
 	0x2E3A, 0x2E3B, 0x2E40, 0x2E40, 0x2E5D, 0x2E5D, 0x301C, 0x301C,
 	0x3030, 0x3030, 0x30A0, 0x30A0, 0xFE31, 0xFE32, 0xFE58, 0xFE58,
 	0xFE63, 0xFE63, 0xFF0D, 0xFF0D, 0x10EAD, 0x10EAD,
-	//  #25 (3335+76): gc=Close_Punctuation:Pe
+	//  #29 (3336+76): gc=Close_Punctuation:Pe
 	0x0029, 0x0029, 0x005D, 0x005D, 0x007D, 0x007D, 0x0F3B, 0x0F3B,
 	0x0F3D, 0x0F3D, 0x169C, 0x169C, 0x2046, 0x2046, 0x207E, 0x207E,
 	0x208E, 0x208E, 0x2309, 0x2309, 0x230B, 0x230B, 0x232A, 0x232A,
@@ -5758,15 +6934,15 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFE40, 0xFE40, 0xFE42, 0xFE42, 0xFE44, 0xFE44, 0xFE48, 0xFE48,
 	0xFE5A, 0xFE5A, 0xFE5C, 0xFE5C, 0xFE5E, 0xFE5E, 0xFF09, 0xFF09,
 	0xFF3D, 0xFF3D, 0xFF5D, 0xFF5D, 0xFF60, 0xFF60, 0xFF63, 0xFF63,
-	//  #26 (3411+10): gc=Final_Punctuation:Pf
+	//  #30 (3412+10): gc=Final_Punctuation:Pf
 	0x00BB, 0x00BB, 0x2019, 0x2019, 0x201D, 0x201D, 0x203A, 0x203A,
 	0x2E03, 0x2E03, 0x2E05, 0x2E05, 0x2E0A, 0x2E0A, 0x2E0D, 0x2E0D,
 	0x2E1D, 0x2E1D, 0x2E21, 0x2E21,
-	//  #27 (3421+11): gc=Initial_Punctuation:Pi
+	//  #31 (3422+11): gc=Initial_Punctuation:Pi
 	0x00AB, 0x00AB, 0x2018, 0x2018, 0x201B, 0x201C, 0x201F, 0x201F,
 	0x2039, 0x2039, 0x2E02, 0x2E02, 0x2E04, 0x2E04, 0x2E09, 0x2E09,
 	0x2E0C, 0x2E0C, 0x2E1C, 0x2E1C, 0x2E20, 0x2E20,
-	//  #28 (3432+187): gc=Other_Punctuation:Po
+	//  #32 (3433+187): gc=Other_Punctuation:Po
 	0x0021, 0x0023, 0x0025, 0x0027, 0x002A, 0x002A, 0x002C, 0x002C,
 	0x002E, 0x002F, 0x003A, 0x003B, 0x003F, 0x0040, 0x005C, 0x005C,
 	0x00A1, 0x00A1, 0x00A7, 0x00A7, 0x00B6, 0x00B7, 0x00BF, 0x00BF,
@@ -5814,7 +6990,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x12470, 0x12474, 0x12FF1, 0x12FF2, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5,
 	0x16B37, 0x16B3B, 0x16B44, 0x16B44, 0x16E97, 0x16E9A, 0x16FE2, 0x16FE2,
 	0x1BC9F, 0x1BC9F, 0x1DA87, 0x1DA8B, 0x1E95E, 0x1E95F,
-	//  #29 (3619+79): gc=Open_Punctuation:Ps
+	//  #33 (3620+79): gc=Open_Punctuation:Ps
 	0x0028, 0x0028, 0x005B, 0x005B, 0x007B, 0x007B, 0x0F3A, 0x0F3A,
 	0x0F3C, 0x0F3C, 0x169B, 0x169B, 0x201A, 0x201A, 0x201E, 0x201E,
 	0x2045, 0x2045, 0x207D, 0x207D, 0x208D, 0x208D, 0x2308, 0x2308,
@@ -5835,16 +7011,16 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFE41, 0xFE41, 0xFE43, 0xFE43, 0xFE47, 0xFE47, 0xFE59, 0xFE59,
 	0xFE5B, 0xFE5B, 0xFE5D, 0xFE5D, 0xFF08, 0xFF08, 0xFF3B, 0xFF3B,
 	0xFF5B, 0xFF5B, 0xFF5F, 0xFF5F, 0xFF62, 0xFF62,
-	//  #30 (3698+300): gc=Symbol:S
-	//  Sc:21 + Sk:31 + Sm:64 + So:184
-	//  #31 (3698+21): gc=Currency_Symbol:Sc
+	//  #34 (3699+301): gc=Symbol:S
+	//  Sc:21 + Sk:31 + Sm:64 + So:185
+	//  #35 (3699+21): gc=Currency_Symbol:Sc
 	0x0024, 0x0024, 0x00A2, 0x00A5, 0x058F, 0x058F, 0x060B, 0x060B,
 	0x07FE, 0x07FF, 0x09F2, 0x09F3, 0x09FB, 0x09FB, 0x0AF1, 0x0AF1,
 	0x0BF9, 0x0BF9, 0x0E3F, 0x0E3F, 0x17DB, 0x17DB, 0x20A0, 0x20C0,
 	0xA838, 0xA838, 0xFDFC, 0xFDFC, 0xFE69, 0xFE69, 0xFF04, 0xFF04,
 	0xFFE0, 0xFFE1, 0xFFE5, 0xFFE6, 0x11FDD, 0x11FE0, 0x1E2FF, 0x1E2FF,
 	0x1ECB0, 0x1ECB0,
-	//  #32 (3719+31): gc=Modifier_Symbol:Sk
+	//  #36 (3720+31): gc=Modifier_Symbol:Sk
 	0x005E, 0x005E, 0x0060, 0x0060, 0x00A8, 0x00A8, 0x00AF, 0x00AF,
 	0x00B4, 0x00B4, 0x00B8, 0x00B8, 0x02C2, 0x02C5, 0x02D2, 0x02DF,
 	0x02E5, 0x02EB, 0x02ED, 0x02ED, 0x02EF, 0x02FF, 0x0375, 0x0375,
@@ -5853,7 +7029,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x309B, 0x309C, 0xA700, 0xA716, 0xA720, 0xA721, 0xA789, 0xA78A,
 	0xAB5B, 0xAB5B, 0xAB6A, 0xAB6B, 0xFBB2, 0xFBC2, 0xFF3E, 0xFF3E,
 	0xFF40, 0xFF40, 0xFFE3, 0xFFE3, 0x1F3FB, 0x1F3FF,
-	//  #33 (3750+64): gc=Math_Symbol:Sm
+	//  #37 (3751+64): gc=Math_Symbol:Sm
 	0x002B, 0x002B, 0x003C, 0x003E, 0x007C, 0x007C, 0x007E, 0x007E,
 	0x00AC, 0x00AC, 0x00B1, 0x00B1, 0x00D7, 0x00D7, 0x00F7, 0x00F7,
 	0x03F6, 0x03F6, 0x0606, 0x0608, 0x2044, 0x2044, 0x2052, 0x2052,
@@ -5870,7 +7046,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFFE9, 0xFFEC, 0x1D6C1, 0x1D6C1, 0x1D6DB, 0x1D6DB, 0x1D6FB, 0x1D6FB,
 	0x1D715, 0x1D715, 0x1D735, 0x1D735, 0x1D74F, 0x1D74F, 0x1D76F, 0x1D76F,
 	0x1D789, 0x1D789, 0x1D7A9, 0x1D7A9, 0x1D7C3, 0x1D7C3, 0x1EEF0, 0x1EEF1,
-	//  #34 (3814+184): gc=Other_Symbol:So
+	//  #38 (3815+185): gc=Other_Symbol:So
 	0x00A6, 0x00A6, 0x00A9, 0x00A9, 0x00AE, 0x00AE, 0x00B0, 0x00B0,
 	0x0482, 0x0482, 0x058D, 0x058E, 0x060E, 0x060F, 0x06DE, 0x06DE,
 	0x06E9, 0x06E9, 0x06FD, 0x06FE, 0x07F6, 0x07F6, 0x09FA, 0x09FA,
@@ -5892,45 +7068,46 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2600, 0x266E, 0x2670, 0x2767, 0x2794, 0x27BF, 0x2800, 0x28FF,
 	0x2B00, 0x2B2F, 0x2B45, 0x2B46, 0x2B4D, 0x2B73, 0x2B76, 0x2B95,
 	0x2B97, 0x2BFF, 0x2CE5, 0x2CEA, 0x2E50, 0x2E51, 0x2E80, 0x2E99,
-	0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x2FF0, 0x2FFB, 0x3004, 0x3004,
+	0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x2FF0, 0x2FFF, 0x3004, 0x3004,
 	0x3012, 0x3013, 0x3020, 0x3020, 0x3036, 0x3037, 0x303E, 0x303F,
-	0x3190, 0x3191, 0x3196, 0x319F, 0x31C0, 0x31E3, 0x3200, 0x321E,
-	0x322A, 0x3247, 0x3250, 0x3250, 0x3260, 0x327F, 0x328A, 0x32B0,
-	0x32C0, 0x33FF, 0x4DC0, 0x4DFF, 0xA490, 0xA4C6, 0xA828, 0xA82B,
-	0xA836, 0xA837, 0xA839, 0xA839, 0xAA77, 0xAA79, 0xFD40, 0xFD4F,
-	0xFDCF, 0xFDCF, 0xFDFD, 0xFDFF, 0xFFE4, 0xFFE4, 0xFFE8, 0xFFE8,
-	0xFFED, 0xFFEE, 0xFFFC, 0xFFFD, 0x10137, 0x1013F, 0x10179, 0x10189,
-	0x1018C, 0x1018E, 0x10190, 0x1019C, 0x101A0, 0x101A0, 0x101D0, 0x101FC,
-	0x10877, 0x10878, 0x10AC8, 0x10AC8, 0x1173F, 0x1173F, 0x11FD5, 0x11FDC,
-	0x11FE1, 0x11FF1, 0x16B3C, 0x16B3F, 0x16B45, 0x16B45, 0x1BC9C, 0x1BC9C,
-	0x1CF50, 0x1CFC3, 0x1D000, 0x1D0F5, 0x1D100, 0x1D126, 0x1D129, 0x1D164,
-	0x1D16A, 0x1D16C, 0x1D183, 0x1D184, 0x1D18C, 0x1D1A9, 0x1D1AE, 0x1D1EA,
-	0x1D200, 0x1D241, 0x1D245, 0x1D245, 0x1D300, 0x1D356, 0x1D800, 0x1D9FF,
-	0x1DA37, 0x1DA3A, 0x1DA6D, 0x1DA74, 0x1DA76, 0x1DA83, 0x1DA85, 0x1DA86,
-	0x1E14F, 0x1E14F, 0x1ECAC, 0x1ECAC, 0x1ED2E, 0x1ED2E, 0x1F000, 0x1F02B,
-	0x1F030, 0x1F093, 0x1F0A0, 0x1F0AE, 0x1F0B1, 0x1F0BF, 0x1F0C1, 0x1F0CF,
-	0x1F0D1, 0x1F0F5, 0x1F10D, 0x1F1AD, 0x1F1E6, 0x1F202, 0x1F210, 0x1F23B,
-	0x1F240, 0x1F248, 0x1F250, 0x1F251, 0x1F260, 0x1F265, 0x1F300, 0x1F3FA,
-	0x1F400, 0x1F6D7, 0x1F6DC, 0x1F6EC, 0x1F6F0, 0x1F6FC, 0x1F700, 0x1F776,
-	0x1F77B, 0x1F7D9, 0x1F7E0, 0x1F7EB, 0x1F7F0, 0x1F7F0, 0x1F800, 0x1F80B,
-	0x1F810, 0x1F847, 0x1F850, 0x1F859, 0x1F860, 0x1F887, 0x1F890, 0x1F8AD,
-	0x1F8B0, 0x1F8B1, 0x1F900, 0x1FA53, 0x1FA60, 0x1FA6D, 0x1FA70, 0x1FA7C,
-	0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB,
-	0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8, 0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA,
-	//  #35 (3998+9): gc=Separator:Z
+	0x3190, 0x3191, 0x3196, 0x319F, 0x31C0, 0x31E3, 0x31EF, 0x31EF,
+	0x3200, 0x321E, 0x322A, 0x3247, 0x3250, 0x3250, 0x3260, 0x327F,
+	0x328A, 0x32B0, 0x32C0, 0x33FF, 0x4DC0, 0x4DFF, 0xA490, 0xA4C6,
+	0xA828, 0xA82B, 0xA836, 0xA837, 0xA839, 0xA839, 0xAA77, 0xAA79,
+	0xFD40, 0xFD4F, 0xFDCF, 0xFDCF, 0xFDFD, 0xFDFF, 0xFFE4, 0xFFE4,
+	0xFFE8, 0xFFE8, 0xFFED, 0xFFEE, 0xFFFC, 0xFFFD, 0x10137, 0x1013F,
+	0x10179, 0x10189, 0x1018C, 0x1018E, 0x10190, 0x1019C, 0x101A0, 0x101A0,
+	0x101D0, 0x101FC, 0x10877, 0x10878, 0x10AC8, 0x10AC8, 0x1173F, 0x1173F,
+	0x11FD5, 0x11FDC, 0x11FE1, 0x11FF1, 0x16B3C, 0x16B3F, 0x16B45, 0x16B45,
+	0x1BC9C, 0x1BC9C, 0x1CF50, 0x1CFC3, 0x1D000, 0x1D0F5, 0x1D100, 0x1D126,
+	0x1D129, 0x1D164, 0x1D16A, 0x1D16C, 0x1D183, 0x1D184, 0x1D18C, 0x1D1A9,
+	0x1D1AE, 0x1D1EA, 0x1D200, 0x1D241, 0x1D245, 0x1D245, 0x1D300, 0x1D356,
+	0x1D800, 0x1D9FF, 0x1DA37, 0x1DA3A, 0x1DA6D, 0x1DA74, 0x1DA76, 0x1DA83,
+	0x1DA85, 0x1DA86, 0x1E14F, 0x1E14F, 0x1ECAC, 0x1ECAC, 0x1ED2E, 0x1ED2E,
+	0x1F000, 0x1F02B, 0x1F030, 0x1F093, 0x1F0A0, 0x1F0AE, 0x1F0B1, 0x1F0BF,
+	0x1F0C1, 0x1F0CF, 0x1F0D1, 0x1F0F5, 0x1F10D, 0x1F1AD, 0x1F1E6, 0x1F202,
+	0x1F210, 0x1F23B, 0x1F240, 0x1F248, 0x1F250, 0x1F251, 0x1F260, 0x1F265,
+	0x1F300, 0x1F3FA, 0x1F400, 0x1F6D7, 0x1F6DC, 0x1F6EC, 0x1F6F0, 0x1F6FC,
+	0x1F700, 0x1F776, 0x1F77B, 0x1F7D9, 0x1F7E0, 0x1F7EB, 0x1F7F0, 0x1F7F0,
+	0x1F800, 0x1F80B, 0x1F810, 0x1F847, 0x1F850, 0x1F859, 0x1F860, 0x1F887,
+	0x1F890, 0x1F8AD, 0x1F8B0, 0x1F8B1, 0x1F900, 0x1FA53, 0x1FA60, 0x1FA6D,
+	0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5,
+	0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8, 0x1FB00, 0x1FB92,
+	0x1FB94, 0x1FBCA,
+	//  #39 (4000+9): gc=Separator:Z
 	//  Zl:1 + Zp:1 + Zs:7
-	//  #36 (3998+1): gc=Line_Separator:Zl
+	//  #40 (4000+1): gc=Line_Separator:Zl
 	0x2028, 0x2028,
-	//  #37 (3999+1): gc=Paragraph_Separator:Zp
+	//  #41 (4001+1): gc=Paragraph_Separator:Zp
 	0x2029, 0x2029,
-	//  #38 (4000+7): gc=Space_Separator:Zs
+	//  #42 (4002+7): gc=Space_Separator:Zs
 	0x0020, 0x0020, 0x00A0, 0x00A0, 0x1680, 0x1680, 0x2000, 0x200A,
 	0x202F, 0x202F, 0x205F, 0x205F, 0x3000, 0x3000,
-	//  #39 (4007+1): bp=ASCII
+	//  #43 (4009+1): bp=ASCII
 	0x0000, 0x007F,
-	//  #40 (4008+3): bp=ASCII_Hex_Digit:AHex
+	//  #44 (4010+3): bp=ASCII_Hex_Digit:AHex
 	0x0030, 0x0039, 0x0041, 0x0046, 0x0061, 0x0066,
-	//  #41 (4011+732): bp=Alphabetic:Alpha
+	//  #45 (4013+733): bp=Alphabetic:Alpha
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1,
 	0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC, 0x02EE, 0x02EE,
@@ -6113,14 +7290,15 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
 	0x1EEAB, 0x1EEBB, 0x1F130, 0x1F149, 0x1F150, 0x1F169, 0x1F170, 0x1F189,
 	0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1,
-	0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #42 (4743+1): bp=Any
+	0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D, 0x2F800, 0x2FA1D, 0x30000, 0x3134A,
+	0x31350, 0x323AF,
+	//  #46 (4746+1): bp=Any
 	0x0000, 0x10FFFF,
-	//  #43 (4744+0): bp=Assigned
+	//  #47 (4747+0): bp=Assigned
 	
-	//  #44 (4744+4): bp=Bidi_Control:Bidi_C
+	//  #48 (4747+4): bp=Bidi_Control:Bidi_C
 	0x061C, 0x061C, 0x200E, 0x200F, 0x202A, 0x202E, 0x2066, 0x2069,
-	//  #45 (4748+114): bp=Bidi_Mirrored:Bidi_M
+	//  #49 (4751+114): bp=Bidi_Mirrored:Bidi_M
 	0x0028, 0x0029, 0x003C, 0x003C, 0x003E, 0x003E, 0x005B, 0x005B,
 	0x005D, 0x005D, 0x007B, 0x007B, 0x007D, 0x007D, 0x00AB, 0x00AB,
 	0x00BB, 0x00BB, 0x0F3A, 0x0F3D, 0x169B, 0x169C, 0x2039, 0x203A,
@@ -6150,7 +7328,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFF3D, 0xFF3D, 0xFF5B, 0xFF5B, 0xFF5D, 0xFF5D, 0xFF5F, 0xFF60,
 	0xFF62, 0xFF63, 0x1D6DB, 0x1D6DB, 0x1D715, 0x1D715, 0x1D74F, 0x1D74F,
 	0x1D789, 0x1D789, 0x1D7C3, 0x1D7C3,
-	//  #46 (4862+437): bp=Case_Ignorable:CI
+	//  #50 (4865+437): bp=Case_Ignorable:CI
 	0x0027, 0x0027, 0x002E, 0x002E, 0x003A, 0x003A, 0x005E, 0x005E,
 	0x0060, 0x0060, 0x00A8, 0x00A8, 0x00AD, 0x00AD, 0x00AF, 0x00AF,
 	0x00B4, 0x00B4, 0x00B7, 0x00B8, 0x02B0, 0x036F, 0x0374, 0x0375,
@@ -6261,7 +7439,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF, 0x1E4EB, 0x1E4EF, 0x1E8D0, 0x1E8D6,
 	0x1E944, 0x1E94B, 0x1F3FB, 0x1F3FF, 0xE0001, 0xE0001, 0xE0020, 0xE007F,
 	0xE0100, 0xE01EF,
-	//  #47 (5299+157): bp=Cased
+	//  #51 (5302+157): bp=Cased
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x01BA,
 	0x01BC, 0x01BF, 0x01C4, 0x0293, 0x0295, 0x02B8, 0x02C0, 0x02C1,
@@ -6302,7 +7480,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D7C4, 0x1D7CB, 0x1DF00, 0x1DF09, 0x1DF0B, 0x1DF1E, 0x1DF25, 0x1DF2A,
 	0x1E030, 0x1E06D, 0x1E900, 0x1E943, 0x1F130, 0x1F149, 0x1F150, 0x1F169,
 	0x1F170, 0x1F189,
-	//  #48 (5456+622): bp=Changes_When_Casefolded:CWCF
+	//  #52 (5459+622): bp=Changes_When_Casefolded:CWCF
 	0x0041, 0x005A, 0x00B5, 0x00B5, 0x00C0, 0x00D6, 0x00D8, 0x00DF,
 	0x0100, 0x0100, 0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106,
 	0x0108, 0x0108, 0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E,
@@ -6459,7 +7637,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x10400, 0x10427, 0x104B0, 0x104D3, 0x10570, 0x1057A, 0x1057C, 0x1058A,
 	0x1058C, 0x10592, 0x10594, 0x10595, 0x10C80, 0x10CB2, 0x118A0, 0x118BF,
 	0x16E40, 0x16E5F, 0x1E900, 0x1E921,
-	//  #49 (6078+131): bp=Changes_When_Casemapped:CWCM
+	//  #53 (6081+131): bp=Changes_When_Casemapped:CWCM
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00B5, 0x00B5, 0x00C0, 0x00D6,
 	0x00D8, 0x00F6, 0x00F8, 0x0137, 0x0139, 0x018C, 0x018E, 0x019A,
 	0x019C, 0x01A9, 0x01AC, 0x01B9, 0x01BC, 0x01BD, 0x01BF, 0x01BF,
@@ -6493,7 +7671,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1058C, 0x10592, 0x10594, 0x10595, 0x10597, 0x105A1, 0x105A3, 0x105B1,
 	0x105B3, 0x105B9, 0x105BB, 0x105BC, 0x10C80, 0x10CB2, 0x10CC0, 0x10CF2,
 	0x118A0, 0x118DF, 0x16E40, 0x16E7F, 0x1E900, 0x1E943,
-	//  #50 (6209+609): bp=Changes_When_Lowercased:CWL
+	//  #54 (6212+609): bp=Changes_When_Lowercased:CWL
 	0x0041, 0x005A, 0x00C0, 0x00D6, 0x00D8, 0x00DE, 0x0100, 0x0100,
 	0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106, 0x0108, 0x0108,
 	0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E, 0x0110, 0x0110,
@@ -6647,7 +7825,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x104B0, 0x104D3, 0x10570, 0x1057A, 0x1057C, 0x1058A, 0x1058C, 0x10592,
 	0x10594, 0x10595, 0x10C80, 0x10CB2, 0x118A0, 0x118BF, 0x16E40, 0x16E5F,
 	0x1E900, 0x1E921,
-	//  #51 (6818+839): bp=Changes_When_NFKC_Casefolded:CWKCF
+	//  #55 (6821+839): bp=Changes_When_NFKC_Casefolded:CWKCF
 	0x0041, 0x005A, 0x00A0, 0x00A0, 0x00A8, 0x00A8, 0x00AA, 0x00AA,
 	0x00AD, 0x00AD, 0x00AF, 0x00AF, 0x00B2, 0x00B5, 0x00B8, 0x00BA,
 	0x00BC, 0x00BE, 0x00C0, 0x00D6, 0x00D8, 0x00DF, 0x0100, 0x0100,
@@ -6858,7 +8036,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F110, 0x1F12E, 0x1F130, 0x1F14F, 0x1F16A, 0x1F16C, 0x1F190, 0x1F190,
 	0x1F200, 0x1F202, 0x1F210, 0x1F23B, 0x1F240, 0x1F248, 0x1F250, 0x1F251,
 	0x1FBF0, 0x1FBF9, 0x2F800, 0x2FA1D, 0xE0000, 0xE0FFF,
-	//  #52 (7657+626): bp=Changes_When_Titlecased:CWT
+	//  #56 (7660+626): bp=Changes_When_Titlecased:CWT
 	0x0061, 0x007A, 0x00B5, 0x00B5, 0x00DF, 0x00F6, 0x00F8, 0x00FF,
 	0x0101, 0x0101, 0x0103, 0x0103, 0x0105, 0x0105, 0x0107, 0x0107,
 	0x0109, 0x0109, 0x010B, 0x010B, 0x010D, 0x010D, 0x010F, 0x010F,
@@ -7016,7 +8194,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x10428, 0x1044F, 0x104D8, 0x104FB, 0x10597, 0x105A1, 0x105A3, 0x105B1,
 	0x105B3, 0x105B9, 0x105BB, 0x105BC, 0x10CC0, 0x10CF2, 0x118C0, 0x118DF,
 	0x16E60, 0x16E7F, 0x1E922, 0x1E943,
-	//  #53 (8283+627): bp=Changes_When_Uppercased:CWU
+	//  #57 (8286+627): bp=Changes_When_Uppercased:CWU
 	0x0061, 0x007A, 0x00B5, 0x00B5, 0x00DF, 0x00F6, 0x00F8, 0x00FF,
 	0x0101, 0x0101, 0x0103, 0x0103, 0x0105, 0x0105, 0x0107, 0x0107,
 	0x0109, 0x0109, 0x010B, 0x010B, 0x010D, 0x010D, 0x010F, 0x010F,
@@ -7174,23 +8352,23 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFF41, 0xFF5A, 0x10428, 0x1044F, 0x104D8, 0x104FB, 0x10597, 0x105A1,
 	0x105A3, 0x105B1, 0x105B3, 0x105B9, 0x105BB, 0x105BC, 0x10CC0, 0x10CF2,
 	0x118C0, 0x118DF, 0x16E60, 0x16E7F, 0x1E922, 0x1E943,
-	//  #54 (8910+23): bp=Dash
+	//  #58 (8913+23): bp=Dash
 	0x002D, 0x002D, 0x058A, 0x058A, 0x05BE, 0x05BE, 0x1400, 0x1400,
 	0x1806, 0x1806, 0x2010, 0x2015, 0x2053, 0x2053, 0x207B, 0x207B,
 	0x208B, 0x208B, 0x2212, 0x2212, 0x2E17, 0x2E17, 0x2E1A, 0x2E1A,
 	0x2E3A, 0x2E3B, 0x2E40, 0x2E40, 0x2E5D, 0x2E5D, 0x301C, 0x301C,
 	0x3030, 0x3030, 0x30A0, 0x30A0, 0xFE31, 0xFE32, 0xFE58, 0xFE58,
 	0xFE63, 0xFE63, 0xFF0D, 0xFF0D, 0x10EAD, 0x10EAD,
-	//  #55 (8933+17): bp=Default_Ignorable_Code_Point:DI
+	//  #59 (8936+17): bp=Default_Ignorable_Code_Point:DI
 	0x00AD, 0x00AD, 0x034F, 0x034F, 0x061C, 0x061C, 0x115F, 0x1160,
 	0x17B4, 0x17B5, 0x180B, 0x180F, 0x200B, 0x200F, 0x202A, 0x202E,
 	0x2060, 0x206F, 0x3164, 0x3164, 0xFE00, 0xFE0F, 0xFEFF, 0xFEFF,
 	0xFFA0, 0xFFA0, 0xFFF0, 0xFFF8, 0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A,
 	0xE0000, 0xE0FFF,
-	//  #56 (8950+8): bp=Deprecated:Dep
+	//  #60 (8953+8): bp=Deprecated:Dep
 	0x0149, 0x0149, 0x0673, 0x0673, 0x0F77, 0x0F77, 0x0F79, 0x0F79,
 	0x17A3, 0x17A4, 0x206A, 0x206F, 0x2329, 0x232A, 0xE0001, 0xE0001,
-	//  #57 (8958+195): bp=Diacritic:Dia
+	//  #61 (8961+195): bp=Diacritic:Dia
 	0x005E, 0x005E, 0x0060, 0x0060, 0x00A8, 0x00A8, 0x00AF, 0x00AF,
 	0x00B4, 0x00B4, 0x00B7, 0x00B8, 0x02B0, 0x034E, 0x0350, 0x0357,
 	0x035D, 0x0362, 0x0374, 0x0375, 0x037A, 0x037A, 0x0384, 0x0385,
@@ -7240,7 +8418,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D16D, 0x1D172, 0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD,
 	0x1E030, 0x1E06D, 0x1E130, 0x1E136, 0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF,
 	0x1E8D0, 0x1E8D6, 0x1E944, 0x1E946, 0x1E948, 0x1E94A,
-	//  #58 (9153+151): bp=Emoji
+	//  #62 (9156+151): bp=Emoji
 	0x0023, 0x0023, 0x002A, 0x002A, 0x0030, 0x0039, 0x00A9, 0x00A9,
 	0x00AE, 0x00AE, 0x203C, 0x203C, 0x2049, 0x2049, 0x2122, 0x2122,
 	0x2139, 0x2139, 0x2194, 0x2199, 0x21A9, 0x21AA, 0x231A, 0x231B,
@@ -7279,13 +8457,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F7F0, 0x1F7F0, 0x1F90C, 0x1F93A, 0x1F93C, 0x1F945, 0x1F947, 0x1F9FF,
 	0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5,
 	0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8,
-	//  #59 (9304+10): bp=Emoji_Component:EComp
+	//  #63 (9307+10): bp=Emoji_Component:EComp
 	0x0023, 0x0023, 0x002A, 0x002A, 0x0030, 0x0039, 0x200D, 0x200D,
 	0x20E3, 0x20E3, 0xFE0F, 0xFE0F, 0x1F1E6, 0x1F1FF, 0x1F3FB, 0x1F3FF,
 	0x1F9B0, 0x1F9B3, 0xE0020, 0xE007F,
-	//  #60 (9314+1): bp=Emoji_Modifier:EMod
+	//  #64 (9317+1): bp=Emoji_Modifier:EMod
 	0x1F3FB, 0x1F3FF,
-	//  #61 (9315+40): bp=Emoji_Modifier_Base:EBase
+	//  #65 (9318+40): bp=Emoji_Modifier_Base:EBase
 	0x261D, 0x261D, 0x26F9, 0x26F9, 0x270A, 0x270D, 0x1F385, 0x1F385,
 	0x1F3C2, 0x1F3C4, 0x1F3C7, 0x1F3C7, 0x1F3CA, 0x1F3CC, 0x1F442, 0x1F443,
 	0x1F446, 0x1F450, 0x1F466, 0x1F478, 0x1F47C, 0x1F47C, 0x1F481, 0x1F483,
@@ -7296,7 +8474,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F918, 0x1F91F, 0x1F926, 0x1F926, 0x1F930, 0x1F939, 0x1F93C, 0x1F93E,
 	0x1F977, 0x1F977, 0x1F9B5, 0x1F9B6, 0x1F9B8, 0x1F9B9, 0x1F9BB, 0x1F9BB,
 	0x1F9CD, 0x1F9CF, 0x1F9D1, 0x1F9DD, 0x1FAC3, 0x1FAC5, 0x1FAF0, 0x1FAF8,
-	//  #62 (9355+81): bp=Emoji_Presentation:EPres
+	//  #66 (9358+81): bp=Emoji_Presentation:EPres
 	0x231A, 0x231B, 0x23E9, 0x23EC, 0x23F0, 0x23F0, 0x23F3, 0x23F3,
 	0x25FD, 0x25FE, 0x2614, 0x2615, 0x2648, 0x2653, 0x267F, 0x267F,
 	0x2693, 0x2693, 0x26A1, 0x26A1, 0x26AA, 0x26AB, 0x26BD, 0x26BE,
@@ -7318,7 +8496,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F93C, 0x1F945, 0x1F947, 0x1F9FF, 0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88,
 	0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8,
 	0x1FAF0, 0x1FAF8,
-	//  #63 (9436+78): bp=Extended_Pictographic:ExtPict
+	//  #67 (9439+78): bp=Extended_Pictographic:ExtPict
 	0x00A9, 0x00A9, 0x00AE, 0x00AE, 0x203C, 0x203C, 0x2049, 0x2049,
 	0x2122, 0x2122, 0x2139, 0x2139, 0x2194, 0x2199, 0x21A9, 0x21AA,
 	0x231A, 0x231B, 0x2328, 0x2328, 0x2388, 0x2388, 0x23CF, 0x23CF,
@@ -7339,7 +8517,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F7D5, 0x1F7FF, 0x1F80C, 0x1F80F, 0x1F848, 0x1F84F, 0x1F85A, 0x1F85F,
 	0x1F888, 0x1F88F, 0x1F8AE, 0x1F8FF, 0x1F90C, 0x1F93A, 0x1F93C, 0x1F945,
 	0x1F947, 0x1FAFF, 0x1FC00, 0x1FFFD,
-	//  #64 (9514+33): bp=Extender:Ext
+	//  #68 (9517+33): bp=Extender:Ext
 	0x00B7, 0x00B7, 0x02D0, 0x02D1, 0x0640, 0x0640, 0x07FA, 0x07FA,
 	0x0B55, 0x0B55, 0x0E46, 0x0E46, 0x0EC6, 0x0EC6, 0x180A, 0x180A,
 	0x1843, 0x1843, 0x1AA7, 0x1AA7, 0x1C36, 0x1C36, 0x1C7B, 0x1C7B,
@@ -7349,7 +8527,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x10781, 0x10782, 0x1135D, 0x1135D, 0x115C6, 0x115C8, 0x11A98, 0x11A98,
 	0x16B42, 0x16B43, 0x16FE0, 0x16FE1, 0x16FE3, 0x16FE3, 0x1E13C, 0x1E13D,
 	0x1E944, 0x1E946,
-	//  #65 (9547+875): bp=Grapheme_Base:Gr_Base
+	//  #69 (9550+875): bp=Grapheme_Base:Gr_Base
 	0x0020, 0x007E, 0x00A0, 0x00AC, 0x00AE, 0x02FF, 0x0370, 0x0377,
 	0x037A, 0x037F, 0x0384, 0x038A, 0x038C, 0x038C, 0x038E, 0x03A1,
 	0x03A3, 0x0482, 0x048A, 0x052F, 0x0531, 0x0556, 0x0559, 0x058A,
@@ -7438,138 +8616,138 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2DA0, 0x2DA6, 0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE,
 	0x2DC0, 0x2DC6, 0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE,
 	0x2E00, 0x2E5D, 0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5,
-	0x2FF0, 0x2FFB, 0x3000, 0x3029, 0x3030, 0x303F, 0x3041, 0x3096,
-	0x309B, 0x30FF, 0x3105, 0x312F, 0x3131, 0x318E, 0x3190, 0x31E3,
-	0x31F0, 0x321E, 0x3220, 0xA48C, 0xA490, 0xA4C6, 0xA4D0, 0xA62B,
-	0xA640, 0xA66E, 0xA673, 0xA673, 0xA67E, 0xA69D, 0xA6A0, 0xA6EF,
-	0xA6F2, 0xA6F7, 0xA700, 0xA7CA, 0xA7D0, 0xA7D1, 0xA7D3, 0xA7D3,
-	0xA7D5, 0xA7D9, 0xA7F2, 0xA801, 0xA803, 0xA805, 0xA807, 0xA80A,
-	0xA80C, 0xA824, 0xA827, 0xA82B, 0xA830, 0xA839, 0xA840, 0xA877,
-	0xA880, 0xA8C3, 0xA8CE, 0xA8D9, 0xA8F2, 0xA8FE, 0xA900, 0xA925,
-	0xA92E, 0xA946, 0xA952, 0xA953, 0xA95F, 0xA97C, 0xA983, 0xA9B2,
-	0xA9B4, 0xA9B5, 0xA9BA, 0xA9BB, 0xA9BE, 0xA9CD, 0xA9CF, 0xA9D9,
-	0xA9DE, 0xA9E4, 0xA9E6, 0xA9FE, 0xAA00, 0xAA28, 0xAA2F, 0xAA30,
-	0xAA33, 0xAA34, 0xAA40, 0xAA42, 0xAA44, 0xAA4B, 0xAA4D, 0xAA4D,
-	0xAA50, 0xAA59, 0xAA5C, 0xAA7B, 0xAA7D, 0xAAAF, 0xAAB1, 0xAAB1,
-	0xAAB5, 0xAAB6, 0xAAB9, 0xAABD, 0xAAC0, 0xAAC0, 0xAAC2, 0xAAC2,
-	0xAADB, 0xAAEB, 0xAAEE, 0xAAF5, 0xAB01, 0xAB06, 0xAB09, 0xAB0E,
-	0xAB11, 0xAB16, 0xAB20, 0xAB26, 0xAB28, 0xAB2E, 0xAB30, 0xAB6B,
-	0xAB70, 0xABE4, 0xABE6, 0xABE7, 0xABE9, 0xABEC, 0xABF0, 0xABF9,
-	0xAC00, 0xD7A3, 0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xF900, 0xFA6D,
-	0xFA70, 0xFAD9, 0xFB00, 0xFB06, 0xFB13, 0xFB17, 0xFB1D, 0xFB1D,
-	0xFB1F, 0xFB36, 0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41,
-	0xFB43, 0xFB44, 0xFB46, 0xFBC2, 0xFBD3, 0xFD8F, 0xFD92, 0xFDC7,
-	0xFDCF, 0xFDCF, 0xFDF0, 0xFDFF, 0xFE10, 0xFE19, 0xFE30, 0xFE52,
-	0xFE54, 0xFE66, 0xFE68, 0xFE6B, 0xFE70, 0xFE74, 0xFE76, 0xFEFC,
-	0xFF01, 0xFF9D, 0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF,
-	0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC, 0xFFE0, 0xFFE6, 0xFFE8, 0xFFEE,
-	0xFFFC, 0xFFFD, 0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A,
-	0x1003C, 0x1003D, 0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA,
-	0x10100, 0x10102, 0x10107, 0x10133, 0x10137, 0x1018E, 0x10190, 0x1019C,
-	0x101A0, 0x101A0, 0x101D0, 0x101FC, 0x10280, 0x1029C, 0x102A0, 0x102D0,
-	0x102E1, 0x102FB, 0x10300, 0x10323, 0x1032D, 0x1034A, 0x10350, 0x10375,
-	0x10380, 0x1039D, 0x1039F, 0x103C3, 0x103C8, 0x103D5, 0x10400, 0x1049D,
-	0x104A0, 0x104A9, 0x104B0, 0x104D3, 0x104D8, 0x104FB, 0x10500, 0x10527,
-	0x10530, 0x10563, 0x1056F, 0x1057A, 0x1057C, 0x1058A, 0x1058C, 0x10592,
-	0x10594, 0x10595, 0x10597, 0x105A1, 0x105A3, 0x105B1, 0x105B3, 0x105B9,
-	0x105BB, 0x105BC, 0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
-	0x10780, 0x10785, 0x10787, 0x107B0, 0x107B2, 0x107BA, 0x10800, 0x10805,
-	0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838, 0x1083C, 0x1083C,
-	0x1083F, 0x10855, 0x10857, 0x1089E, 0x108A7, 0x108AF, 0x108E0, 0x108F2,
-	0x108F4, 0x108F5, 0x108FB, 0x1091B, 0x1091F, 0x10939, 0x1093F, 0x1093F,
-	0x10980, 0x109B7, 0x109BC, 0x109CF, 0x109D2, 0x10A00, 0x10A10, 0x10A13,
-	0x10A15, 0x10A17, 0x10A19, 0x10A35, 0x10A40, 0x10A48, 0x10A50, 0x10A58,
-	0x10A60, 0x10A9F, 0x10AC0, 0x10AE4, 0x10AEB, 0x10AF6, 0x10B00, 0x10B35,
-	0x10B39, 0x10B55, 0x10B58, 0x10B72, 0x10B78, 0x10B91, 0x10B99, 0x10B9C,
-	0x10BA9, 0x10BAF, 0x10C00, 0x10C48, 0x10C80, 0x10CB2, 0x10CC0, 0x10CF2,
-	0x10CFA, 0x10D23, 0x10D30, 0x10D39, 0x10E60, 0x10E7E, 0x10E80, 0x10EA9,
-	0x10EAD, 0x10EAD, 0x10EB0, 0x10EB1, 0x10F00, 0x10F27, 0x10F30, 0x10F45,
-	0x10F51, 0x10F59, 0x10F70, 0x10F81, 0x10F86, 0x10F89, 0x10FB0, 0x10FCB,
-	0x10FE0, 0x10FF6, 0x11000, 0x11000, 0x11002, 0x11037, 0x11047, 0x1104D,
-	0x11052, 0x1106F, 0x11071, 0x11072, 0x11075, 0x11075, 0x11082, 0x110B2,
-	0x110B7, 0x110B8, 0x110BB, 0x110BC, 0x110BE, 0x110C1, 0x110D0, 0x110E8,
-	0x110F0, 0x110F9, 0x11103, 0x11126, 0x1112C, 0x1112C, 0x11136, 0x11147,
-	0x11150, 0x11172, 0x11174, 0x11176, 0x11182, 0x111B5, 0x111BF, 0x111C8,
-	0x111CD, 0x111CE, 0x111D0, 0x111DF, 0x111E1, 0x111F4, 0x11200, 0x11211,
-	0x11213, 0x1122E, 0x11232, 0x11233, 0x11235, 0x11235, 0x11238, 0x1123D,
-	0x1123F, 0x11240, 0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D,
-	0x1128F, 0x1129D, 0x1129F, 0x112A9, 0x112B0, 0x112DE, 0x112E0, 0x112E2,
-	0x112F0, 0x112F9, 0x11302, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310,
-	0x11313, 0x11328, 0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339,
-	0x1133D, 0x1133D, 0x1133F, 0x1133F, 0x11341, 0x11344, 0x11347, 0x11348,
-	0x1134B, 0x1134D, 0x11350, 0x11350, 0x1135D, 0x11363, 0x11400, 0x11437,
-	0x11440, 0x11441, 0x11445, 0x11445, 0x11447, 0x1145B, 0x1145D, 0x1145D,
-	0x1145F, 0x11461, 0x11480, 0x114AF, 0x114B1, 0x114B2, 0x114B9, 0x114B9,
-	0x114BB, 0x114BC, 0x114BE, 0x114BE, 0x114C1, 0x114C1, 0x114C4, 0x114C7,
-	0x114D0, 0x114D9, 0x11580, 0x115AE, 0x115B0, 0x115B1, 0x115B8, 0x115BB,
-	0x115BE, 0x115BE, 0x115C1, 0x115DB, 0x11600, 0x11632, 0x1163B, 0x1163C,
-	0x1163E, 0x1163E, 0x11641, 0x11644, 0x11650, 0x11659, 0x11660, 0x1166C,
-	0x11680, 0x116AA, 0x116AC, 0x116AC, 0x116AE, 0x116AF, 0x116B6, 0x116B6,
-	0x116B8, 0x116B9, 0x116C0, 0x116C9, 0x11700, 0x1171A, 0x11720, 0x11721,
-	0x11726, 0x11726, 0x11730, 0x11746, 0x11800, 0x1182E, 0x11838, 0x11838,
-	0x1183B, 0x1183B, 0x118A0, 0x118F2, 0x118FF, 0x11906, 0x11909, 0x11909,
-	0x1190C, 0x11913, 0x11915, 0x11916, 0x11918, 0x1192F, 0x11931, 0x11935,
-	0x11937, 0x11938, 0x1193D, 0x1193D, 0x1193F, 0x11942, 0x11944, 0x11946,
-	0x11950, 0x11959, 0x119A0, 0x119A7, 0x119AA, 0x119D3, 0x119DC, 0x119DF,
-	0x119E1, 0x119E4, 0x11A00, 0x11A00, 0x11A0B, 0x11A32, 0x11A39, 0x11A3A,
-	0x11A3F, 0x11A46, 0x11A50, 0x11A50, 0x11A57, 0x11A58, 0x11A5C, 0x11A89,
-	0x11A97, 0x11A97, 0x11A9A, 0x11AA2, 0x11AB0, 0x11AF8, 0x11B00, 0x11B09,
-	0x11C00, 0x11C08, 0x11C0A, 0x11C2F, 0x11C3E, 0x11C3E, 0x11C40, 0x11C45,
-	0x11C50, 0x11C6C, 0x11C70, 0x11C8F, 0x11CA9, 0x11CA9, 0x11CB1, 0x11CB1,
-	0x11CB4, 0x11CB4, 0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D30,
-	0x11D46, 0x11D46, 0x11D50, 0x11D59, 0x11D60, 0x11D65, 0x11D67, 0x11D68,
-	0x11D6A, 0x11D8E, 0x11D93, 0x11D94, 0x11D96, 0x11D96, 0x11D98, 0x11D98,
-	0x11DA0, 0x11DA9, 0x11EE0, 0x11EF2, 0x11EF5, 0x11EF8, 0x11F02, 0x11F10,
-	0x11F12, 0x11F35, 0x11F3E, 0x11F3F, 0x11F41, 0x11F41, 0x11F43, 0x11F59,
-	0x11FB0, 0x11FB0, 0x11FC0, 0x11FF1, 0x11FFF, 0x12399, 0x12400, 0x1246E,
-	0x12470, 0x12474, 0x12480, 0x12543, 0x12F90, 0x12FF2, 0x13000, 0x1342F,
-	0x13441, 0x13446, 0x14400, 0x14646, 0x16800, 0x16A38, 0x16A40, 0x16A5E,
-	0x16A60, 0x16A69, 0x16A6E, 0x16ABE, 0x16AC0, 0x16AC9, 0x16AD0, 0x16AED,
-	0x16AF5, 0x16AF5, 0x16B00, 0x16B2F, 0x16B37, 0x16B45, 0x16B50, 0x16B59,
-	0x16B5B, 0x16B61, 0x16B63, 0x16B77, 0x16B7D, 0x16B8F, 0x16E40, 0x16E9A,
-	0x16F00, 0x16F4A, 0x16F50, 0x16F87, 0x16F93, 0x16F9F, 0x16FE0, 0x16FE3,
-	0x16FF0, 0x16FF1, 0x17000, 0x187F7, 0x18800, 0x18CD5, 0x18D00, 0x18D08,
-	0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1B000, 0x1B122,
-	0x1B132, 0x1B132, 0x1B150, 0x1B152, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
-	0x1B170, 0x1B2FB, 0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88,
-	0x1BC90, 0x1BC99, 0x1BC9C, 0x1BC9C, 0x1BC9F, 0x1BC9F, 0x1CF50, 0x1CFC3,
-	0x1D000, 0x1D0F5, 0x1D100, 0x1D126, 0x1D129, 0x1D164, 0x1D166, 0x1D166,
-	0x1D16A, 0x1D16D, 0x1D183, 0x1D184, 0x1D18C, 0x1D1A9, 0x1D1AE, 0x1D1EA,
-	0x1D200, 0x1D241, 0x1D245, 0x1D245, 0x1D2C0, 0x1D2D3, 0x1D2E0, 0x1D2F3,
-	0x1D300, 0x1D356, 0x1D360, 0x1D378, 0x1D400, 0x1D454, 0x1D456, 0x1D49C,
-	0x1D49E, 0x1D49F, 0x1D4A2, 0x1D4A2, 0x1D4A5, 0x1D4A6, 0x1D4A9, 0x1D4AC,
-	0x1D4AE, 0x1D4B9, 0x1D4BB, 0x1D4BB, 0x1D4BD, 0x1D4C3, 0x1D4C5, 0x1D505,
-	0x1D507, 0x1D50A, 0x1D50D, 0x1D514, 0x1D516, 0x1D51C, 0x1D51E, 0x1D539,
-	0x1D53B, 0x1D53E, 0x1D540, 0x1D544, 0x1D546, 0x1D546, 0x1D54A, 0x1D550,
-	0x1D552, 0x1D6A5, 0x1D6A8, 0x1D7CB, 0x1D7CE, 0x1D9FF, 0x1DA37, 0x1DA3A,
-	0x1DA6D, 0x1DA74, 0x1DA76, 0x1DA83, 0x1DA85, 0x1DA8B, 0x1DF00, 0x1DF1E,
-	0x1DF25, 0x1DF2A, 0x1E030, 0x1E06D, 0x1E100, 0x1E12C, 0x1E137, 0x1E13D,
-	0x1E140, 0x1E149, 0x1E14E, 0x1E14F, 0x1E290, 0x1E2AD, 0x1E2C0, 0x1E2EB,
-	0x1E2F0, 0x1E2F9, 0x1E2FF, 0x1E2FF, 0x1E4D0, 0x1E4EB, 0x1E4F0, 0x1E4F9,
-	0x1E7E0, 0x1E7E6, 0x1E7E8, 0x1E7EB, 0x1E7ED, 0x1E7EE, 0x1E7F0, 0x1E7FE,
-	0x1E800, 0x1E8C4, 0x1E8C7, 0x1E8CF, 0x1E900, 0x1E943, 0x1E94B, 0x1E94B,
-	0x1E950, 0x1E959, 0x1E95E, 0x1E95F, 0x1EC71, 0x1ECB4, 0x1ED01, 0x1ED3D,
-	0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F, 0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24,
-	0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32, 0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39,
-	0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42, 0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49,
-	0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F, 0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54,
-	0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59, 0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D,
-	0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62, 0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A,
-	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
-	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
-	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1, 0x1F000, 0x1F02B, 0x1F030, 0x1F093,
-	0x1F0A0, 0x1F0AE, 0x1F0B1, 0x1F0BF, 0x1F0C1, 0x1F0CF, 0x1F0D1, 0x1F0F5,
-	0x1F100, 0x1F1AD, 0x1F1E6, 0x1F202, 0x1F210, 0x1F23B, 0x1F240, 0x1F248,
-	0x1F250, 0x1F251, 0x1F260, 0x1F265, 0x1F300, 0x1F6D7, 0x1F6DC, 0x1F6EC,
-	0x1F6F0, 0x1F6FC, 0x1F700, 0x1F776, 0x1F77B, 0x1F7D9, 0x1F7E0, 0x1F7EB,
-	0x1F7F0, 0x1F7F0, 0x1F800, 0x1F80B, 0x1F810, 0x1F847, 0x1F850, 0x1F859,
-	0x1F860, 0x1F887, 0x1F890, 0x1F8AD, 0x1F8B0, 0x1F8B1, 0x1F900, 0x1FA53,
-	0x1FA60, 0x1FA6D, 0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD,
-	0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8,
-	0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF,
-	0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0,
+	0x2FF0, 0x3029, 0x3030, 0x303F, 0x3041, 0x3096, 0x309B, 0x30FF,
+	0x3105, 0x312F, 0x3131, 0x318E, 0x3190, 0x31E3, 0x31EF, 0x321E,
+	0x3220, 0xA48C, 0xA490, 0xA4C6, 0xA4D0, 0xA62B, 0xA640, 0xA66E,
+	0xA673, 0xA673, 0xA67E, 0xA69D, 0xA6A0, 0xA6EF, 0xA6F2, 0xA6F7,
+	0xA700, 0xA7CA, 0xA7D0, 0xA7D1, 0xA7D3, 0xA7D3, 0xA7D5, 0xA7D9,
+	0xA7F2, 0xA801, 0xA803, 0xA805, 0xA807, 0xA80A, 0xA80C, 0xA824,
+	0xA827, 0xA82B, 0xA830, 0xA839, 0xA840, 0xA877, 0xA880, 0xA8C3,
+	0xA8CE, 0xA8D9, 0xA8F2, 0xA8FE, 0xA900, 0xA925, 0xA92E, 0xA946,
+	0xA952, 0xA953, 0xA95F, 0xA97C, 0xA983, 0xA9B2, 0xA9B4, 0xA9B5,
+	0xA9BA, 0xA9BB, 0xA9BE, 0xA9CD, 0xA9CF, 0xA9D9, 0xA9DE, 0xA9E4,
+	0xA9E6, 0xA9FE, 0xAA00, 0xAA28, 0xAA2F, 0xAA30, 0xAA33, 0xAA34,
+	0xAA40, 0xAA42, 0xAA44, 0xAA4B, 0xAA4D, 0xAA4D, 0xAA50, 0xAA59,
+	0xAA5C, 0xAA7B, 0xAA7D, 0xAAAF, 0xAAB1, 0xAAB1, 0xAAB5, 0xAAB6,
+	0xAAB9, 0xAABD, 0xAAC0, 0xAAC0, 0xAAC2, 0xAAC2, 0xAADB, 0xAAEB,
+	0xAAEE, 0xAAF5, 0xAB01, 0xAB06, 0xAB09, 0xAB0E, 0xAB11, 0xAB16,
+	0xAB20, 0xAB26, 0xAB28, 0xAB2E, 0xAB30, 0xAB6B, 0xAB70, 0xABE4,
+	0xABE6, 0xABE7, 0xABE9, 0xABEC, 0xABF0, 0xABF9, 0xAC00, 0xD7A3,
+	0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xF900, 0xFA6D, 0xFA70, 0xFAD9,
+	0xFB00, 0xFB06, 0xFB13, 0xFB17, 0xFB1D, 0xFB1D, 0xFB1F, 0xFB36,
+	0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41, 0xFB43, 0xFB44,
+	0xFB46, 0xFBC2, 0xFBD3, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF,
+	0xFDF0, 0xFDFF, 0xFE10, 0xFE19, 0xFE30, 0xFE52, 0xFE54, 0xFE66,
+	0xFE68, 0xFE6B, 0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0xFF01, 0xFF9D,
+	0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7,
+	0xFFDA, 0xFFDC, 0xFFE0, 0xFFE6, 0xFFE8, 0xFFEE, 0xFFFC, 0xFFFD,
+	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
+	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA, 0x10100, 0x10102,
+	0x10107, 0x10133, 0x10137, 0x1018E, 0x10190, 0x1019C, 0x101A0, 0x101A0,
+	0x101D0, 0x101FC, 0x10280, 0x1029C, 0x102A0, 0x102D0, 0x102E1, 0x102FB,
+	0x10300, 0x10323, 0x1032D, 0x1034A, 0x10350, 0x10375, 0x10380, 0x1039D,
+	0x1039F, 0x103C3, 0x103C8, 0x103D5, 0x10400, 0x1049D, 0x104A0, 0x104A9,
+	0x104B0, 0x104D3, 0x104D8, 0x104FB, 0x10500, 0x10527, 0x10530, 0x10563,
+	0x1056F, 0x1057A, 0x1057C, 0x1058A, 0x1058C, 0x10592, 0x10594, 0x10595,
+	0x10597, 0x105A1, 0x105A3, 0x105B1, 0x105B3, 0x105B9, 0x105BB, 0x105BC,
+	0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767, 0x10780, 0x10785,
+	0x10787, 0x107B0, 0x107B2, 0x107BA, 0x10800, 0x10805, 0x10808, 0x10808,
+	0x1080A, 0x10835, 0x10837, 0x10838, 0x1083C, 0x1083C, 0x1083F, 0x10855,
+	0x10857, 0x1089E, 0x108A7, 0x108AF, 0x108E0, 0x108F2, 0x108F4, 0x108F5,
+	0x108FB, 0x1091B, 0x1091F, 0x10939, 0x1093F, 0x1093F, 0x10980, 0x109B7,
+	0x109BC, 0x109CF, 0x109D2, 0x10A00, 0x10A10, 0x10A13, 0x10A15, 0x10A17,
+	0x10A19, 0x10A35, 0x10A40, 0x10A48, 0x10A50, 0x10A58, 0x10A60, 0x10A9F,
+	0x10AC0, 0x10AE4, 0x10AEB, 0x10AF6, 0x10B00, 0x10B35, 0x10B39, 0x10B55,
+	0x10B58, 0x10B72, 0x10B78, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
+	0x10C00, 0x10C48, 0x10C80, 0x10CB2, 0x10CC0, 0x10CF2, 0x10CFA, 0x10D23,
+	0x10D30, 0x10D39, 0x10E60, 0x10E7E, 0x10E80, 0x10EA9, 0x10EAD, 0x10EAD,
+	0x10EB0, 0x10EB1, 0x10F00, 0x10F27, 0x10F30, 0x10F45, 0x10F51, 0x10F59,
+	0x10F70, 0x10F81, 0x10F86, 0x10F89, 0x10FB0, 0x10FCB, 0x10FE0, 0x10FF6,
+	0x11000, 0x11000, 0x11002, 0x11037, 0x11047, 0x1104D, 0x11052, 0x1106F,
+	0x11071, 0x11072, 0x11075, 0x11075, 0x11082, 0x110B2, 0x110B7, 0x110B8,
+	0x110BB, 0x110BC, 0x110BE, 0x110C1, 0x110D0, 0x110E8, 0x110F0, 0x110F9,
+	0x11103, 0x11126, 0x1112C, 0x1112C, 0x11136, 0x11147, 0x11150, 0x11172,
+	0x11174, 0x11176, 0x11182, 0x111B5, 0x111BF, 0x111C8, 0x111CD, 0x111CE,
+	0x111D0, 0x111DF, 0x111E1, 0x111F4, 0x11200, 0x11211, 0x11213, 0x1122E,
+	0x11232, 0x11233, 0x11235, 0x11235, 0x11238, 0x1123D, 0x1123F, 0x11240,
+	0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D, 0x1128F, 0x1129D,
+	0x1129F, 0x112A9, 0x112B0, 0x112DE, 0x112E0, 0x112E2, 0x112F0, 0x112F9,
+	0x11302, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
+	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133D, 0x1133D,
+	0x1133F, 0x1133F, 0x11341, 0x11344, 0x11347, 0x11348, 0x1134B, 0x1134D,
+	0x11350, 0x11350, 0x1135D, 0x11363, 0x11400, 0x11437, 0x11440, 0x11441,
+	0x11445, 0x11445, 0x11447, 0x1145B, 0x1145D, 0x1145D, 0x1145F, 0x11461,
+	0x11480, 0x114AF, 0x114B1, 0x114B2, 0x114B9, 0x114B9, 0x114BB, 0x114BC,
+	0x114BE, 0x114BE, 0x114C1, 0x114C1, 0x114C4, 0x114C7, 0x114D0, 0x114D9,
+	0x11580, 0x115AE, 0x115B0, 0x115B1, 0x115B8, 0x115BB, 0x115BE, 0x115BE,
+	0x115C1, 0x115DB, 0x11600, 0x11632, 0x1163B, 0x1163C, 0x1163E, 0x1163E,
+	0x11641, 0x11644, 0x11650, 0x11659, 0x11660, 0x1166C, 0x11680, 0x116AA,
+	0x116AC, 0x116AC, 0x116AE, 0x116AF, 0x116B6, 0x116B6, 0x116B8, 0x116B9,
+	0x116C0, 0x116C9, 0x11700, 0x1171A, 0x11720, 0x11721, 0x11726, 0x11726,
+	0x11730, 0x11746, 0x11800, 0x1182E, 0x11838, 0x11838, 0x1183B, 0x1183B,
+	0x118A0, 0x118F2, 0x118FF, 0x11906, 0x11909, 0x11909, 0x1190C, 0x11913,
+	0x11915, 0x11916, 0x11918, 0x1192F, 0x11931, 0x11935, 0x11937, 0x11938,
+	0x1193D, 0x1193D, 0x1193F, 0x11942, 0x11944, 0x11946, 0x11950, 0x11959,
+	0x119A0, 0x119A7, 0x119AA, 0x119D3, 0x119DC, 0x119DF, 0x119E1, 0x119E4,
+	0x11A00, 0x11A00, 0x11A0B, 0x11A32, 0x11A39, 0x11A3A, 0x11A3F, 0x11A46,
+	0x11A50, 0x11A50, 0x11A57, 0x11A58, 0x11A5C, 0x11A89, 0x11A97, 0x11A97,
+	0x11A9A, 0x11AA2, 0x11AB0, 0x11AF8, 0x11B00, 0x11B09, 0x11C00, 0x11C08,
+	0x11C0A, 0x11C2F, 0x11C3E, 0x11C3E, 0x11C40, 0x11C45, 0x11C50, 0x11C6C,
+	0x11C70, 0x11C8F, 0x11CA9, 0x11CA9, 0x11CB1, 0x11CB1, 0x11CB4, 0x11CB4,
+	0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D30, 0x11D46, 0x11D46,
+	0x11D50, 0x11D59, 0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E,
+	0x11D93, 0x11D94, 0x11D96, 0x11D96, 0x11D98, 0x11D98, 0x11DA0, 0x11DA9,
+	0x11EE0, 0x11EF2, 0x11EF5, 0x11EF8, 0x11F02, 0x11F10, 0x11F12, 0x11F35,
+	0x11F3E, 0x11F3F, 0x11F41, 0x11F41, 0x11F43, 0x11F59, 0x11FB0, 0x11FB0,
+	0x11FC0, 0x11FF1, 0x11FFF, 0x12399, 0x12400, 0x1246E, 0x12470, 0x12474,
+	0x12480, 0x12543, 0x12F90, 0x12FF2, 0x13000, 0x1342F, 0x13441, 0x13446,
+	0x14400, 0x14646, 0x16800, 0x16A38, 0x16A40, 0x16A5E, 0x16A60, 0x16A69,
+	0x16A6E, 0x16ABE, 0x16AC0, 0x16AC9, 0x16AD0, 0x16AED, 0x16AF5, 0x16AF5,
+	0x16B00, 0x16B2F, 0x16B37, 0x16B45, 0x16B50, 0x16B59, 0x16B5B, 0x16B61,
+	0x16B63, 0x16B77, 0x16B7D, 0x16B8F, 0x16E40, 0x16E9A, 0x16F00, 0x16F4A,
+	0x16F50, 0x16F87, 0x16F93, 0x16F9F, 0x16FE0, 0x16FE3, 0x16FF0, 0x16FF1,
+	0x17000, 0x187F7, 0x18800, 0x18CD5, 0x18D00, 0x18D08, 0x1AFF0, 0x1AFF3,
+	0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1B000, 0x1B122, 0x1B132, 0x1B132,
+	0x1B150, 0x1B152, 0x1B155, 0x1B155, 0x1B164, 0x1B167, 0x1B170, 0x1B2FB,
+	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
+	0x1BC9C, 0x1BC9C, 0x1BC9F, 0x1BC9F, 0x1CF50, 0x1CFC3, 0x1D000, 0x1D0F5,
+	0x1D100, 0x1D126, 0x1D129, 0x1D164, 0x1D166, 0x1D166, 0x1D16A, 0x1D16D,
+	0x1D183, 0x1D184, 0x1D18C, 0x1D1A9, 0x1D1AE, 0x1D1EA, 0x1D200, 0x1D241,
+	0x1D245, 0x1D245, 0x1D2C0, 0x1D2D3, 0x1D2E0, 0x1D2F3, 0x1D300, 0x1D356,
+	0x1D360, 0x1D378, 0x1D400, 0x1D454, 0x1D456, 0x1D49C, 0x1D49E, 0x1D49F,
+	0x1D4A2, 0x1D4A2, 0x1D4A5, 0x1D4A6, 0x1D4A9, 0x1D4AC, 0x1D4AE, 0x1D4B9,
+	0x1D4BB, 0x1D4BB, 0x1D4BD, 0x1D4C3, 0x1D4C5, 0x1D505, 0x1D507, 0x1D50A,
+	0x1D50D, 0x1D514, 0x1D516, 0x1D51C, 0x1D51E, 0x1D539, 0x1D53B, 0x1D53E,
+	0x1D540, 0x1D544, 0x1D546, 0x1D546, 0x1D54A, 0x1D550, 0x1D552, 0x1D6A5,
+	0x1D6A8, 0x1D7CB, 0x1D7CE, 0x1D9FF, 0x1DA37, 0x1DA3A, 0x1DA6D, 0x1DA74,
+	0x1DA76, 0x1DA83, 0x1DA85, 0x1DA8B, 0x1DF00, 0x1DF1E, 0x1DF25, 0x1DF2A,
+	0x1E030, 0x1E06D, 0x1E100, 0x1E12C, 0x1E137, 0x1E13D, 0x1E140, 0x1E149,
+	0x1E14E, 0x1E14F, 0x1E290, 0x1E2AD, 0x1E2C0, 0x1E2EB, 0x1E2F0, 0x1E2F9,
+	0x1E2FF, 0x1E2FF, 0x1E4D0, 0x1E4EB, 0x1E4F0, 0x1E4F9, 0x1E7E0, 0x1E7E6,
+	0x1E7E8, 0x1E7EB, 0x1E7ED, 0x1E7EE, 0x1E7F0, 0x1E7FE, 0x1E800, 0x1E8C4,
+	0x1E8C7, 0x1E8CF, 0x1E900, 0x1E943, 0x1E94B, 0x1E94B, 0x1E950, 0x1E959,
+	0x1E95E, 0x1E95F, 0x1EC71, 0x1ECB4, 0x1ED01, 0x1ED3D, 0x1EE00, 0x1EE03,
+	0x1EE05, 0x1EE1F, 0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24, 0x1EE27, 0x1EE27,
+	0x1EE29, 0x1EE32, 0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39, 0x1EE3B, 0x1EE3B,
+	0x1EE42, 0x1EE42, 0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49, 0x1EE4B, 0x1EE4B,
+	0x1EE4D, 0x1EE4F, 0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54, 0x1EE57, 0x1EE57,
+	0x1EE59, 0x1EE59, 0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D, 0x1EE5F, 0x1EE5F,
+	0x1EE61, 0x1EE62, 0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72,
+	0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89,
+	0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB,
+	0x1EEF0, 0x1EEF1, 0x1F000, 0x1F02B, 0x1F030, 0x1F093, 0x1F0A0, 0x1F0AE,
+	0x1F0B1, 0x1F0BF, 0x1F0C1, 0x1F0CF, 0x1F0D1, 0x1F0F5, 0x1F100, 0x1F1AD,
+	0x1F1E6, 0x1F202, 0x1F210, 0x1F23B, 0x1F240, 0x1F248, 0x1F250, 0x1F251,
+	0x1F260, 0x1F265, 0x1F300, 0x1F6D7, 0x1F6DC, 0x1F6EC, 0x1F6F0, 0x1F6FC,
+	0x1F700, 0x1F776, 0x1F77B, 0x1F7D9, 0x1F7E0, 0x1F7EB, 0x1F7F0, 0x1F7F0,
+	0x1F800, 0x1F80B, 0x1F810, 0x1F847, 0x1F850, 0x1F859, 0x1F860, 0x1F887,
+	0x1F890, 0x1F8AD, 0x1F8B0, 0x1F8B1, 0x1F900, 0x1FA53, 0x1FA60, 0x1FA6D,
+	0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5,
+	0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8, 0x1FB00, 0x1FB92,
+	0x1FB94, 0x1FBCA, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
+	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D,
 	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #66 (10422+363): bp=Grapheme_Extend:Gr_Ext
+	//  #70 (10425+363): bp=Grapheme_Extend:Gr_Ext
 	0x0300, 0x036F, 0x0483, 0x0489, 0x0591, 0x05BD, 0x05BF, 0x05BF,
 	0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7, 0x05C7, 0x0610, 0x061A,
 	0x064B, 0x065F, 0x0670, 0x0670, 0x06D6, 0x06DC, 0x06DF, 0x06E4,
@@ -7661,14 +8839,14 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1E023, 0x1E024, 0x1E026, 0x1E02A, 0x1E08F, 0x1E08F, 0x1E130, 0x1E136,
 	0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF, 0x1E4EC, 0x1E4EF, 0x1E8D0, 0x1E8D6,
 	0x1E944, 0x1E94A, 0xE0020, 0xE007F, 0xE0100, 0xE01EF,
-	//  #67 (10785+6): bp=Hex_Digit:Hex
+	//  #71 (10788+6): bp=Hex_Digit:Hex
 	0x0030, 0x0039, 0x0041, 0x0046, 0x0061, 0x0066, 0xFF10, 0xFF19,
 	0xFF21, 0xFF26, 0xFF41, 0xFF46,
-	//  #68 (10791+2): bp=IDS_Binary_Operator:IDSB
-	0x2FF0, 0x2FF1, 0x2FF4, 0x2FFB,
-	//  #69 (10793+1): bp=IDS_Trinary_Operator:IDST
+	//  #72 (10794+3): bp=IDS_Binary_Operator:IDSB
+	0x2FF0, 0x2FF1, 0x2FF4, 0x2FFD, 0x31EF, 0x31EF,
+	//  #73 (10797+1): bp=IDS_Trinary_Operator:IDST
 	0x2FF2, 0x2FF3,
-	//  #70 (10794+768): bp=ID_Continue:IDC
+	//  #74 (10798+769): bp=ID_Continue:IDC
 	0x0030, 0x0039, 0x0041, 0x005A, 0x005F, 0x005F, 0x0061, 0x007A,
 	0x00AA, 0x00AA, 0x00B5, 0x00B5, 0x00B7, 0x00B7, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1, 0x02C6, 0x02D1,
@@ -7744,18 +8922,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D, 0x1F80, 0x1FB4, 0x1FB6, 0x1FBC,
 	0x1FBE, 0x1FBE, 0x1FC2, 0x1FC4, 0x1FC6, 0x1FCC, 0x1FD0, 0x1FD3,
 	0x1FD6, 0x1FDB, 0x1FE0, 0x1FEC, 0x1FF2, 0x1FF4, 0x1FF6, 0x1FFC,
-	0x203F, 0x2040, 0x2054, 0x2054, 0x2071, 0x2071, 0x207F, 0x207F,
-	0x2090, 0x209C, 0x20D0, 0x20DC, 0x20E1, 0x20E1, 0x20E5, 0x20F0,
-	0x2102, 0x2102, 0x2107, 0x2107, 0x210A, 0x2113, 0x2115, 0x2115,
-	0x2118, 0x211D, 0x2124, 0x2124, 0x2126, 0x2126, 0x2128, 0x2128,
-	0x212A, 0x2139, 0x213C, 0x213F, 0x2145, 0x2149, 0x214E, 0x214E,
-	0x2160, 0x2188, 0x2C00, 0x2CE4, 0x2CEB, 0x2CF3, 0x2D00, 0x2D25,
-	0x2D27, 0x2D27, 0x2D2D, 0x2D2D, 0x2D30, 0x2D67, 0x2D6F, 0x2D6F,
-	0x2D7F, 0x2D96, 0x2DA0, 0x2DA6, 0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6,
-	0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6, 0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6,
-	0x2DD8, 0x2DDE, 0x2DE0, 0x2DFF, 0x3005, 0x3007, 0x3021, 0x302F,
-	0x3031, 0x3035, 0x3038, 0x303C, 0x3041, 0x3096, 0x3099, 0x309F,
-	0x30A1, 0x30FA, 0x30FC, 0x30FF, 0x3105, 0x312F, 0x3131, 0x318E,
+	0x200C, 0x200D, 0x203F, 0x2040, 0x2054, 0x2054, 0x2071, 0x2071,
+	0x207F, 0x207F, 0x2090, 0x209C, 0x20D0, 0x20DC, 0x20E1, 0x20E1,
+	0x20E5, 0x20F0, 0x2102, 0x2102, 0x2107, 0x2107, 0x210A, 0x2113,
+	0x2115, 0x2115, 0x2118, 0x211D, 0x2124, 0x2124, 0x2126, 0x2126,
+	0x2128, 0x2128, 0x212A, 0x2139, 0x213C, 0x213F, 0x2145, 0x2149,
+	0x214E, 0x214E, 0x2160, 0x2188, 0x2C00, 0x2CE4, 0x2CEB, 0x2CF3,
+	0x2D00, 0x2D25, 0x2D27, 0x2D27, 0x2D2D, 0x2D2D, 0x2D30, 0x2D67,
+	0x2D6F, 0x2D6F, 0x2D7F, 0x2D96, 0x2DA0, 0x2DA6, 0x2DA8, 0x2DAE,
+	0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6, 0x2DC8, 0x2DCE,
+	0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE, 0x2DE0, 0x2DFF, 0x3005, 0x3007,
+	0x3021, 0x302F, 0x3031, 0x3035, 0x3038, 0x303C, 0x3041, 0x3096,
+	0x3099, 0x309F, 0x30A1, 0x30FF, 0x3105, 0x312F, 0x3131, 0x318E,
 	0x31A0, 0x31BF, 0x31F0, 0x31FF, 0x3400, 0x4DBF, 0x4E00, 0xA48C,
 	0xA4D0, 0xA4FD, 0xA500, 0xA60C, 0xA610, 0xA62B, 0xA640, 0xA66F,
 	0xA674, 0xA67D, 0xA67F, 0xA6F1, 0xA717, 0xA71F, 0xA722, 0xA788,
@@ -7774,7 +8952,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFB46, 0xFBB1, 0xFBD3, 0xFD3D, 0xFD50, 0xFD8F, 0xFD92, 0xFDC7,
 	0xFDF0, 0xFDFB, 0xFE00, 0xFE0F, 0xFE20, 0xFE2F, 0xFE33, 0xFE34,
 	0xFE4D, 0xFE4F, 0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0xFF10, 0xFF19,
-	0xFF21, 0xFF3A, 0xFF3F, 0xFF3F, 0xFF41, 0xFF5A, 0xFF66, 0xFFBE,
+	0xFF21, 0xFF3A, 0xFF3F, 0xFF3F, 0xFF41, 0xFF5A, 0xFF65, 0xFFBE,
 	0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC,
 	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
 	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA, 0x10140, 0x10174,
@@ -7860,8 +9038,9 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3,
 	0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF,
 	0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0,
-	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF, 0xE0100, 0xE01EF,
-	//  #71 (11562+659): bp=ID_Start:IDS
+	0x2EBF0, 0x2EE5D, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
+	0xE0100, 0xE01EF,
+	//  #75 (11567+660): bp=ID_Start:IDS
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1,
 	0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC, 0x02EE, 0x02EE,
@@ -8026,19 +9205,20 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B,
 	0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x20000, 0x2A6DF,
 	0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0,
-	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #72 (12221+20): bp=Ideographic:Ideo
+	0x2EBF0, 0x2EE5D, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
+	//  #76 (12227+21): bp=Ideographic:Ideo
 	0x3006, 0x3007, 0x3021, 0x3029, 0x3038, 0x303A, 0x3400, 0x4DBF,
 	0x4E00, 0x9FFF, 0xF900, 0xFA6D, 0xFA70, 0xFAD9, 0x16FE4, 0x16FE4,
 	0x17000, 0x187F7, 0x18800, 0x18CD5, 0x18D00, 0x18D08, 0x1B170, 0x1B2FB,
 	0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1,
-	0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #73 (12241+1): bp=Join_Control:Join_C
+	0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D, 0x2F800, 0x2FA1D, 0x30000, 0x3134A,
+	0x31350, 0x323AF,
+	//  #77 (12248+1): bp=Join_Control:Join_C
 	0x200C, 0x200D,
-	//  #74 (12242+7): bp=Logical_Order_Exception:LOE
+	//  #78 (12249+7): bp=Logical_Order_Exception:LOE
 	0x0E40, 0x0E44, 0x0EC0, 0x0EC4, 0x19B5, 0x19B7, 0x19BA, 0x19BA,
 	0xAAB5, 0xAAB6, 0xAAB9, 0xAAB9, 0xAABB, 0xAABC,
-	//  #75 (12249+671): bp=Lowercase:Lower
+	//  #79 (12256+671): bp=Lowercase:Lower
 	0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5, 0x00BA, 0x00BA,
 	0x00DF, 0x00F6, 0x00F8, 0x00FF, 0x0101, 0x0101, 0x0103, 0x0103,
 	0x0105, 0x0105, 0x0107, 0x0107, 0x0109, 0x0109, 0x010B, 0x010B,
@@ -8207,7 +9387,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D750, 0x1D755, 0x1D770, 0x1D788, 0x1D78A, 0x1D78F, 0x1D7AA, 0x1D7C2,
 	0x1D7C4, 0x1D7C9, 0x1D7CB, 0x1D7CB, 0x1DF00, 0x1DF09, 0x1DF0B, 0x1DF1E,
 	0x1DF25, 0x1DF2A, 0x1E030, 0x1E06D, 0x1E922, 0x1E943,
-	//  #76 (12920+138): bp=Math
+	//  #80 (12927+138): bp=Math
 	0x002B, 0x002B, 0x003C, 0x003E, 0x005E, 0x005E, 0x007C, 0x007C,
 	0x007E, 0x007E, 0x00AC, 0x00AC, 0x00B1, 0x00B1, 0x00D7, 0x00D7,
 	0x00F7, 0x00F7, 0x03D0, 0x03D2, 0x03D5, 0x03D5, 0x03F0, 0x03F1,
@@ -8243,13 +9423,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
 	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
 	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
-	//  #77 (13058+18): bp=Noncharacter_Code_Point:NChar
+	//  #81 (13065+18): bp=Noncharacter_Code_Point:NChar
 	0xFDD0, 0xFDEF, 0xFFFE, 0xFFFF, 0x1FFFE, 0x1FFFF, 0x2FFFE, 0x2FFFF,
 	0x3FFFE, 0x3FFFF, 0x4FFFE, 0x4FFFF, 0x5FFFE, 0x5FFFF, 0x6FFFE, 0x6FFFF,
 	0x7FFFE, 0x7FFFF, 0x8FFFE, 0x8FFFF, 0x9FFFE, 0x9FFFF, 0xAFFFE, 0xAFFFF,
 	0xBFFFE, 0xBFFFF, 0xCFFFE, 0xCFFFF, 0xDFFFE, 0xDFFFF, 0xEFFFE, 0xEFFFF,
 	0xFFFFE, 0xFFFFF, 0x10FFFE, 0x10FFFF,
-	//  #78 (13076+28): bp=Pattern_Syntax:Pat_Syn
+	//  #82 (13083+28): bp=Pattern_Syntax:Pat_Syn
 	0x0021, 0x002F, 0x003A, 0x0040, 0x005B, 0x005E, 0x0060, 0x0060,
 	0x007B, 0x007E, 0x00A1, 0x00A7, 0x00A9, 0x00A9, 0x00AB, 0x00AC,
 	0x00AE, 0x00AE, 0x00B0, 0x00B1, 0x00B6, 0x00B6, 0x00BB, 0x00BB,
@@ -8257,40 +9437,41 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2030, 0x203E, 0x2041, 0x2053, 0x2055, 0x205E, 0x2190, 0x245F,
 	0x2500, 0x2775, 0x2794, 0x2BFF, 0x2E00, 0x2E7F, 0x3001, 0x3003,
 	0x3008, 0x3020, 0x3030, 0x3030, 0xFD3E, 0xFD3F, 0xFE45, 0xFE46,
-	//  #79 (13104+5): bp=Pattern_White_Space:Pat_WS
+	//  #83 (13111+5): bp=Pattern_White_Space:Pat_WS
 	0x0009, 0x000D, 0x0020, 0x0020, 0x0085, 0x0085, 0x200E, 0x200F,
 	0x2028, 0x2029,
-	//  #80 (13109+13): bp=Quotation_Mark:QMark
+	//  #84 (13116+13): bp=Quotation_Mark:QMark
 	0x0022, 0x0022, 0x0027, 0x0027, 0x00AB, 0x00AB, 0x00BB, 0x00BB,
 	0x2018, 0x201F, 0x2039, 0x203A, 0x2E42, 0x2E42, 0x300C, 0x300F,
 	0x301D, 0x301F, 0xFE41, 0xFE44, 0xFF02, 0xFF02, 0xFF07, 0xFF07,
 	0xFF62, 0xFF63,
-	//  #81 (13122+3): bp=Radical
+	//  #85 (13129+3): bp=Radical
 	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5,
-	//  #82 (13125+1): bp=Regional_Indicator:RI
+	//  #86 (13132+1): bp=Regional_Indicator:RI
 	0x1F1E6, 0x1F1FF,
-	//  #83 (13126+80): bp=Sentence_Terminal:STerm
+	//  #87 (13133+81): bp=Sentence_Terminal:STerm
 	0x0021, 0x0021, 0x002E, 0x002E, 0x003F, 0x003F, 0x0589, 0x0589,
 	0x061D, 0x061F, 0x06D4, 0x06D4, 0x0700, 0x0702, 0x07F9, 0x07F9,
 	0x0837, 0x0837, 0x0839, 0x0839, 0x083D, 0x083E, 0x0964, 0x0965,
 	0x104A, 0x104B, 0x1362, 0x1362, 0x1367, 0x1368, 0x166E, 0x166E,
-	0x1735, 0x1736, 0x1803, 0x1803, 0x1809, 0x1809, 0x1944, 0x1945,
-	0x1AA8, 0x1AAB, 0x1B5A, 0x1B5B, 0x1B5E, 0x1B5F, 0x1B7D, 0x1B7E,
-	0x1C3B, 0x1C3C, 0x1C7E, 0x1C7F, 0x203C, 0x203D, 0x2047, 0x2049,
-	0x2E2E, 0x2E2E, 0x2E3C, 0x2E3C, 0x2E53, 0x2E54, 0x3002, 0x3002,
-	0xA4FF, 0xA4FF, 0xA60E, 0xA60F, 0xA6F3, 0xA6F3, 0xA6F7, 0xA6F7,
-	0xA876, 0xA877, 0xA8CE, 0xA8CF, 0xA92F, 0xA92F, 0xA9C8, 0xA9C9,
-	0xAA5D, 0xAA5F, 0xAAF0, 0xAAF1, 0xABEB, 0xABEB, 0xFE52, 0xFE52,
-	0xFE56, 0xFE57, 0xFF01, 0xFF01, 0xFF0E, 0xFF0E, 0xFF1F, 0xFF1F,
-	0xFF61, 0xFF61, 0x10A56, 0x10A57, 0x10F55, 0x10F59, 0x10F86, 0x10F89,
-	0x11047, 0x11048, 0x110BE, 0x110C1, 0x11141, 0x11143, 0x111C5, 0x111C6,
-	0x111CD, 0x111CD, 0x111DE, 0x111DF, 0x11238, 0x11239, 0x1123B, 0x1123C,
-	0x112A9, 0x112A9, 0x1144B, 0x1144C, 0x115C2, 0x115C3, 0x115C9, 0x115D7,
-	0x11641, 0x11642, 0x1173C, 0x1173E, 0x11944, 0x11944, 0x11946, 0x11946,
-	0x11A42, 0x11A43, 0x11A9B, 0x11A9C, 0x11C41, 0x11C42, 0x11EF7, 0x11EF8,
-	0x11F43, 0x11F44, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5, 0x16B37, 0x16B38,
-	0x16B44, 0x16B44, 0x16E98, 0x16E98, 0x1BC9F, 0x1BC9F, 0x1DA88, 0x1DA88,
-	//  #84 (13206+34): bp=Soft_Dotted:SD
+	0x1735, 0x1736, 0x17D4, 0x17D5, 0x1803, 0x1803, 0x1809, 0x1809,
+	0x1944, 0x1945, 0x1AA8, 0x1AAB, 0x1B5A, 0x1B5B, 0x1B5E, 0x1B5F,
+	0x1B7D, 0x1B7E, 0x1C3B, 0x1C3C, 0x1C7E, 0x1C7F, 0x203C, 0x203D,
+	0x2047, 0x2049, 0x2E2E, 0x2E2E, 0x2E3C, 0x2E3C, 0x2E53, 0x2E54,
+	0x3002, 0x3002, 0xA4FF, 0xA4FF, 0xA60E, 0xA60F, 0xA6F3, 0xA6F3,
+	0xA6F7, 0xA6F7, 0xA876, 0xA877, 0xA8CE, 0xA8CF, 0xA92F, 0xA92F,
+	0xA9C8, 0xA9C9, 0xAA5D, 0xAA5F, 0xAAF0, 0xAAF1, 0xABEB, 0xABEB,
+	0xFE52, 0xFE52, 0xFE56, 0xFE57, 0xFF01, 0xFF01, 0xFF0E, 0xFF0E,
+	0xFF1F, 0xFF1F, 0xFF61, 0xFF61, 0x10A56, 0x10A57, 0x10F55, 0x10F59,
+	0x10F86, 0x10F89, 0x11047, 0x11048, 0x110BE, 0x110C1, 0x11141, 0x11143,
+	0x111C5, 0x111C6, 0x111CD, 0x111CD, 0x111DE, 0x111DF, 0x11238, 0x11239,
+	0x1123B, 0x1123C, 0x112A9, 0x112A9, 0x1144B, 0x1144C, 0x115C2, 0x115C3,
+	0x115C9, 0x115D7, 0x11641, 0x11642, 0x1173C, 0x1173E, 0x11944, 0x11944,
+	0x11946, 0x11946, 0x11A42, 0x11A43, 0x11A9B, 0x11A9C, 0x11C41, 0x11C42,
+	0x11EF7, 0x11EF8, 0x11F43, 0x11F44, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5,
+	0x16B37, 0x16B38, 0x16B44, 0x16B44, 0x16E98, 0x16E98, 0x1BC9F, 0x1BC9F,
+	0x1DA88, 0x1DA88,
+	//  #88 (13214+34): bp=Soft_Dotted:SD
 	0x0069, 0x006A, 0x012F, 0x012F, 0x0249, 0x0249, 0x0268, 0x0268,
 	0x029D, 0x029D, 0x02B2, 0x02B2, 0x03F3, 0x03F3, 0x0456, 0x0456,
 	0x0458, 0x0458, 0x1D62, 0x1D62, 0x1D96, 0x1D96, 0x1DA4, 0x1DA4,
@@ -8300,7 +9481,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D55A, 0x1D55B, 0x1D58E, 0x1D58F, 0x1D5C2, 0x1D5C3, 0x1D5F6, 0x1D5F7,
 	0x1D62A, 0x1D62B, 0x1D65E, 0x1D65F, 0x1D692, 0x1D693, 0x1DF1A, 0x1DF1A,
 	0x1E04C, 0x1E04D, 0x1E068, 0x1E068,
-	//  #85 (13240+108): bp=Terminal_Punctuation:Term
+	//  #89 (13248+108): bp=Terminal_Punctuation:Term
 	0x0021, 0x0021, 0x002C, 0x002C, 0x002E, 0x002E, 0x003A, 0x003B,
 	0x003F, 0x003F, 0x037E, 0x037E, 0x0387, 0x0387, 0x0589, 0x0589,
 	0x05C3, 0x05C3, 0x060C, 0x060C, 0x061B, 0x061B, 0x061D, 0x061F,
@@ -8328,12 +9509,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11C41, 0x11C43, 0x11C71, 0x11C71, 0x11EF7, 0x11EF8, 0x11F43, 0x11F44,
 	0x12470, 0x12474, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5, 0x16B37, 0x16B39,
 	0x16B44, 0x16B44, 0x16E97, 0x16E98, 0x1BC9F, 0x1BC9F, 0x1DA87, 0x1DA8A,
-	//  #86 (13348+16): bp=Unified_Ideograph:UIdeo
+	//  #90 (13356+17): bp=Unified_Ideograph:UIdeo
 	0x3400, 0x4DBF, 0x4E00, 0x9FFF, 0xFA0E, 0xFA0F, 0xFA11, 0xFA11,
 	0xFA13, 0xFA14, 0xFA1F, 0xFA1F, 0xFA21, 0xFA21, 0xFA23, 0xFA24,
 	0xFA27, 0xFA29, 0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D,
-	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #87 (13364+651): bp=Uppercase:Upper
+	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D, 0x30000, 0x3134A,
+	0x31350, 0x323AF,
+	//  #91 (13373+651): bp=Uppercase:Upper
 	0x0041, 0x005A, 0x00C0, 0x00D6, 0x00D8, 0x00DE, 0x0100, 0x0100,
 	0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106, 0x0108, 0x0108,
 	0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E, 0x0110, 0x0110,
@@ -8497,13 +9679,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D670, 0x1D689, 0x1D6A8, 0x1D6C0, 0x1D6E2, 0x1D6FA, 0x1D71C, 0x1D734,
 	0x1D756, 0x1D76E, 0x1D790, 0x1D7A8, 0x1D7CA, 0x1D7CA, 0x1E900, 0x1E921,
 	0x1F130, 0x1F149, 0x1F150, 0x1F169, 0x1F170, 0x1F189,
-	//  #88 (14015+4): bp=Variation_Selector:VS
+	//  #92 (14024+4): bp=Variation_Selector:VS
 	0x180B, 0x180D, 0x180F, 0x180F, 0xFE00, 0xFE0F, 0xE0100, 0xE01EF,
-	//  #89 (14019+10): bp=White_Space:space
+	//  #93 (14028+10): bp=White_Space:space
 	0x0009, 0x000D, 0x0020, 0x0020, 0x0085, 0x0085, 0x00A0, 0x00A0,
 	0x1680, 0x1680, 0x2000, 0x200A, 0x2028, 0x2029, 0x202F, 0x202F,
 	0x205F, 0x205F, 0x3000, 0x3000,
-	//  #90 (14029+775): bp=XID_Continue:XIDC
+	//  #94 (14038+776): bp=XID_Continue:XIDC
 	0x0030, 0x0039, 0x0041, 0x005A, 0x005F, 0x005F, 0x0061, 0x007A,
 	0x00AA, 0x00AA, 0x00B5, 0x00B5, 0x00B7, 0x00B7, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1, 0x02C6, 0x02D1,
@@ -8579,18 +9761,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D, 0x1F80, 0x1FB4, 0x1FB6, 0x1FBC,
 	0x1FBE, 0x1FBE, 0x1FC2, 0x1FC4, 0x1FC6, 0x1FCC, 0x1FD0, 0x1FD3,
 	0x1FD6, 0x1FDB, 0x1FE0, 0x1FEC, 0x1FF2, 0x1FF4, 0x1FF6, 0x1FFC,
-	0x203F, 0x2040, 0x2054, 0x2054, 0x2071, 0x2071, 0x207F, 0x207F,
-	0x2090, 0x209C, 0x20D0, 0x20DC, 0x20E1, 0x20E1, 0x20E5, 0x20F0,
-	0x2102, 0x2102, 0x2107, 0x2107, 0x210A, 0x2113, 0x2115, 0x2115,
-	0x2118, 0x211D, 0x2124, 0x2124, 0x2126, 0x2126, 0x2128, 0x2128,
-	0x212A, 0x2139, 0x213C, 0x213F, 0x2145, 0x2149, 0x214E, 0x214E,
-	0x2160, 0x2188, 0x2C00, 0x2CE4, 0x2CEB, 0x2CF3, 0x2D00, 0x2D25,
-	0x2D27, 0x2D27, 0x2D2D, 0x2D2D, 0x2D30, 0x2D67, 0x2D6F, 0x2D6F,
-	0x2D7F, 0x2D96, 0x2DA0, 0x2DA6, 0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6,
-	0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6, 0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6,
-	0x2DD8, 0x2DDE, 0x2DE0, 0x2DFF, 0x3005, 0x3007, 0x3021, 0x302F,
-	0x3031, 0x3035, 0x3038, 0x303C, 0x3041, 0x3096, 0x3099, 0x309A,
-	0x309D, 0x309F, 0x30A1, 0x30FA, 0x30FC, 0x30FF, 0x3105, 0x312F,
+	0x200C, 0x200D, 0x203F, 0x2040, 0x2054, 0x2054, 0x2071, 0x2071,
+	0x207F, 0x207F, 0x2090, 0x209C, 0x20D0, 0x20DC, 0x20E1, 0x20E1,
+	0x20E5, 0x20F0, 0x2102, 0x2102, 0x2107, 0x2107, 0x210A, 0x2113,
+	0x2115, 0x2115, 0x2118, 0x211D, 0x2124, 0x2124, 0x2126, 0x2126,
+	0x2128, 0x2128, 0x212A, 0x2139, 0x213C, 0x213F, 0x2145, 0x2149,
+	0x214E, 0x214E, 0x2160, 0x2188, 0x2C00, 0x2CE4, 0x2CEB, 0x2CF3,
+	0x2D00, 0x2D25, 0x2D27, 0x2D27, 0x2D2D, 0x2D2D, 0x2D30, 0x2D67,
+	0x2D6F, 0x2D6F, 0x2D7F, 0x2D96, 0x2DA0, 0x2DA6, 0x2DA8, 0x2DAE,
+	0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6, 0x2DC8, 0x2DCE,
+	0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE, 0x2DE0, 0x2DFF, 0x3005, 0x3007,
+	0x3021, 0x302F, 0x3031, 0x3035, 0x3038, 0x303C, 0x3041, 0x3096,
+	0x3099, 0x309A, 0x309D, 0x309F, 0x30A1, 0x30FF, 0x3105, 0x312F,
 	0x3131, 0x318E, 0x31A0, 0x31BF, 0x31F0, 0x31FF, 0x3400, 0x4DBF,
 	0x4E00, 0xA48C, 0xA4D0, 0xA4FD, 0xA500, 0xA60C, 0xA610, 0xA62B,
 	0xA640, 0xA66F, 0xA674, 0xA67D, 0xA67F, 0xA6F1, 0xA717, 0xA71F,
@@ -8611,7 +9793,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFE20, 0xFE2F, 0xFE33, 0xFE34, 0xFE4D, 0xFE4F, 0xFE71, 0xFE71,
 	0xFE73, 0xFE73, 0xFE77, 0xFE77, 0xFE79, 0xFE79, 0xFE7B, 0xFE7B,
 	0xFE7D, 0xFE7D, 0xFE7F, 0xFEFC, 0xFF10, 0xFF19, 0xFF21, 0xFF3A,
-	0xFF3F, 0xFF3F, 0xFF41, 0xFF5A, 0xFF66, 0xFFBE, 0xFFC2, 0xFFC7,
+	0xFF3F, 0xFF3F, 0xFF41, 0xFF5A, 0xFF65, 0xFFBE, 0xFFC2, 0xFFC7,
 	0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC, 0x10000, 0x1000B,
 	0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D, 0x1003F, 0x1004D,
 	0x10050, 0x1005D, 0x10080, 0x100FA, 0x10140, 0x10174, 0x101FD, 0x101FD,
@@ -8696,9 +9878,9 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
 	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
 	0x1EEAB, 0x1EEBB, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
-	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
-	0x30000, 0x3134A, 0x31350, 0x323AF, 0xE0100, 0xE01EF,
-	//  #91 (14804+666): bp=XID_Start:XIDS
+	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D,
+	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF, 0xE0100, 0xE01EF,
+	//  #95 (14814+667): bp=XID_Start:XIDS
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1,
 	0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC, 0x02EE, 0x02EE,
@@ -8864,74 +10046,9 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C,
 	0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3,
 	0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
-	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
-	0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #92 (15470+3): sc=Adlam:Adlm
-	0x1E900, 0x1E94B, 0x1E950, 0x1E959, 0x1E95E, 0x1E95F,
-	//  #93 (15473+3): sc=Ahom:Ahom scx=Ahom:Ahom
-	0x11700, 0x1171A, 0x1171D, 0x1172B, 0x11730, 0x11746,
-	//  #94 (15476+1): sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
-	0x14400, 0x14646,
-	//  #95 (15477+58): sc=Arabic:Arab
-	0x0600, 0x0604, 0x0606, 0x060B, 0x060D, 0x061A, 0x061C, 0x061E,
-	0x0620, 0x063F, 0x0641, 0x064A, 0x0656, 0x066F, 0x0671, 0x06DC,
-	0x06DE, 0x06FF, 0x0750, 0x077F, 0x0870, 0x088E, 0x0890, 0x0891,
-	0x0898, 0x08E1, 0x08E3, 0x08FF, 0xFB50, 0xFBC2, 0xFBD3, 0xFD3D,
-	0xFD40, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF, 0xFDF0, 0xFDFF,
-	0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x10E60, 0x10E7E, 0x10EFD, 0x10EFF,
-	0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F, 0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24,
-	0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32, 0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39,
-	0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42, 0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49,
-	0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F, 0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54,
-	0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59, 0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D,
-	0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62, 0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A,
-	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
-	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
-	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
-	//  #96 (15535+4): sc=Armenian:Armn scx=Armenian:Armn
-	0x0531, 0x0556, 0x0559, 0x058A, 0x058D, 0x058F, 0xFB13, 0xFB17,
-	//  #97 (15539+2): sc=Avestan:Avst scx=Avestan:Avst
-	0x10B00, 0x10B35, 0x10B39, 0x10B3F,
-	//  #98 (15541+2): sc=Balinese:Bali scx=Balinese:Bali
-	0x1B00, 0x1B4C, 0x1B50, 0x1B7E,
-	//  #99 (15543+2): sc=Bamum:Bamu scx=Bamum:Bamu
-	0xA6A0, 0xA6F7, 0x16800, 0x16A38,
-	//  #100 (15545+2): sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
-	0x16AD0, 0x16AED, 0x16AF0, 0x16AF5,
-	//  #101 (15547+2): sc=Batak:Batk scx=Batak:Batk
-	0x1BC0, 0x1BF3, 0x1BFC, 0x1BFF,
-	//  #102 (15549+14): sc=Bengali:Beng
-	0x0980, 0x0983, 0x0985, 0x098C, 0x098F, 0x0990, 0x0993, 0x09A8,
-	0x09AA, 0x09B0, 0x09B2, 0x09B2, 0x09B6, 0x09B9, 0x09BC, 0x09C4,
-	0x09C7, 0x09C8, 0x09CB, 0x09CE, 0x09D7, 0x09D7, 0x09DC, 0x09DD,
-	0x09DF, 0x09E3, 0x09E6, 0x09FE,
-	//  #103 (15563+4): sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
-	0x11C00, 0x11C08, 0x11C0A, 0x11C36, 0x11C38, 0x11C45, 0x11C50, 0x11C6C,
-	//  #104 (15567+3): sc=Bopomofo:Bopo
-	0x02EA, 0x02EB, 0x3105, 0x312F, 0x31A0, 0x31BF,
-	//  #105 (15570+3): sc=Brahmi:Brah scx=Brahmi:Brah
-	0x11000, 0x1104D, 0x11052, 0x11075, 0x1107F, 0x1107F,
-	//  #106 (15573+1): sc=Braille:Brai scx=Braille:Brai
-	0x2800, 0x28FF,
-	//  #107 (15574+2): sc=Buginese:Bugi
-	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F,
-	//  #108 (15576+1): sc=Buhid:Buhd
-	0x1740, 0x1753,
-	//  #109 (15577+3): sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
-	0x1400, 0x167F, 0x18B0, 0x18F5, 0x11AB0, 0x11ABF,
-	//  #110 (15580+1): sc=Carian:Cari scx=Carian:Cari
-	0x102A0, 0x102D0,
-	//  #111 (15581+2): sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
-	0x10530, 0x10563, 0x1056F, 0x1056F,
-	//  #112 (15583+2): sc=Chakma:Cakm
-	0x11100, 0x11134, 0x11136, 0x11147,
-	//  #113 (15585+4): sc=Cham:Cham scx=Cham:Cham
-	0xAA00, 0xAA36, 0xAA40, 0xAA4D, 0xAA50, 0xAA59, 0xAA5C, 0xAA5F,
-	//  #114 (15589+3): sc=Cherokee:Cher scx=Cherokee:Cher
-	0x13A0, 0x13F5, 0x13F8, 0x13FD, 0xAB70, 0xABBF,
-	//  #115 (15592+1): sc=Chorasmian:Chrs scx=Chorasmian:Chrs
-	0x10FB0, 0x10FCB,
-	//  #116 (15593+173): sc=Common:Zyyy
+	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D,
+	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
+	//  #96 (15481+173): sc=Common:Zyyy
 	0x0000, 0x0040, 0x005B, 0x0060, 0x007B, 0x00A9, 0x00AB, 0x00B9,
 	0x00BB, 0x00BF, 0x00D7, 0x00D7, 0x00F7, 0x00F7, 0x02B9, 0x02DF,
 	0x02E5, 0x02E9, 0x02EC, 0x02FF, 0x0374, 0x0374, 0x037E, 0x037E,
@@ -8945,10 +10062,10 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x20A0, 0x20C0, 0x2100, 0x2125, 0x2127, 0x2129, 0x212C, 0x2131,
 	0x2133, 0x214D, 0x214F, 0x215F, 0x2189, 0x218B, 0x2190, 0x2426,
 	0x2440, 0x244A, 0x2460, 0x27FF, 0x2900, 0x2B73, 0x2B76, 0x2B95,
-	0x2B97, 0x2BFF, 0x2E00, 0x2E5D, 0x2FF0, 0x2FFB, 0x3000, 0x3004,
-	0x3006, 0x3006, 0x3008, 0x3020, 0x3030, 0x3037, 0x303C, 0x303F,
-	0x309B, 0x309C, 0x30A0, 0x30A0, 0x30FB, 0x30FC, 0x3190, 0x319F,
-	0x31C0, 0x31E3, 0x3220, 0x325F, 0x327F, 0x32CF, 0x32FF, 0x32FF,
+	0x2B97, 0x2BFF, 0x2E00, 0x2E5D, 0x2FF0, 0x3004, 0x3006, 0x3006,
+	0x3008, 0x3020, 0x3030, 0x3037, 0x303C, 0x303F, 0x309B, 0x309C,
+	0x30A0, 0x30A0, 0x30FB, 0x30FC, 0x3190, 0x319F, 0x31C0, 0x31E3,
+	0x31EF, 0x31EF, 0x3220, 0x325F, 0x327F, 0x32CF, 0x32FF, 0x32FF,
 	0x3358, 0x33FF, 0x4DC0, 0x4DFF, 0xA700, 0xA721, 0xA788, 0xA78A,
 	0xA830, 0xA839, 0xA92E, 0xA92E, 0xA9CF, 0xA9CF, 0xAB5B, 0xAB5B,
 	0xAB6A, 0xAB6B, 0xFD3E, 0xFD3F, 0xFE10, 0xFE19, 0xFE30, 0xFE52,
@@ -8976,157 +10093,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8,
 	0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA, 0x1FBF0, 0x1FBF9, 0xE0001, 0xE0001,
 	0xE0020, 0xE007F,
-	//  #117 (15766+3): sc=Coptic:Copt:Qaac
-	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF,
-	//  #118 (15769+1): sc=Cypro_Minoan:Cpmn
-	0x12F90, 0x12FF2,
-	//  #119 (15770+4): sc=Cuneiform:Xsux scx=Cuneiform:Xsux
-	0x12000, 0x12399, 0x12400, 0x1246E, 0x12470, 0x12474, 0x12480, 0x12543,
-	//  #120 (15774+6): sc=Cypriot:Cprt
-	0x10800, 0x10805, 0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838,
-	0x1083C, 0x1083C, 0x1083F, 0x1083F,
-	//  #121 (15780+10): sc=Cyrillic:Cyrl
-	0x0400, 0x0484, 0x0487, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B,
-	0x1D78, 0x1D78, 0x2DE0, 0x2DFF, 0xA640, 0xA69F, 0xFE2E, 0xFE2F,
-	0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
-	//  #122 (15790+1): sc=Deseret:Dsrt scx=Deseret:Dsrt
-	0x10400, 0x1044F,
-	//  #123 (15791+5): sc=Devanagari:Deva
-	0x0900, 0x0950, 0x0955, 0x0963, 0x0966, 0x097F, 0xA8E0, 0xA8FF,
-	0x11B00, 0x11B09,
-	//  #124 (15796+8): sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
-	0x11900, 0x11906, 0x11909, 0x11909, 0x1190C, 0x11913, 0x11915, 0x11916,
-	0x11918, 0x11935, 0x11937, 0x11938, 0x1193B, 0x11946, 0x11950, 0x11959,
-	//  #125 (15804+1): sc=Dogra:Dogr
-	0x11800, 0x1183B,
-	//  #126 (15805+5): sc=Duployan:Dupl
-	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
-	0x1BC9C, 0x1BC9F,
-	//  #127 (15810+1): sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
-	0x13000, 0x13455,
-	//  #128 (15811+1): sc=Elbasan:Elba scx=Elbasan:Elba
-	0x10500, 0x10527,
-	//  #129 (15812+1): sc=Elymaic:Elym scx=Elymaic:Elym
-	0x10FE0, 0x10FF6,
-	//  #130 (15813+36): sc=Ethiopic:Ethi scx=Ethiopic:Ethi
-	0x1200, 0x1248, 0x124A, 0x124D, 0x1250, 0x1256, 0x1258, 0x1258,
-	0x125A, 0x125D, 0x1260, 0x1288, 0x128A, 0x128D, 0x1290, 0x12B0,
-	0x12B2, 0x12B5, 0x12B8, 0x12BE, 0x12C0, 0x12C0, 0x12C2, 0x12C5,
-	0x12C8, 0x12D6, 0x12D8, 0x1310, 0x1312, 0x1315, 0x1318, 0x135A,
-	0x135D, 0x137C, 0x1380, 0x1399, 0x2D80, 0x2D96, 0x2DA0, 0x2DA6,
-	0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6,
-	0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE, 0xAB01, 0xAB06,
-	0xAB09, 0xAB0E, 0xAB11, 0xAB16, 0xAB20, 0xAB26, 0xAB28, 0xAB2E,
-	0x1E7E0, 0x1E7E6, 0x1E7E8, 0x1E7EB, 0x1E7ED, 0x1E7EE, 0x1E7F0, 0x1E7FE,
-	//  #131 (15849+10): sc=Georgian:Geor
-	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FA,
-	0x10FC, 0x10FF, 0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25,
-	0x2D27, 0x2D27, 0x2D2D, 0x2D2D,
-	//  #132 (15859+6): sc=Glagolitic:Glag
-	0x2C00, 0x2C5F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
-	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
-	//  #133 (15865+1): sc=Gothic:Goth scx=Gothic:Goth
-	0x10330, 0x1034A,
-	//  #134 (15866+15): sc=Grantha:Gran
-	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
-	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133C, 0x11344,
-	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
-	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374,
-	//  #135 (15881+36): sc=Greek:Grek
-	0x0370, 0x0373, 0x0375, 0x0377, 0x037A, 0x037D, 0x037F, 0x037F,
-	0x0384, 0x0384, 0x0386, 0x0386, 0x0388, 0x038A, 0x038C, 0x038C,
-	0x038E, 0x03A1, 0x03A3, 0x03E1, 0x03F0, 0x03FF, 0x1D26, 0x1D2A,
-	0x1D5D, 0x1D61, 0x1D66, 0x1D6A, 0x1DBF, 0x1DBF, 0x1F00, 0x1F15,
-	0x1F18, 0x1F1D, 0x1F20, 0x1F45, 0x1F48, 0x1F4D, 0x1F50, 0x1F57,
-	0x1F59, 0x1F59, 0x1F5B, 0x1F5B, 0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D,
-	0x1F80, 0x1FB4, 0x1FB6, 0x1FC4, 0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB,
-	0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4, 0x1FF6, 0x1FFE, 0x2126, 0x2126,
-	0xAB65, 0xAB65, 0x10140, 0x1018E, 0x101A0, 0x101A0, 0x1D200, 0x1D245,
-	//  #136 (15917+14): sc=Gujarati:Gujr
-	0x0A81, 0x0A83, 0x0A85, 0x0A8D, 0x0A8F, 0x0A91, 0x0A93, 0x0AA8,
-	0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3, 0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5,
-	0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD, 0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3,
-	0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
-	//  #137 (15931+6): sc=Gunjala_Gondi:Gong
-	0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E, 0x11D90, 0x11D91,
-	0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
-	//  #138 (15937+16): sc=Gurmukhi:Guru
-	0x0A01, 0x0A03, 0x0A05, 0x0A0A, 0x0A0F, 0x0A10, 0x0A13, 0x0A28,
-	0x0A2A, 0x0A30, 0x0A32, 0x0A33, 0x0A35, 0x0A36, 0x0A38, 0x0A39,
-	0x0A3C, 0x0A3C, 0x0A3E, 0x0A42, 0x0A47, 0x0A48, 0x0A4B, 0x0A4D,
-	0x0A51, 0x0A51, 0x0A59, 0x0A5C, 0x0A5E, 0x0A5E, 0x0A66, 0x0A76,
-	//  #139 (15953+21): sc=Han:Hani
-	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3005, 0x3005,
-	0x3007, 0x3007, 0x3021, 0x3029, 0x3038, 0x303B, 0x3400, 0x4DBF,
-	0x4E00, 0x9FFF, 0xF900, 0xFA6D, 0xFA70, 0xFAD9, 0x16FE2, 0x16FE3,
-	0x16FF0, 0x16FF1, 0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D,
-	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A,
-	0x31350, 0x323AF,
-	//  #140 (15974+14): sc=Hangul:Hang
-	0x1100, 0x11FF, 0x302E, 0x302F, 0x3131, 0x318E, 0x3200, 0x321E,
-	0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3, 0xD7B0, 0xD7C6,
-	0xD7CB, 0xD7FB, 0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF,
-	0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC,
-	//  #141 (15988+2): sc=Hanifi_Rohingya:Rohg
-	0x10D00, 0x10D27, 0x10D30, 0x10D39,
-	//  #142 (15990+1): sc=Hanunoo:Hano
-	0x1720, 0x1734,
-	//  #143 (15991+3): sc=Hatran:Hatr scx=Hatran:Hatr
-	0x108E0, 0x108F2, 0x108F4, 0x108F5, 0x108FB, 0x108FF,
-	//  #144 (15994+9): sc=Hebrew:Hebr scx=Hebrew:Hebr
-	0x0591, 0x05C7, 0x05D0, 0x05EA, 0x05EF, 0x05F4, 0xFB1D, 0xFB36,
-	0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41, 0xFB43, 0xFB44,
-	0xFB46, 0xFB4F,
-	//  #145 (16003+6): sc=Hiragana:Hira
-	0x3041, 0x3096, 0x309D, 0x309F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132,
-	0x1B150, 0x1B152, 0x1F200, 0x1F200,
-	//  #146 (16009+2): sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
-	0x10840, 0x10855, 0x10857, 0x1085F,
-	//  #147 (16011+29): sc=Inherited:Zinh:Qaai
-	0x0300, 0x036F, 0x0485, 0x0486, 0x064B, 0x0655, 0x0670, 0x0670,
-	0x0951, 0x0954, 0x1AB0, 0x1ACE, 0x1CD0, 0x1CD2, 0x1CD4, 0x1CE0,
-	0x1CE2, 0x1CE8, 0x1CED, 0x1CED, 0x1CF4, 0x1CF4, 0x1CF8, 0x1CF9,
-	0x1DC0, 0x1DFF, 0x200C, 0x200D, 0x20D0, 0x20F0, 0x302A, 0x302D,
-	0x3099, 0x309A, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D, 0x101FD, 0x101FD,
-	0x102E0, 0x102E0, 0x1133B, 0x1133B, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46,
-	0x1D167, 0x1D169, 0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD,
-	0xE0100, 0xE01EF,
-	//  #148 (16040+2): sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
-	0x10B60, 0x10B72, 0x10B78, 0x10B7F,
-	//  #149 (16042+2): sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
-	0x10B40, 0x10B55, 0x10B58, 0x10B5F,
-	//  #150 (16044+3): sc=Javanese:Java
-	0xA980, 0xA9CD, 0xA9D0, 0xA9D9, 0xA9DE, 0xA9DF,
-	//  #151 (16047+2): sc=Kaithi:Kthi
-	0x11080, 0x110C2, 0x110CD, 0x110CD,
-	//  #152 (16049+13): sc=Kannada:Knda
-	0x0C80, 0x0C8C, 0x0C8E, 0x0C90, 0x0C92, 0x0CA8, 0x0CAA, 0x0CB3,
-	0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4, 0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD,
-	0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE, 0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF,
-	0x0CF1, 0x0CF3,
-	//  #153 (16062+14): sc=Katakana:Kana
-	0x30A1, 0x30FA, 0x30FD, 0x30FF, 0x31F0, 0x31FF, 0x32D0, 0x32FE,
-	0x3300, 0x3357, 0xFF66, 0xFF6F, 0xFF71, 0xFF9D, 0x1AFF0, 0x1AFF3,
-	0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1B000, 0x1B000, 0x1B120, 0x1B122,
-	0x1B155, 0x1B155, 0x1B164, 0x1B167,
-	//  #154 (16076+2): sc=Kayah_Li:Kali
-	0xA900, 0xA92D, 0xA92F, 0xA92F,
-	//  #155 (16078+8): sc=Kharoshthi:Khar scx=Kharoshthi:Khar
-	0x10A00, 0x10A03, 0x10A05, 0x10A06, 0x10A0C, 0x10A13, 0x10A15, 0x10A17,
-	0x10A19, 0x10A35, 0x10A38, 0x10A3A, 0x10A3F, 0x10A48, 0x10A50, 0x10A58,
-	//  #156 (16086+2): sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
-	0x16FE4, 0x16FE4, 0x18B00, 0x18CD5,
-	//  #157 (16088+4): sc=Khmer:Khmr scx=Khmer:Khmr
-	0x1780, 0x17DD, 0x17E0, 0x17E9, 0x17F0, 0x17F9, 0x19E0, 0x19FF,
-	//  #158 (16092+2): sc=Khojki:Khoj
-	0x11200, 0x11211, 0x11213, 0x11241,
-	//  #159 (16094+2): sc=Khudawadi:Sind
-	0x112B0, 0x112EA, 0x112F0, 0x112F9,
-	//  #160 (16096+11): sc=Lao:Laoo scx=Lao:Laoo
-	0x0E81, 0x0E82, 0x0E84, 0x0E84, 0x0E86, 0x0E8A, 0x0E8C, 0x0EA3,
-	0x0EA5, 0x0EA5, 0x0EA7, 0x0EBD, 0x0EC0, 0x0EC4, 0x0EC6, 0x0EC6,
-	0x0EC8, 0x0ECE, 0x0ED0, 0x0ED9, 0x0EDC, 0x0EDF,
-	//  #161 (16107+39): sc=Latin:Latn
+	//  #97 (15654+39): sc=Latin:Latn
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02B8, 0x02E0, 0x02E4,
 	0x1D00, 0x1D25, 0x1D2C, 0x1D5C, 0x1D62, 0x1D65, 0x1D6B, 0x1D77,
@@ -9137,247 +10104,609 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xAB30, 0xAB5A, 0xAB5C, 0xAB64, 0xAB66, 0xAB69, 0xFB00, 0xFB06,
 	0xFF21, 0xFF3A, 0xFF41, 0xFF5A, 0x10780, 0x10785, 0x10787, 0x107B0,
 	0x107B2, 0x107BA, 0x1DF00, 0x1DF1E, 0x1DF25, 0x1DF2A,
-	//  #162 (16146+3): sc=Lepcha:Lepc scx=Lepcha:Lepc
-	0x1C00, 0x1C37, 0x1C3B, 0x1C49, 0x1C4D, 0x1C4F,
-	//  #163 (16149+5): sc=Limbu:Limb
-	0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B, 0x1940, 0x1940,
-	0x1944, 0x194F,
-	//  #164 (16154+3): sc=Linear_A:Lina
-	0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
-	//  #165 (16157+7): sc=Linear_B:Linb
-	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
-	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA,
-	//  #166 (16164+2): sc=Lisu:Lisu scx=Lisu:Lisu
-	0xA4D0, 0xA4FF, 0x11FB0, 0x11FB0,
-	//  #167 (16166+1): sc=Lycian:Lyci scx=Lycian:Lyci
-	0x10280, 0x1029C,
-	//  #168 (16167+2): sc=Lydian:Lydi scx=Lydian:Lydi
-	0x10920, 0x10939, 0x1093F, 0x1093F,
-	//  #169 (16169+1): sc=Mahajani:Mahj
-	0x11150, 0x11176,
-	//  #170 (16170+1): sc=Makasar:Maka scx=Makasar:Maka
-	0x11EE0, 0x11EF8,
-	//  #171 (16171+7): sc=Malayalam:Mlym
-	0x0D00, 0x0D0C, 0x0D0E, 0x0D10, 0x0D12, 0x0D44, 0x0D46, 0x0D48,
-	0x0D4A, 0x0D4F, 0x0D54, 0x0D63, 0x0D66, 0x0D7F,
-	//  #172 (16178+2): sc=Mandaic:Mand
-	0x0840, 0x085B, 0x085E, 0x085E,
-	//  #173 (16180+2): sc=Manichaean:Mani
-	0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
-	//  #174 (16182+3): sc=Marchen:Marc scx=Marchen:Marc
-	0x11C70, 0x11C8F, 0x11C92, 0x11CA7, 0x11CA9, 0x11CB6,
-	//  #175 (16185+7): sc=Masaram_Gondi:Gonm
-	0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36, 0x11D3A, 0x11D3A,
-	0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
-	//  #176 (16192+1): sc=Medefaidrin:Medf scx=Medefaidrin:Medf
-	0x16E40, 0x16E9A,
-	//  #177 (16193+3): sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
-	0xAAE0, 0xAAF6, 0xABC0, 0xABED, 0xABF0, 0xABF9,
-	//  #178 (16196+2): sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
-	0x1E800, 0x1E8C4, 0x1E8C7, 0x1E8D6,
-	//  #179 (16198+3): sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
-	0x109A0, 0x109B7, 0x109BC, 0x109CF, 0x109D2, 0x109FF,
-	//  #180 (16201+1): sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
-	0x10980, 0x1099F,
-	//  #181 (16202+3): sc=Miao:Plrd scx=Miao:Plrd
-	0x16F00, 0x16F4A, 0x16F4F, 0x16F87, 0x16F8F, 0x16F9F,
-	//  #182 (16205+2): sc=Modi:Modi
-	0x11600, 0x11644, 0x11650, 0x11659,
-	//  #183 (16207+6): sc=Mongolian:Mong
-	0x1800, 0x1801, 0x1804, 0x1804, 0x1806, 0x1819, 0x1820, 0x1878,
-	0x1880, 0x18AA, 0x11660, 0x1166C,
-	//  #184 (16213+3): sc=Mro:Mroo scx=Mro:Mroo
-	0x16A40, 0x16A5E, 0x16A60, 0x16A69, 0x16A6E, 0x16A6F,
-	//  #185 (16216+5): sc=Multani:Mult
-	0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D, 0x1128F, 0x1129D,
-	0x1129F, 0x112A9,
-	//  #186 (16221+3): sc=Myanmar:Mymr
-	0x1000, 0x109F, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
-	//  #187 (16224+2): sc=Nabataean:Nbat scx=Nabataean:Nbat
-	0x10880, 0x1089E, 0x108A7, 0x108AF,
-	//  #188 (16226+3): sc=Nandinagari:Nand
-	0x119A0, 0x119A7, 0x119AA, 0x119D7, 0x119DA, 0x119E4,
-	//  #189 (16229+4): sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
-	0x1980, 0x19AB, 0x19B0, 0x19C9, 0x19D0, 0x19DA, 0x19DE, 0x19DF,
-	//  #190 (16233+2): sc=Newa:Newa scx=Newa:Newa
-	0x11400, 0x1145B, 0x1145D, 0x11461,
-	//  #191 (16235+2): sc=Nko:Nkoo
-	0x07C0, 0x07FA, 0x07FD, 0x07FF,
-	//  #192 (16237+2): sc=Nushu:Nshu scx=Nushu:Nshu
-	0x16FE1, 0x16FE1, 0x1B170, 0x1B2FB,
-	//  #193 (16239+4): sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
-	0x1E100, 0x1E12C, 0x1E130, 0x1E13D, 0x1E140, 0x1E149, 0x1E14E, 0x1E14F,
-	//  #194 (16243+1): sc=Ogham:Ogam scx=Ogham:Ogam
-	0x1680, 0x169C,
-	//  #195 (16244+1): sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
-	0x1C50, 0x1C7F,
-	//  #196 (16245+3): sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
-	0x10C80, 0x10CB2, 0x10CC0, 0x10CF2, 0x10CFA, 0x10CFF,
-	//  #197 (16248+2): sc=Old_Italic:Ital scx=Old_Italic:Ital
-	0x10300, 0x10323, 0x1032D, 0x1032F,
-	//  #198 (16250+1): sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
-	0x10A80, 0x10A9F,
-	//  #199 (16251+1): sc=Old_Permic:Perm
-	0x10350, 0x1037A,
-	//  #200 (16252+2): sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
-	0x103A0, 0x103C3, 0x103C8, 0x103D5,
-	//  #201 (16254+1): sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
-	0x10F00, 0x10F27,
-	//  #202 (16255+1): sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
-	0x10A60, 0x10A7F,
-	//  #203 (16256+1): sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
-	0x10C00, 0x10C48,
-	//  #204 (16257+1): sc=Old_Uyghur:Ougr
-	0x10F70, 0x10F89,
-	//  #205 (16258+14): sc=Oriya:Orya
+	//  #98 (15693+36): sc=Greek:Grek
+	0x0370, 0x0373, 0x0375, 0x0377, 0x037A, 0x037D, 0x037F, 0x037F,
+	0x0384, 0x0384, 0x0386, 0x0386, 0x0388, 0x038A, 0x038C, 0x038C,
+	0x038E, 0x03A1, 0x03A3, 0x03E1, 0x03F0, 0x03FF, 0x1D26, 0x1D2A,
+	0x1D5D, 0x1D61, 0x1D66, 0x1D6A, 0x1DBF, 0x1DBF, 0x1F00, 0x1F15,
+	0x1F18, 0x1F1D, 0x1F20, 0x1F45, 0x1F48, 0x1F4D, 0x1F50, 0x1F57,
+	0x1F59, 0x1F59, 0x1F5B, 0x1F5B, 0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D,
+	0x1F80, 0x1FB4, 0x1FB6, 0x1FC4, 0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB,
+	0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4, 0x1FF6, 0x1FFE, 0x2126, 0x2126,
+	0xAB65, 0xAB65, 0x10140, 0x1018E, 0x101A0, 0x101A0, 0x1D200, 0x1D245,
+	//  #99 (15729+10): sc=Cyrillic:Cyrl
+	0x0400, 0x0484, 0x0487, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B,
+	0x1D78, 0x1D78, 0x2DE0, 0x2DFF, 0xA640, 0xA69F, 0xFE2E, 0xFE2F,
+	0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
+	//  #100 (15739+4): sc=Armenian:Armn scx=Armenian:Armn
+	0x0531, 0x0556, 0x0559, 0x058A, 0x058D, 0x058F, 0xFB13, 0xFB17,
+	//  #101 (15743+9): sc=Hebrew:Hebr scx=Hebrew:Hebr
+	0x0591, 0x05C7, 0x05D0, 0x05EA, 0x05EF, 0x05F4, 0xFB1D, 0xFB36,
+	0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41, 0xFB43, 0xFB44,
+	0xFB46, 0xFB4F,
+	//  #102 (15752+58): sc=Arabic:Arab
+	0x0600, 0x0604, 0x0606, 0x060B, 0x060D, 0x061A, 0x061C, 0x061E,
+	0x0620, 0x063F, 0x0641, 0x064A, 0x0656, 0x066F, 0x0671, 0x06DC,
+	0x06DE, 0x06FF, 0x0750, 0x077F, 0x0870, 0x088E, 0x0890, 0x0891,
+	0x0898, 0x08E1, 0x08E3, 0x08FF, 0xFB50, 0xFBC2, 0xFBD3, 0xFD3D,
+	0xFD40, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF, 0xFDF0, 0xFDFF,
+	0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x10E60, 0x10E7E, 0x10EFD, 0x10EFF,
+	0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F, 0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24,
+	0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32, 0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39,
+	0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42, 0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49,
+	0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F, 0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54,
+	0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59, 0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D,
+	0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62, 0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A,
+	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
+	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
+	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
+	//  #103 (15810+4): sc=Syriac:Syrc
+	0x0700, 0x070D, 0x070F, 0x074A, 0x074D, 0x074F, 0x0860, 0x086A,
+	//  #104 (15814+1): sc=Thaana:Thaa
+	0x0780, 0x07B1,
+	//  #105 (15815+5): sc=Devanagari:Deva
+	0x0900, 0x0950, 0x0955, 0x0963, 0x0966, 0x097F, 0xA8E0, 0xA8FF,
+	0x11B00, 0x11B09,
+	//  #106 (15820+14): sc=Bengali:Beng
+	0x0980, 0x0983, 0x0985, 0x098C, 0x098F, 0x0990, 0x0993, 0x09A8,
+	0x09AA, 0x09B0, 0x09B2, 0x09B2, 0x09B6, 0x09B9, 0x09BC, 0x09C4,
+	0x09C7, 0x09C8, 0x09CB, 0x09CE, 0x09D7, 0x09D7, 0x09DC, 0x09DD,
+	0x09DF, 0x09E3, 0x09E6, 0x09FE,
+	//  #107 (15834+16): sc=Gurmukhi:Guru
+	0x0A01, 0x0A03, 0x0A05, 0x0A0A, 0x0A0F, 0x0A10, 0x0A13, 0x0A28,
+	0x0A2A, 0x0A30, 0x0A32, 0x0A33, 0x0A35, 0x0A36, 0x0A38, 0x0A39,
+	0x0A3C, 0x0A3C, 0x0A3E, 0x0A42, 0x0A47, 0x0A48, 0x0A4B, 0x0A4D,
+	0x0A51, 0x0A51, 0x0A59, 0x0A5C, 0x0A5E, 0x0A5E, 0x0A66, 0x0A76,
+	//  #108 (15850+14): sc=Gujarati:Gujr
+	0x0A81, 0x0A83, 0x0A85, 0x0A8D, 0x0A8F, 0x0A91, 0x0A93, 0x0AA8,
+	0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3, 0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5,
+	0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD, 0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3,
+	0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
+	//  #109 (15864+14): sc=Oriya:Orya
 	0x0B01, 0x0B03, 0x0B05, 0x0B0C, 0x0B0F, 0x0B10, 0x0B13, 0x0B28,
 	0x0B2A, 0x0B30, 0x0B32, 0x0B33, 0x0B35, 0x0B39, 0x0B3C, 0x0B44,
 	0x0B47, 0x0B48, 0x0B4B, 0x0B4D, 0x0B55, 0x0B57, 0x0B5C, 0x0B5D,
 	0x0B5F, 0x0B63, 0x0B66, 0x0B77,
-	//  #206 (16272+2): sc=Osage:Osge scx=Osage:Osge
-	0x104B0, 0x104D3, 0x104D8, 0x104FB,
-	//  #207 (16274+2): sc=Osmanya:Osma scx=Osmanya:Osma
-	0x10480, 0x1049D, 0x104A0, 0x104A9,
-	//  #208 (16276+5): sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
-	0x16B00, 0x16B45, 0x16B50, 0x16B59, 0x16B5B, 0x16B61, 0x16B63, 0x16B77,
-	0x16B7D, 0x16B8F,
-	//  #209 (16281+1): sc=Palmyrene:Palm scx=Palmyrene:Palm
-	0x10860, 0x1087F,
-	//  #210 (16282+1): sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
-	0x11AC0, 0x11AF8,
-	//  #211 (16283+1): sc=Phags_Pa:Phag
-	0xA840, 0xA877,
-	//  #212 (16284+2): sc=Phoenician:Phnx scx=Phoenician:Phnx
-	0x10900, 0x1091B, 0x1091F, 0x1091F,
-	//  #213 (16286+3): sc=Psalter_Pahlavi:Phlp
-	0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
-	//  #214 (16289+2): sc=Rejang:Rjng scx=Rejang:Rjng
-	0xA930, 0xA953, 0xA95F, 0xA95F,
-	//  #215 (16291+2): sc=Runic:Runr scx=Runic:Runr
-	0x16A0, 0x16EA, 0x16EE, 0x16F8,
-	//  #216 (16293+2): sc=Samaritan:Samr scx=Samaritan:Samr
-	0x0800, 0x082D, 0x0830, 0x083E,
-	//  #217 (16295+2): sc=Saurashtra:Saur scx=Saurashtra:Saur
-	0xA880, 0xA8C5, 0xA8CE, 0xA8D9,
-	//  #218 (16297+1): sc=Sharada:Shrd
-	0x11180, 0x111DF,
-	//  #219 (16298+1): sc=Shavian:Shaw scx=Shavian:Shaw
-	0x10450, 0x1047F,
-	//  #220 (16299+2): sc=Siddham:Sidd scx=Siddham:Sidd
-	0x11580, 0x115B5, 0x115B8, 0x115DD,
-	//  #221 (16301+3): sc=SignWriting:Sgnw scx=SignWriting:Sgnw
-	0x1D800, 0x1DA8B, 0x1DA9B, 0x1DA9F, 0x1DAA1, 0x1DAAF,
-	//  #222 (16304+13): sc=Sinhala:Sinh
-	0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1, 0x0DB3, 0x0DBB,
-	0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA, 0x0DCF, 0x0DD4,
-	0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF, 0x0DF2, 0x0DF4,
-	0x111E1, 0x111F4,
-	//  #223 (16317+1): sc=Sogdian:Sogd
-	0x10F30, 0x10F59,
-	//  #224 (16318+2): sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
-	0x110D0, 0x110E8, 0x110F0, 0x110F9,
-	//  #225 (16320+1): sc=Soyombo:Soyo scx=Soyombo:Soyo
-	0x11A50, 0x11AA2,
-	//  #226 (16321+2): sc=Sundanese:Sund scx=Sundanese:Sund
-	0x1B80, 0x1BBF, 0x1CC0, 0x1CC7,
-	//  #227 (16323+1): sc=Syloti_Nagri:Sylo
-	0xA800, 0xA82C,
-	//  #228 (16324+4): sc=Syriac:Syrc
-	0x0700, 0x070D, 0x070F, 0x074A, 0x074D, 0x074F, 0x0860, 0x086A,
-	//  #229 (16328+2): sc=Tagalog:Tglg
-	0x1700, 0x1715, 0x171F, 0x171F,
-	//  #230 (16330+3): sc=Tagbanwa:Tagb
-	0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
-	//  #231 (16333+2): sc=Tai_Le:Tale
-	0x1950, 0x196D, 0x1970, 0x1974,
-	//  #232 (16335+5): sc=Tai_Tham:Lana scx=Tai_Tham:Lana
-	0x1A20, 0x1A5E, 0x1A60, 0x1A7C, 0x1A7F, 0x1A89, 0x1A90, 0x1A99,
-	0x1AA0, 0x1AAD,
-	//  #233 (16340+2): sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
-	0xAA80, 0xAAC2, 0xAADB, 0xAADF,
-	//  #234 (16342+2): sc=Takri:Takr
-	0x11680, 0x116B9, 0x116C0, 0x116C9,
-	//  #235 (16344+18): sc=Tamil:Taml
+	//  #110 (15878+18): sc=Tamil:Taml
 	0x0B82, 0x0B83, 0x0B85, 0x0B8A, 0x0B8E, 0x0B90, 0x0B92, 0x0B95,
 	0x0B99, 0x0B9A, 0x0B9C, 0x0B9C, 0x0B9E, 0x0B9F, 0x0BA3, 0x0BA4,
 	0x0BA8, 0x0BAA, 0x0BAE, 0x0BB9, 0x0BBE, 0x0BC2, 0x0BC6, 0x0BC8,
 	0x0BCA, 0x0BCD, 0x0BD0, 0x0BD0, 0x0BD7, 0x0BD7, 0x0BE6, 0x0BFA,
 	0x11FC0, 0x11FF1, 0x11FFF, 0x11FFF,
-	//  #236 (16362+2): sc=Tangsa:Tnsa scx=Tangsa:Tnsa
-	0x16A70, 0x16ABE, 0x16AC0, 0x16AC9,
-	//  #237 (16364+4): sc=Tangut:Tang scx=Tangut:Tang
-	0x16FE0, 0x16FE0, 0x17000, 0x187F7, 0x18800, 0x18AFF, 0x18D00, 0x18D08,
-	//  #238 (16368+13): sc=Telugu:Telu
+	//  #111 (15896+13): sc=Telugu:Telu
 	0x0C00, 0x0C0C, 0x0C0E, 0x0C10, 0x0C12, 0x0C28, 0x0C2A, 0x0C39,
 	0x0C3C, 0x0C44, 0x0C46, 0x0C48, 0x0C4A, 0x0C4D, 0x0C55, 0x0C56,
 	0x0C58, 0x0C5A, 0x0C5D, 0x0C5D, 0x0C60, 0x0C63, 0x0C66, 0x0C6F,
 	0x0C77, 0x0C7F,
-	//  #239 (16381+1): sc=Thaana:Thaa
-	0x0780, 0x07B1,
-	//  #240 (16382+2): sc=Thai:Thai scx=Thai:Thai
+	//  #112 (15909+13): sc=Kannada:Knda
+	0x0C80, 0x0C8C, 0x0C8E, 0x0C90, 0x0C92, 0x0CA8, 0x0CAA, 0x0CB3,
+	0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4, 0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD,
+	0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE, 0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF,
+	0x0CF1, 0x0CF3,
+	//  #113 (15922+7): sc=Malayalam:Mlym
+	0x0D00, 0x0D0C, 0x0D0E, 0x0D10, 0x0D12, 0x0D44, 0x0D46, 0x0D48,
+	0x0D4A, 0x0D4F, 0x0D54, 0x0D63, 0x0D66, 0x0D7F,
+	//  #114 (15929+13): sc=Sinhala:Sinh
+	0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1, 0x0DB3, 0x0DBB,
+	0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA, 0x0DCF, 0x0DD4,
+	0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF, 0x0DF2, 0x0DF4,
+	0x111E1, 0x111F4,
+	//  #115 (15942+2): sc=Thai scx=Thai
 	0x0E01, 0x0E3A, 0x0E40, 0x0E5B,
-	//  #241 (16384+7): sc=Tibetan:Tibt scx=Tibetan:Tibt
+	//  #116 (15944+11): sc=Lao:Laoo scx=Lao:Laoo
+	0x0E81, 0x0E82, 0x0E84, 0x0E84, 0x0E86, 0x0E8A, 0x0E8C, 0x0EA3,
+	0x0EA5, 0x0EA5, 0x0EA7, 0x0EBD, 0x0EC0, 0x0EC4, 0x0EC6, 0x0EC6,
+	0x0EC8, 0x0ECE, 0x0ED0, 0x0ED9, 0x0EDC, 0x0EDF,
+	//  #117 (15955+7): sc=Tibetan:Tibt scx=Tibetan:Tibt
 	0x0F00, 0x0F47, 0x0F49, 0x0F6C, 0x0F71, 0x0F97, 0x0F99, 0x0FBC,
 	0x0FBE, 0x0FCC, 0x0FCE, 0x0FD4, 0x0FD9, 0x0FDA,
-	//  #242 (16391+3): sc=Tifinagh:Tfng scx=Tifinagh:Tfng
-	0x2D30, 0x2D67, 0x2D6F, 0x2D70, 0x2D7F, 0x2D7F,
-	//  #243 (16394+2): sc=Tirhuta:Tirh
-	0x11480, 0x114C7, 0x114D0, 0x114D9,
-	//  #244 (16396+1): sc=Toto scx=Toto
-	0x1E290, 0x1E2AE,
-	//  #245 (16397+2): sc=Ugaritic:Ugar scx=Ugaritic:Ugar
+	//  #118 (15962+3): sc=Myanmar:Mymr
+	0x1000, 0x109F, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
+	//  #119 (15965+10): sc=Georgian:Geor
+	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FA,
+	0x10FC, 0x10FF, 0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25,
+	0x2D27, 0x2D27, 0x2D2D, 0x2D2D,
+	//  #120 (15975+14): sc=Hangul:Hang
+	0x1100, 0x11FF, 0x302E, 0x302F, 0x3131, 0x318E, 0x3200, 0x321E,
+	0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3, 0xD7B0, 0xD7C6,
+	0xD7CB, 0xD7FB, 0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF,
+	0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC,
+	//  #121 (15989+36): sc=Ethiopic:Ethi scx=Ethiopic:Ethi
+	0x1200, 0x1248, 0x124A, 0x124D, 0x1250, 0x1256, 0x1258, 0x1258,
+	0x125A, 0x125D, 0x1260, 0x1288, 0x128A, 0x128D, 0x1290, 0x12B0,
+	0x12B2, 0x12B5, 0x12B8, 0x12BE, 0x12C0, 0x12C0, 0x12C2, 0x12C5,
+	0x12C8, 0x12D6, 0x12D8, 0x1310, 0x1312, 0x1315, 0x1318, 0x135A,
+	0x135D, 0x137C, 0x1380, 0x1399, 0x2D80, 0x2D96, 0x2DA0, 0x2DA6,
+	0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6,
+	0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE, 0xAB01, 0xAB06,
+	0xAB09, 0xAB0E, 0xAB11, 0xAB16, 0xAB20, 0xAB26, 0xAB28, 0xAB2E,
+	0x1E7E0, 0x1E7E6, 0x1E7E8, 0x1E7EB, 0x1E7ED, 0x1E7EE, 0x1E7F0, 0x1E7FE,
+	//  #122 (16025+3): sc=Cherokee:Cher scx=Cherokee:Cher
+	0x13A0, 0x13F5, 0x13F8, 0x13FD, 0xAB70, 0xABBF,
+	//  #123 (16028+3): sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
+	0x1400, 0x167F, 0x18B0, 0x18F5, 0x11AB0, 0x11ABF,
+	//  #124 (16031+1): sc=Ogham:Ogam scx=Ogham:Ogam
+	0x1680, 0x169C,
+	//  #125 (16032+2): sc=Runic:Runr scx=Runic:Runr
+	0x16A0, 0x16EA, 0x16EE, 0x16F8,
+	//  #126 (16034+4): sc=Khmer:Khmr scx=Khmer:Khmr
+	0x1780, 0x17DD, 0x17E0, 0x17E9, 0x17F0, 0x17F9, 0x19E0, 0x19FF,
+	//  #127 (16038+6): sc=Mongolian:Mong
+	0x1800, 0x1801, 0x1804, 0x1804, 0x1806, 0x1819, 0x1820, 0x1878,
+	0x1880, 0x18AA, 0x11660, 0x1166C,
+	//  #128 (16044+6): sc=Hiragana:Hira
+	0x3041, 0x3096, 0x309D, 0x309F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132,
+	0x1B150, 0x1B152, 0x1F200, 0x1F200,
+	//  #129 (16050+14): sc=Katakana:Kana
+	0x30A1, 0x30FA, 0x30FD, 0x30FF, 0x31F0, 0x31FF, 0x32D0, 0x32FE,
+	0x3300, 0x3357, 0xFF66, 0xFF6F, 0xFF71, 0xFF9D, 0x1AFF0, 0x1AFF3,
+	0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1B000, 0x1B000, 0x1B120, 0x1B122,
+	0x1B155, 0x1B155, 0x1B164, 0x1B167,
+	//  #130 (16064+3): sc=Bopomofo:Bopo
+	0x02EA, 0x02EB, 0x3105, 0x312F, 0x31A0, 0x31BF,
+	//  #131 (16067+22): sc=Han:Hani
+	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3005, 0x3005,
+	0x3007, 0x3007, 0x3021, 0x3029, 0x3038, 0x303B, 0x3400, 0x4DBF,
+	0x4E00, 0x9FFF, 0xF900, 0xFA6D, 0xFA70, 0xFAD9, 0x16FE2, 0x16FE3,
+	0x16FF0, 0x16FF1, 0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D,
+	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D, 0x2F800, 0x2FA1D,
+	0x30000, 0x3134A, 0x31350, 0x323AF,
+	//  #132 (16089+2): sc=Yi:Yiii
+	0xA000, 0xA48C, 0xA490, 0xA4C6,
+	//  #133 (16091+2): sc=Old_Italic:Ital scx=Old_Italic:Ital
+	0x10300, 0x10323, 0x1032D, 0x1032F,
+	//  #134 (16093+1): sc=Gothic:Goth scx=Gothic:Goth
+	0x10330, 0x1034A,
+	//  #135 (16094+1): sc=Deseret:Dsrt scx=Deseret:Dsrt
+	0x10400, 0x1044F,
+	//  #136 (16095+29): sc=Inherited:Zinh:Qaai
+	0x0300, 0x036F, 0x0485, 0x0486, 0x064B, 0x0655, 0x0670, 0x0670,
+	0x0951, 0x0954, 0x1AB0, 0x1ACE, 0x1CD0, 0x1CD2, 0x1CD4, 0x1CE0,
+	0x1CE2, 0x1CE8, 0x1CED, 0x1CED, 0x1CF4, 0x1CF4, 0x1CF8, 0x1CF9,
+	0x1DC0, 0x1DFF, 0x200C, 0x200D, 0x20D0, 0x20F0, 0x302A, 0x302D,
+	0x3099, 0x309A, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D, 0x101FD, 0x101FD,
+	0x102E0, 0x102E0, 0x1133B, 0x1133B, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46,
+	0x1D167, 0x1D169, 0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD,
+	0xE0100, 0xE01EF,
+	//  #137 (16124+2): sc=Tagalog:Tglg
+	0x1700, 0x1715, 0x171F, 0x171F,
+	//  #138 (16126+1): sc=Hanunoo:Hano
+	0x1720, 0x1734,
+	//  #139 (16127+1): sc=Buhid:Buhd
+	0x1740, 0x1753,
+	//  #140 (16128+3): sc=Tagbanwa:Tagb
+	0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
+	//  #141 (16131+5): sc=Limbu:Limb
+	0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B, 0x1940, 0x1940,
+	0x1944, 0x194F,
+	//  #142 (16136+2): sc=Tai_Le:Tale
+	0x1950, 0x196D, 0x1970, 0x1974,
+	//  #143 (16138+7): sc=Linear_B:Linb
+	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
+	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA,
+	//  #144 (16145+2): sc=Ugaritic:Ugar scx=Ugaritic:Ugar
 	0x10380, 0x1039D, 0x1039F, 0x1039F,
-	//  #246 (16399+1): sc=Vai:Vaii scx=Vai:Vaii
+	//  #145 (16147+1): sc=Shavian:Shaw scx=Shavian:Shaw
+	0x10450, 0x1047F,
+	//  #146 (16148+2): sc=Osmanya:Osma scx=Osmanya:Osma
+	0x10480, 0x1049D, 0x104A0, 0x104A9,
+	//  #147 (16150+6): sc=Cypriot:Cprt
+	0x10800, 0x10805, 0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838,
+	0x1083C, 0x1083C, 0x1083F, 0x1083F,
+	//  #148 (16156+1): sc=Braille:Brai scx=Braille:Brai
+	0x2800, 0x28FF,
+	//  #149 (16157+2): sc=Buginese:Bugi
+	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F,
+	//  #150 (16159+3): sc=Coptic:Copt:Qaac
+	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF,
+	//  #151 (16162+4): sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
+	0x1980, 0x19AB, 0x19B0, 0x19C9, 0x19D0, 0x19DA, 0x19DE, 0x19DF,
+	//  #152 (16166+6): sc=Glagolitic:Glag
+	0x2C00, 0x2C5F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
+	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
+	//  #153 (16172+3): sc=Tifinagh:Tfng scx=Tifinagh:Tfng
+	0x2D30, 0x2D67, 0x2D6F, 0x2D70, 0x2D7F, 0x2D7F,
+	//  #154 (16175+1): sc=Syloti_Nagri:Sylo
+	0xA800, 0xA82C,
+	//  #155 (16176+2): sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
+	0x103A0, 0x103C3, 0x103C8, 0x103D5,
+	//  #156 (16178+8): sc=Kharoshthi:Khar scx=Kharoshthi:Khar
+	0x10A00, 0x10A03, 0x10A05, 0x10A06, 0x10A0C, 0x10A13, 0x10A15, 0x10A17,
+	0x10A19, 0x10A35, 0x10A38, 0x10A3A, 0x10A3F, 0x10A48, 0x10A50, 0x10A58,
+	//  #157 (16186+2): sc=Balinese:Bali scx=Balinese:Bali
+	0x1B00, 0x1B4C, 0x1B50, 0x1B7E,
+	//  #158 (16188+4): sc=Cuneiform:Xsux scx=Cuneiform:Xsux
+	0x12000, 0x12399, 0x12400, 0x1246E, 0x12470, 0x12474, 0x12480, 0x12543,
+	//  #159 (16192+2): sc=Phoenician:Phnx scx=Phoenician:Phnx
+	0x10900, 0x1091B, 0x1091F, 0x1091F,
+	//  #160 (16194+1): sc=Phags_Pa:Phag
+	0xA840, 0xA877,
+	//  #161 (16195+2): sc=Nko:Nkoo
+	0x07C0, 0x07FA, 0x07FD, 0x07FF,
+	//  #162 (16197+2): sc=Sundanese:Sund scx=Sundanese:Sund
+	0x1B80, 0x1BBF, 0x1CC0, 0x1CC7,
+	//  #163 (16199+3): sc=Lepcha:Lepc scx=Lepcha:Lepc
+	0x1C00, 0x1C37, 0x1C3B, 0x1C49, 0x1C4D, 0x1C4F,
+	//  #164 (16202+1): sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
+	0x1C50, 0x1C7F,
+	//  #165 (16203+1): sc=Vai:Vaii scx=Vai:Vaii
 	0xA500, 0xA62B,
-	//  #247 (16400+8): sc=Vithkuqi:Vith scx=Vithkuqi:Vith
+	//  #166 (16204+2): sc=Saurashtra:Saur scx=Saurashtra:Saur
+	0xA880, 0xA8C5, 0xA8CE, 0xA8D9,
+	//  #167 (16206+2): sc=Kayah_Li:Kali
+	0xA900, 0xA92D, 0xA92F, 0xA92F,
+	//  #168 (16208+2): sc=Rejang:Rjng scx=Rejang:Rjng
+	0xA930, 0xA953, 0xA95F, 0xA95F,
+	//  #169 (16210+1): sc=Lycian:Lyci scx=Lycian:Lyci
+	0x10280, 0x1029C,
+	//  #170 (16211+1): sc=Carian:Cari scx=Carian:Cari
+	0x102A0, 0x102D0,
+	//  #171 (16212+2): sc=Lydian:Lydi scx=Lydian:Lydi
+	0x10920, 0x10939, 0x1093F, 0x1093F,
+	//  #172 (16214+4): sc=Cham scx=Cham
+	0xAA00, 0xAA36, 0xAA40, 0xAA4D, 0xAA50, 0xAA59, 0xAA5C, 0xAA5F,
+	//  #173 (16218+5): sc=Tai_Tham:Lana scx=Tai_Tham:Lana
+	0x1A20, 0x1A5E, 0x1A60, 0x1A7C, 0x1A7F, 0x1A89, 0x1A90, 0x1A99,
+	0x1AA0, 0x1AAD,
+	//  #174 (16223+2): sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
+	0xAA80, 0xAAC2, 0xAADB, 0xAADF,
+	//  #175 (16225+2): sc=Avestan:Avst scx=Avestan:Avst
+	0x10B00, 0x10B35, 0x10B39, 0x10B3F,
+	//  #176 (16227+1): sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
+	0x13000, 0x13455,
+	//  #177 (16228+2): sc=Samaritan:Samr scx=Samaritan:Samr
+	0x0800, 0x082D, 0x0830, 0x083E,
+	//  #178 (16230+2): sc=Lisu scx=Lisu
+	0xA4D0, 0xA4FF, 0x11FB0, 0x11FB0,
+	//  #179 (16232+2): sc=Bamum:Bamu scx=Bamum:Bamu
+	0xA6A0, 0xA6F7, 0x16800, 0x16A38,
+	//  #180 (16234+3): sc=Javanese:Java
+	0xA980, 0xA9CD, 0xA9D0, 0xA9D9, 0xA9DE, 0xA9DF,
+	//  #181 (16237+3): sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
+	0xAAE0, 0xAAF6, 0xABC0, 0xABED, 0xABF0, 0xABF9,
+	//  #182 (16240+2): sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
+	0x10840, 0x10855, 0x10857, 0x1085F,
+	//  #183 (16242+1): sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
+	0x10A60, 0x10A7F,
+	//  #184 (16243+2): sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
+	0x10B40, 0x10B55, 0x10B58, 0x10B5F,
+	//  #185 (16245+2): sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
+	0x10B60, 0x10B72, 0x10B78, 0x10B7F,
+	//  #186 (16247+1): sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
+	0x10C00, 0x10C48,
+	//  #187 (16248+2): sc=Kaithi:Kthi
+	0x11080, 0x110C2, 0x110CD, 0x110CD,
+	//  #188 (16250+2): sc=Batak:Batk scx=Batak:Batk
+	0x1BC0, 0x1BF3, 0x1BFC, 0x1BFF,
+	//  #189 (16252+3): sc=Brahmi:Brah scx=Brahmi:Brah
+	0x11000, 0x1104D, 0x11052, 0x11075, 0x1107F, 0x1107F,
+	//  #190 (16255+2): sc=Mandaic:Mand
+	0x0840, 0x085B, 0x085E, 0x085E,
+	//  #191 (16257+2): sc=Chakma:Cakm
+	0x11100, 0x11134, 0x11136, 0x11147,
+	//  #192 (16259+3): sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
+	0x109A0, 0x109B7, 0x109BC, 0x109CF, 0x109D2, 0x109FF,
+	//  #193 (16262+1): sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
+	0x10980, 0x1099F,
+	//  #194 (16263+3): sc=Miao:Plrd scx=Miao:Plrd
+	0x16F00, 0x16F4A, 0x16F4F, 0x16F87, 0x16F8F, 0x16F9F,
+	//  #195 (16266+1): sc=Sharada:Shrd
+	0x11180, 0x111DF,
+	//  #196 (16267+2): sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
+	0x110D0, 0x110E8, 0x110F0, 0x110F9,
+	//  #197 (16269+2): sc=Takri:Takr
+	0x11680, 0x116B9, 0x116C0, 0x116C9,
+	//  #198 (16271+2): sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
+	0x10530, 0x10563, 0x1056F, 0x1056F,
+	//  #199 (16273+2): sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
+	0x16AD0, 0x16AED, 0x16AF0, 0x16AF5,
+	//  #200 (16275+5): sc=Duployan:Dupl
+	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
+	0x1BC9C, 0x1BC9F,
+	//  #201 (16280+1): sc=Elbasan:Elba scx=Elbasan:Elba
+	0x10500, 0x10527,
+	//  #202 (16281+15): sc=Grantha:Gran
+	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
+	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133C, 0x11344,
+	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
+	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374,
+	//  #203 (16296+5): sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
+	0x16B00, 0x16B45, 0x16B50, 0x16B59, 0x16B5B, 0x16B61, 0x16B63, 0x16B77,
+	0x16B7D, 0x16B8F,
+	//  #204 (16301+2): sc=Khojki:Khoj
+	0x11200, 0x11211, 0x11213, 0x11241,
+	//  #205 (16303+3): sc=Linear_A:Lina
+	0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
+	//  #206 (16306+1): sc=Mahajani:Mahj
+	0x11150, 0x11176,
+	//  #207 (16307+2): sc=Manichaean:Mani
+	0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
+	//  #208 (16309+2): sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
+	0x1E800, 0x1E8C4, 0x1E8C7, 0x1E8D6,
+	//  #209 (16311+2): sc=Modi
+	0x11600, 0x11644, 0x11650, 0x11659,
+	//  #210 (16313+3): sc=Mro:Mroo scx=Mro:Mroo
+	0x16A40, 0x16A5E, 0x16A60, 0x16A69, 0x16A6E, 0x16A6F,
+	//  #211 (16316+1): sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
+	0x10A80, 0x10A9F,
+	//  #212 (16317+2): sc=Nabataean:Nbat scx=Nabataean:Nbat
+	0x10880, 0x1089E, 0x108A7, 0x108AF,
+	//  #213 (16319+1): sc=Palmyrene:Palm scx=Palmyrene:Palm
+	0x10860, 0x1087F,
+	//  #214 (16320+1): sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
+	0x11AC0, 0x11AF8,
+	//  #215 (16321+1): sc=Old_Permic:Perm
+	0x10350, 0x1037A,
+	//  #216 (16322+3): sc=Psalter_Pahlavi:Phlp
+	0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
+	//  #217 (16325+2): sc=Siddham:Sidd scx=Siddham:Sidd
+	0x11580, 0x115B5, 0x115B8, 0x115DD,
+	//  #218 (16327+2): sc=Khudawadi:Sind
+	0x112B0, 0x112EA, 0x112F0, 0x112F9,
+	//  #219 (16329+2): sc=Tirhuta:Tirh
+	0x11480, 0x114C7, 0x114D0, 0x114D9,
+	//  #220 (16331+2): sc=Warang_Citi:Wara scx=Warang_Citi:Wara
+	0x118A0, 0x118F2, 0x118FF, 0x118FF,
+	//  #221 (16333+3): sc=Ahom scx=Ahom
+	0x11700, 0x1171A, 0x1171D, 0x1172B, 0x11730, 0x11746,
+	//  #222 (16336+1): sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
+	0x14400, 0x14646,
+	//  #223 (16337+3): sc=Hatran:Hatr scx=Hatran:Hatr
+	0x108E0, 0x108F2, 0x108F4, 0x108F5, 0x108FB, 0x108FF,
+	//  #224 (16340+5): sc=Multani:Mult
+	0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D, 0x1128F, 0x1129D,
+	0x1129F, 0x112A9,
+	//  #225 (16345+3): sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
+	0x10C80, 0x10CB2, 0x10CC0, 0x10CF2, 0x10CFA, 0x10CFF,
+	//  #226 (16348+3): sc=SignWriting:Sgnw scx=SignWriting:Sgnw
+	0x1D800, 0x1DA8B, 0x1DA9B, 0x1DA9F, 0x1DAA1, 0x1DAAF,
+	//  #227 (16351+3): sc=Adlam:Adlm
+	0x1E900, 0x1E94B, 0x1E950, 0x1E959, 0x1E95E, 0x1E95F,
+	//  #228 (16354+4): sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
+	0x11C00, 0x11C08, 0x11C0A, 0x11C36, 0x11C38, 0x11C45, 0x11C50, 0x11C6C,
+	//  #229 (16358+3): sc=Marchen:Marc scx=Marchen:Marc
+	0x11C70, 0x11C8F, 0x11C92, 0x11CA7, 0x11CA9, 0x11CB6,
+	//  #230 (16361+2): sc=Newa scx=Newa
+	0x11400, 0x1145B, 0x1145D, 0x11461,
+	//  #231 (16363+2): sc=Osage:Osge scx=Osage:Osge
+	0x104B0, 0x104D3, 0x104D8, 0x104FB,
+	//  #232 (16365+4): sc=Tangut:Tang scx=Tangut:Tang
+	0x16FE0, 0x16FE0, 0x17000, 0x187F7, 0x18800, 0x18AFF, 0x18D00, 0x18D08,
+	//  #233 (16369+7): sc=Masaram_Gondi:Gonm
+	0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36, 0x11D3A, 0x11D3A,
+	0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
+	//  #234 (16376+2): sc=Nushu:Nshu scx=Nushu:Nshu
+	0x16FE1, 0x16FE1, 0x1B170, 0x1B2FB,
+	//  #235 (16378+1): sc=Soyombo:Soyo scx=Soyombo:Soyo
+	0x11A50, 0x11AA2,
+	//  #236 (16379+1): sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
+	0x11A00, 0x11A47,
+	//  #237 (16380+1): sc=Dogra:Dogr
+	0x11800, 0x1183B,
+	//  #238 (16381+6): sc=Gunjala_Gondi:Gong
+	0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E, 0x11D90, 0x11D91,
+	0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
+	//  #239 (16387+1): sc=Makasar:Maka scx=Makasar:Maka
+	0x11EE0, 0x11EF8,
+	//  #240 (16388+1): sc=Medefaidrin:Medf scx=Medefaidrin:Medf
+	0x16E40, 0x16E9A,
+	//  #241 (16389+2): sc=Hanifi_Rohingya:Rohg
+	0x10D00, 0x10D27, 0x10D30, 0x10D39,
+	//  #242 (16391+1): sc=Sogdian:Sogd
+	0x10F30, 0x10F59,
+	//  #243 (16392+1): sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
+	0x10F00, 0x10F27,
+	//  #244 (16393+1): sc=Elymaic:Elym scx=Elymaic:Elym
+	0x10FE0, 0x10FF6,
+	//  #245 (16394+3): sc=Nandinagari:Nand
+	0x119A0, 0x119A7, 0x119AA, 0x119D7, 0x119DA, 0x119E4,
+	//  #246 (16397+4): sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
+	0x1E100, 0x1E12C, 0x1E130, 0x1E13D, 0x1E140, 0x1E149, 0x1E14E, 0x1E14F,
+	//  #247 (16401+2): sc=Wancho:Wcho scx=Wancho:Wcho
+	0x1E2C0, 0x1E2F9, 0x1E2FF, 0x1E2FF,
+	//  #248 (16403+1): sc=Chorasmian:Chrs scx=Chorasmian:Chrs
+	0x10FB0, 0x10FCB,
+	//  #249 (16404+8): sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
+	0x11900, 0x11906, 0x11909, 0x11909, 0x1190C, 0x11913, 0x11915, 0x11916,
+	0x11918, 0x11935, 0x11937, 0x11938, 0x1193B, 0x11946, 0x11950, 0x11959,
+	//  #250 (16412+2): sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
+	0x16FE4, 0x16FE4, 0x18B00, 0x18CD5,
+	//  #251 (16414+3): sc=Yezidi:Yezi
+	0x10E80, 0x10EA9, 0x10EAB, 0x10EAD, 0x10EB0, 0x10EB1,
+	//  #252 (16417+1): sc=Cypro_Minoan:Cpmn
+	0x12F90, 0x12FF2,
+	//  #253 (16418+1): sc=Old_Uyghur:Ougr
+	0x10F70, 0x10F89,
+	//  #254 (16419+2): sc=Tangsa:Tnsa scx=Tangsa:Tnsa
+	0x16A70, 0x16ABE, 0x16AC0, 0x16AC9,
+	//  #255 (16421+1): sc=Toto scx=Toto
+	0x1E290, 0x1E2AE,
+	//  #256 (16422+8): sc=Vithkuqi:Vith scx=Vithkuqi:Vith
 	0x10570, 0x1057A, 0x1057C, 0x1058A, 0x1058C, 0x10592, 0x10594, 0x10595,
 	0x10597, 0x105A1, 0x105A3, 0x105B1, 0x105B3, 0x105B9, 0x105BB, 0x105BC,
-	//  #248 (16408+2): sc=Wancho:Wcho scx=Wancho:Wcho
-	0x1E2C0, 0x1E2F9, 0x1E2FF, 0x1E2FF,
-	//  #249 (16410+2): sc=Warang_Citi:Wara scx=Warang_Citi:Wara
-	0x118A0, 0x118F2, 0x118FF, 0x118FF,
-	//  #250 (16412+3): sc=Yezidi:Yezi
-	0x10E80, 0x10EA9, 0x10EAB, 0x10EAD, 0x10EB0, 0x10EB1,
-	//  #251 (16415+2): sc=Yi:Yiii
-	0xA000, 0xA48C, 0xA490, 0xA4C6,
-	//  #252 (16417+1): sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
-	0x11A00, 0x11A47,
-	//  #253 (16418+5): scx=Adlam:Adlm
-	0x061F, 0x061F, 0x0640, 0x0640, 0x1E900, 0x1E94B, 0x1E950, 0x1E959,
-	0x1E95E, 0x1E95F,
-	//  #254 (16423+52): scx=Arabic:Arab
-	0x0600, 0x0604, 0x0606, 0x06DC, 0x06DE, 0x06FF, 0x0750, 0x077F,
-	0x0870, 0x088E, 0x0890, 0x0891, 0x0898, 0x08E1, 0x08E3, 0x08FF,
-	0xFB50, 0xFBC2, 0xFBD3, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF,
-	0xFDF0, 0xFDFF, 0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x102E0, 0x102FB,
-	0x10E60, 0x10E7E, 0x10EFD, 0x10EFF, 0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F,
-	0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24, 0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32,
-	0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39, 0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42,
-	0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49, 0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F,
-	0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54, 0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59,
-	0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D, 0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62,
-	0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77,
-	0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B,
-	0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
-	//  #255 (16475+26): scx=Bengali:Beng
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0980, 0x0983, 0x0985, 0x098C,
-	0x098F, 0x0990, 0x0993, 0x09A8, 0x09AA, 0x09B0, 0x09B2, 0x09B2,
-	0x09B6, 0x09B9, 0x09BC, 0x09C4, 0x09C7, 0x09C8, 0x09CB, 0x09CE,
-	0x09D7, 0x09D7, 0x09DC, 0x09DD, 0x09DF, 0x09E3, 0x09E6, 0x09FE,
-	0x1CD0, 0x1CD0, 0x1CD2, 0x1CD2, 0x1CD5, 0x1CD6, 0x1CD8, 0x1CD8,
-	0x1CE1, 0x1CE1, 0x1CEA, 0x1CEA, 0x1CED, 0x1CED, 0x1CF2, 0x1CF2,
-	0x1CF5, 0x1CF7, 0xA8F1, 0xA8F1,
-	//  #256 (16501+12): scx=Bopomofo:Bopo
-	0x02EA, 0x02EB, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
-	0x302A, 0x302D, 0x3030, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB,
-	0x3105, 0x312F, 0x31A0, 0x31BF, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
-	//  #257 (16513+3): scx=Buginese:Bugi
-	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F, 0xA9CF, 0xA9CF,
-	//  #258 (16516+2): scx=Buhid:Buhd
-	0x1735, 0x1736, 0x1740, 0x1753,
-	//  #259 (16518+4): scx=Chakma:Cakm
-	0x09E6, 0x09EF, 0x1040, 0x1049, 0x11100, 0x11134, 0x11136, 0x11147,
-	//  #260 (16522+147): scx=Common:Zyyy
+	//  #257 (16430+3): sc=Kawi scx=Kawi
+	0x11F00, 0x11F10, 0x11F12, 0x11F3A, 0x11F3E, 0x11F59,
+	//  #258 (16433+1): sc=Nag_Mundari:Nagm scx=Nag_Mundari:Nagm
+	0x1E4D0, 0x1E4F9,
+	//  #259 (16434+705): sc=Unknown:Zzzz scx=Unknown:Zzzz
+	0x0378, 0x0379, 0x0380, 0x0383, 0x038B, 0x038B, 0x038D, 0x038D,
+	0x03A2, 0x03A2, 0x0530, 0x0530, 0x0557, 0x0558, 0x058B, 0x058C,
+	0x0590, 0x0590, 0x05C8, 0x05CF, 0x05EB, 0x05EE, 0x05F5, 0x05FF,
+	0x070E, 0x070E, 0x074B, 0x074C, 0x07B2, 0x07BF, 0x07FB, 0x07FC,
+	0x082E, 0x082F, 0x083F, 0x083F, 0x085C, 0x085D, 0x085F, 0x085F,
+	0x086B, 0x086F, 0x088F, 0x088F, 0x0892, 0x0897, 0x0984, 0x0984,
+	0x098D, 0x098E, 0x0991, 0x0992, 0x09A9, 0x09A9, 0x09B1, 0x09B1,
+	0x09B3, 0x09B5, 0x09BA, 0x09BB, 0x09C5, 0x09C6, 0x09C9, 0x09CA,
+	0x09CF, 0x09D6, 0x09D8, 0x09DB, 0x09DE, 0x09DE, 0x09E4, 0x09E5,
+	0x09FF, 0x0A00, 0x0A04, 0x0A04, 0x0A0B, 0x0A0E, 0x0A11, 0x0A12,
+	0x0A29, 0x0A29, 0x0A31, 0x0A31, 0x0A34, 0x0A34, 0x0A37, 0x0A37,
+	0x0A3A, 0x0A3B, 0x0A3D, 0x0A3D, 0x0A43, 0x0A46, 0x0A49, 0x0A4A,
+	0x0A4E, 0x0A50, 0x0A52, 0x0A58, 0x0A5D, 0x0A5D, 0x0A5F, 0x0A65,
+	0x0A77, 0x0A80, 0x0A84, 0x0A84, 0x0A8E, 0x0A8E, 0x0A92, 0x0A92,
+	0x0AA9, 0x0AA9, 0x0AB1, 0x0AB1, 0x0AB4, 0x0AB4, 0x0ABA, 0x0ABB,
+	0x0AC6, 0x0AC6, 0x0ACA, 0x0ACA, 0x0ACE, 0x0ACF, 0x0AD1, 0x0ADF,
+	0x0AE4, 0x0AE5, 0x0AF2, 0x0AF8, 0x0B00, 0x0B00, 0x0B04, 0x0B04,
+	0x0B0D, 0x0B0E, 0x0B11, 0x0B12, 0x0B29, 0x0B29, 0x0B31, 0x0B31,
+	0x0B34, 0x0B34, 0x0B3A, 0x0B3B, 0x0B45, 0x0B46, 0x0B49, 0x0B4A,
+	0x0B4E, 0x0B54, 0x0B58, 0x0B5B, 0x0B5E, 0x0B5E, 0x0B64, 0x0B65,
+	0x0B78, 0x0B81, 0x0B84, 0x0B84, 0x0B8B, 0x0B8D, 0x0B91, 0x0B91,
+	0x0B96, 0x0B98, 0x0B9B, 0x0B9B, 0x0B9D, 0x0B9D, 0x0BA0, 0x0BA2,
+	0x0BA5, 0x0BA7, 0x0BAB, 0x0BAD, 0x0BBA, 0x0BBD, 0x0BC3, 0x0BC5,
+	0x0BC9, 0x0BC9, 0x0BCE, 0x0BCF, 0x0BD1, 0x0BD6, 0x0BD8, 0x0BE5,
+	0x0BFB, 0x0BFF, 0x0C0D, 0x0C0D, 0x0C11, 0x0C11, 0x0C29, 0x0C29,
+	0x0C3A, 0x0C3B, 0x0C45, 0x0C45, 0x0C49, 0x0C49, 0x0C4E, 0x0C54,
+	0x0C57, 0x0C57, 0x0C5B, 0x0C5C, 0x0C5E, 0x0C5F, 0x0C64, 0x0C65,
+	0x0C70, 0x0C76, 0x0C8D, 0x0C8D, 0x0C91, 0x0C91, 0x0CA9, 0x0CA9,
+	0x0CB4, 0x0CB4, 0x0CBA, 0x0CBB, 0x0CC5, 0x0CC5, 0x0CC9, 0x0CC9,
+	0x0CCE, 0x0CD4, 0x0CD7, 0x0CDC, 0x0CDF, 0x0CDF, 0x0CE4, 0x0CE5,
+	0x0CF0, 0x0CF0, 0x0CF4, 0x0CFF, 0x0D0D, 0x0D0D, 0x0D11, 0x0D11,
+	0x0D45, 0x0D45, 0x0D49, 0x0D49, 0x0D50, 0x0D53, 0x0D64, 0x0D65,
+	0x0D80, 0x0D80, 0x0D84, 0x0D84, 0x0D97, 0x0D99, 0x0DB2, 0x0DB2,
+	0x0DBC, 0x0DBC, 0x0DBE, 0x0DBF, 0x0DC7, 0x0DC9, 0x0DCB, 0x0DCE,
+	0x0DD5, 0x0DD5, 0x0DD7, 0x0DD7, 0x0DE0, 0x0DE5, 0x0DF0, 0x0DF1,
+	0x0DF5, 0x0E00, 0x0E3B, 0x0E3E, 0x0E5C, 0x0E80, 0x0E83, 0x0E83,
+	0x0E85, 0x0E85, 0x0E8B, 0x0E8B, 0x0EA4, 0x0EA4, 0x0EA6, 0x0EA6,
+	0x0EBE, 0x0EBF, 0x0EC5, 0x0EC5, 0x0EC7, 0x0EC7, 0x0ECF, 0x0ECF,
+	0x0EDA, 0x0EDB, 0x0EE0, 0x0EFF, 0x0F48, 0x0F48, 0x0F6D, 0x0F70,
+	0x0F98, 0x0F98, 0x0FBD, 0x0FBD, 0x0FCD, 0x0FCD, 0x0FDB, 0x0FFF,
+	0x10C6, 0x10C6, 0x10C8, 0x10CC, 0x10CE, 0x10CF, 0x1249, 0x1249,
+	0x124E, 0x124F, 0x1257, 0x1257, 0x1259, 0x1259, 0x125E, 0x125F,
+	0x1289, 0x1289, 0x128E, 0x128F, 0x12B1, 0x12B1, 0x12B6, 0x12B7,
+	0x12BF, 0x12BF, 0x12C1, 0x12C1, 0x12C6, 0x12C7, 0x12D7, 0x12D7,
+	0x1311, 0x1311, 0x1316, 0x1317, 0x135B, 0x135C, 0x137D, 0x137F,
+	0x139A, 0x139F, 0x13F6, 0x13F7, 0x13FE, 0x13FF, 0x169D, 0x169F,
+	0x16F9, 0x16FF, 0x1716, 0x171E, 0x1737, 0x173F, 0x1754, 0x175F,
+	0x176D, 0x176D, 0x1771, 0x1771, 0x1774, 0x177F, 0x17DE, 0x17DF,
+	0x17EA, 0x17EF, 0x17FA, 0x17FF, 0x181A, 0x181F, 0x1879, 0x187F,
+	0x18AB, 0x18AF, 0x18F6, 0x18FF, 0x191F, 0x191F, 0x192C, 0x192F,
+	0x193C, 0x193F, 0x1941, 0x1943, 0x196E, 0x196F, 0x1975, 0x197F,
+	0x19AC, 0x19AF, 0x19CA, 0x19CF, 0x19DB, 0x19DD, 0x1A1C, 0x1A1D,
+	0x1A5F, 0x1A5F, 0x1A7D, 0x1A7E, 0x1A8A, 0x1A8F, 0x1A9A, 0x1A9F,
+	0x1AAE, 0x1AAF, 0x1ACF, 0x1AFF, 0x1B4D, 0x1B4F, 0x1B7F, 0x1B7F,
+	0x1BF4, 0x1BFB, 0x1C38, 0x1C3A, 0x1C4A, 0x1C4C, 0x1C89, 0x1C8F,
+	0x1CBB, 0x1CBC, 0x1CC8, 0x1CCF, 0x1CFB, 0x1CFF, 0x1F16, 0x1F17,
+	0x1F1E, 0x1F1F, 0x1F46, 0x1F47, 0x1F4E, 0x1F4F, 0x1F58, 0x1F58,
+	0x1F5A, 0x1F5A, 0x1F5C, 0x1F5C, 0x1F5E, 0x1F5E, 0x1F7E, 0x1F7F,
+	0x1FB5, 0x1FB5, 0x1FC5, 0x1FC5, 0x1FD4, 0x1FD5, 0x1FDC, 0x1FDC,
+	0x1FF0, 0x1FF1, 0x1FF5, 0x1FF5, 0x1FFF, 0x1FFF, 0x2065, 0x2065,
+	0x2072, 0x2073, 0x208F, 0x208F, 0x209D, 0x209F, 0x20C1, 0x20CF,
+	0x20F1, 0x20FF, 0x218C, 0x218F, 0x2427, 0x243F, 0x244B, 0x245F,
+	0x2B74, 0x2B75, 0x2B96, 0x2B96, 0x2CF4, 0x2CF8, 0x2D26, 0x2D26,
+	0x2D28, 0x2D2C, 0x2D2E, 0x2D2F, 0x2D68, 0x2D6E, 0x2D71, 0x2D7E,
+	0x2D97, 0x2D9F, 0x2DA7, 0x2DA7, 0x2DAF, 0x2DAF, 0x2DB7, 0x2DB7,
+	0x2DBF, 0x2DBF, 0x2DC7, 0x2DC7, 0x2DCF, 0x2DCF, 0x2DD7, 0x2DD7,
+	0x2DDF, 0x2DDF, 0x2E5E, 0x2E7F, 0x2E9A, 0x2E9A, 0x2EF4, 0x2EFF,
+	0x2FD6, 0x2FEF, 0x3040, 0x3040, 0x3097, 0x3098, 0x3100, 0x3104,
+	0x3130, 0x3130, 0x318F, 0x318F, 0x31E4, 0x31EE, 0x321F, 0x321F,
+	0xA48D, 0xA48F, 0xA4C7, 0xA4CF, 0xA62C, 0xA63F, 0xA6F8, 0xA6FF,
+	0xA7CB, 0xA7CF, 0xA7D2, 0xA7D2, 0xA7D4, 0xA7D4, 0xA7DA, 0xA7F1,
+	0xA82D, 0xA82F, 0xA83A, 0xA83F, 0xA878, 0xA87F, 0xA8C6, 0xA8CD,
+	0xA8DA, 0xA8DF, 0xA954, 0xA95E, 0xA97D, 0xA97F, 0xA9CE, 0xA9CE,
+	0xA9DA, 0xA9DD, 0xA9FF, 0xA9FF, 0xAA37, 0xAA3F, 0xAA4E, 0xAA4F,
+	0xAA5A, 0xAA5B, 0xAAC3, 0xAADA, 0xAAF7, 0xAB00, 0xAB07, 0xAB08,
+	0xAB0F, 0xAB10, 0xAB17, 0xAB1F, 0xAB27, 0xAB27, 0xAB2F, 0xAB2F,
+	0xAB6C, 0xAB6F, 0xABEE, 0xABEF, 0xABFA, 0xABFF, 0xD7A4, 0xD7AF,
+	0xD7C7, 0xD7CA, 0xD7FC, 0xF8FF, 0xFA6E, 0xFA6F, 0xFADA, 0xFAFF,
+	0xFB07, 0xFB12, 0xFB18, 0xFB1C, 0xFB37, 0xFB37, 0xFB3D, 0xFB3D,
+	0xFB3F, 0xFB3F, 0xFB42, 0xFB42, 0xFB45, 0xFB45, 0xFBC3, 0xFBD2,
+	0xFD90, 0xFD91, 0xFDC8, 0xFDCE, 0xFDD0, 0xFDEF, 0xFE1A, 0xFE1F,
+	0xFE53, 0xFE53, 0xFE67, 0xFE67, 0xFE6C, 0xFE6F, 0xFE75, 0xFE75,
+	0xFEFD, 0xFEFE, 0xFF00, 0xFF00, 0xFFBF, 0xFFC1, 0xFFC8, 0xFFC9,
+	0xFFD0, 0xFFD1, 0xFFD8, 0xFFD9, 0xFFDD, 0xFFDF, 0xFFE7, 0xFFE7,
+	0xFFEF, 0xFFF8, 0xFFFE, 0xFFFF, 0x1000C, 0x1000C, 0x10027, 0x10027,
+	0x1003B, 0x1003B, 0x1003E, 0x1003E, 0x1004E, 0x1004F, 0x1005E, 0x1007F,
+	0x100FB, 0x100FF, 0x10103, 0x10106, 0x10134, 0x10136, 0x1018F, 0x1018F,
+	0x1019D, 0x1019F, 0x101A1, 0x101CF, 0x101FE, 0x1027F, 0x1029D, 0x1029F,
+	0x102D1, 0x102DF, 0x102FC, 0x102FF, 0x10324, 0x1032C, 0x1034B, 0x1034F,
+	0x1037B, 0x1037F, 0x1039E, 0x1039E, 0x103C4, 0x103C7, 0x103D6, 0x103FF,
+	0x1049E, 0x1049F, 0x104AA, 0x104AF, 0x104D4, 0x104D7, 0x104FC, 0x104FF,
+	0x10528, 0x1052F, 0x10564, 0x1056E, 0x1057B, 0x1057B, 0x1058B, 0x1058B,
+	0x10593, 0x10593, 0x10596, 0x10596, 0x105A2, 0x105A2, 0x105B2, 0x105B2,
+	0x105BA, 0x105BA, 0x105BD, 0x105FF, 0x10737, 0x1073F, 0x10756, 0x1075F,
+	0x10768, 0x1077F, 0x10786, 0x10786, 0x107B1, 0x107B1, 0x107BB, 0x107FF,
+	0x10806, 0x10807, 0x10809, 0x10809, 0x10836, 0x10836, 0x10839, 0x1083B,
+	0x1083D, 0x1083E, 0x10856, 0x10856, 0x1089F, 0x108A6, 0x108B0, 0x108DF,
+	0x108F3, 0x108F3, 0x108F6, 0x108FA, 0x1091C, 0x1091E, 0x1093A, 0x1093E,
+	0x10940, 0x1097F, 0x109B8, 0x109BB, 0x109D0, 0x109D1, 0x10A04, 0x10A04,
+	0x10A07, 0x10A0B, 0x10A14, 0x10A14, 0x10A18, 0x10A18, 0x10A36, 0x10A37,
+	0x10A3B, 0x10A3E, 0x10A49, 0x10A4F, 0x10A59, 0x10A5F, 0x10AA0, 0x10ABF,
+	0x10AE7, 0x10AEA, 0x10AF7, 0x10AFF, 0x10B36, 0x10B38, 0x10B56, 0x10B57,
+	0x10B73, 0x10B77, 0x10B92, 0x10B98, 0x10B9D, 0x10BA8, 0x10BB0, 0x10BFF,
+	0x10C49, 0x10C7F, 0x10CB3, 0x10CBF, 0x10CF3, 0x10CF9, 0x10D28, 0x10D2F,
+	0x10D3A, 0x10E5F, 0x10E7F, 0x10E7F, 0x10EAA, 0x10EAA, 0x10EAE, 0x10EAF,
+	0x10EB2, 0x10EFC, 0x10F28, 0x10F2F, 0x10F5A, 0x10F6F, 0x10F8A, 0x10FAF,
+	0x10FCC, 0x10FDF, 0x10FF7, 0x10FFF, 0x1104E, 0x11051, 0x11076, 0x1107E,
+	0x110C3, 0x110CC, 0x110CE, 0x110CF, 0x110E9, 0x110EF, 0x110FA, 0x110FF,
+	0x11135, 0x11135, 0x11148, 0x1114F, 0x11177, 0x1117F, 0x111E0, 0x111E0,
+	0x111F5, 0x111FF, 0x11212, 0x11212, 0x11242, 0x1127F, 0x11287, 0x11287,
+	0x11289, 0x11289, 0x1128E, 0x1128E, 0x1129E, 0x1129E, 0x112AA, 0x112AF,
+	0x112EB, 0x112EF, 0x112FA, 0x112FF, 0x11304, 0x11304, 0x1130D, 0x1130E,
+	0x11311, 0x11312, 0x11329, 0x11329, 0x11331, 0x11331, 0x11334, 0x11334,
+	0x1133A, 0x1133A, 0x11345, 0x11346, 0x11349, 0x1134A, 0x1134E, 0x1134F,
+	0x11351, 0x11356, 0x11358, 0x1135C, 0x11364, 0x11365, 0x1136D, 0x1136F,
+	0x11375, 0x113FF, 0x1145C, 0x1145C, 0x11462, 0x1147F, 0x114C8, 0x114CF,
+	0x114DA, 0x1157F, 0x115B6, 0x115B7, 0x115DE, 0x115FF, 0x11645, 0x1164F,
+	0x1165A, 0x1165F, 0x1166D, 0x1167F, 0x116BA, 0x116BF, 0x116CA, 0x116FF,
+	0x1171B, 0x1171C, 0x1172C, 0x1172F, 0x11747, 0x117FF, 0x1183C, 0x1189F,
+	0x118F3, 0x118FE, 0x11907, 0x11908, 0x1190A, 0x1190B, 0x11914, 0x11914,
+	0x11917, 0x11917, 0x11936, 0x11936, 0x11939, 0x1193A, 0x11947, 0x1194F,
+	0x1195A, 0x1199F, 0x119A8, 0x119A9, 0x119D8, 0x119D9, 0x119E5, 0x119FF,
+	0x11A48, 0x11A4F, 0x11AA3, 0x11AAF, 0x11AF9, 0x11AFF, 0x11B0A, 0x11BFF,
+	0x11C09, 0x11C09, 0x11C37, 0x11C37, 0x11C46, 0x11C4F, 0x11C6D, 0x11C6F,
+	0x11C90, 0x11C91, 0x11CA8, 0x11CA8, 0x11CB7, 0x11CFF, 0x11D07, 0x11D07,
+	0x11D0A, 0x11D0A, 0x11D37, 0x11D39, 0x11D3B, 0x11D3B, 0x11D3E, 0x11D3E,
+	0x11D48, 0x11D4F, 0x11D5A, 0x11D5F, 0x11D66, 0x11D66, 0x11D69, 0x11D69,
+	0x11D8F, 0x11D8F, 0x11D92, 0x11D92, 0x11D99, 0x11D9F, 0x11DAA, 0x11EDF,
+	0x11EF9, 0x11EFF, 0x11F11, 0x11F11, 0x11F3B, 0x11F3D, 0x11F5A, 0x11FAF,
+	0x11FB1, 0x11FBF, 0x11FF2, 0x11FFE, 0x1239A, 0x123FF, 0x1246F, 0x1246F,
+	0x12475, 0x1247F, 0x12544, 0x12F8F, 0x12FF3, 0x12FFF, 0x13456, 0x143FF,
+	0x14647, 0x167FF, 0x16A39, 0x16A3F, 0x16A5F, 0x16A5F, 0x16A6A, 0x16A6D,
+	0x16ABF, 0x16ABF, 0x16ACA, 0x16ACF, 0x16AEE, 0x16AEF, 0x16AF6, 0x16AFF,
+	0x16B46, 0x16B4F, 0x16B5A, 0x16B5A, 0x16B62, 0x16B62, 0x16B78, 0x16B7C,
+	0x16B90, 0x16E3F, 0x16E9B, 0x16EFF, 0x16F4B, 0x16F4E, 0x16F88, 0x16F8E,
+	0x16FA0, 0x16FDF, 0x16FE5, 0x16FEF, 0x16FF2, 0x16FFF, 0x187F8, 0x187FF,
+	0x18CD6, 0x18CFF, 0x18D09, 0x1AFEF, 0x1AFF4, 0x1AFF4, 0x1AFFC, 0x1AFFC,
+	0x1AFFF, 0x1AFFF, 0x1B123, 0x1B131, 0x1B133, 0x1B14F, 0x1B153, 0x1B154,
+	0x1B156, 0x1B163, 0x1B168, 0x1B16F, 0x1B2FC, 0x1BBFF, 0x1BC6B, 0x1BC6F,
+	0x1BC7D, 0x1BC7F, 0x1BC89, 0x1BC8F, 0x1BC9A, 0x1BC9B, 0x1BCA4, 0x1CEFF,
+	0x1CF2E, 0x1CF2F, 0x1CF47, 0x1CF4F, 0x1CFC4, 0x1CFFF, 0x1D0F6, 0x1D0FF,
+	0x1D127, 0x1D128, 0x1D1EB, 0x1D1FF, 0x1D246, 0x1D2BF, 0x1D2D4, 0x1D2DF,
+	0x1D2F4, 0x1D2FF, 0x1D357, 0x1D35F, 0x1D379, 0x1D3FF, 0x1D455, 0x1D455,
+	0x1D49D, 0x1D49D, 0x1D4A0, 0x1D4A1, 0x1D4A3, 0x1D4A4, 0x1D4A7, 0x1D4A8,
+	0x1D4AD, 0x1D4AD, 0x1D4BA, 0x1D4BA, 0x1D4BC, 0x1D4BC, 0x1D4C4, 0x1D4C4,
+	0x1D506, 0x1D506, 0x1D50B, 0x1D50C, 0x1D515, 0x1D515, 0x1D51D, 0x1D51D,
+	0x1D53A, 0x1D53A, 0x1D53F, 0x1D53F, 0x1D545, 0x1D545, 0x1D547, 0x1D549,
+	0x1D551, 0x1D551, 0x1D6A6, 0x1D6A7, 0x1D7CC, 0x1D7CD, 0x1DA8C, 0x1DA9A,
+	0x1DAA0, 0x1DAA0, 0x1DAB0, 0x1DEFF, 0x1DF1F, 0x1DF24, 0x1DF2B, 0x1DFFF,
+	0x1E007, 0x1E007, 0x1E019, 0x1E01A, 0x1E022, 0x1E022, 0x1E025, 0x1E025,
+	0x1E02B, 0x1E02F, 0x1E06E, 0x1E08E, 0x1E090, 0x1E0FF, 0x1E12D, 0x1E12F,
+	0x1E13E, 0x1E13F, 0x1E14A, 0x1E14D, 0x1E150, 0x1E28F, 0x1E2AF, 0x1E2BF,
+	0x1E2FA, 0x1E2FE, 0x1E300, 0x1E4CF, 0x1E4FA, 0x1E7DF, 0x1E7E7, 0x1E7E7,
+	0x1E7EC, 0x1E7EC, 0x1E7EF, 0x1E7EF, 0x1E7FF, 0x1E7FF, 0x1E8C5, 0x1E8C6,
+	0x1E8D7, 0x1E8FF, 0x1E94C, 0x1E94F, 0x1E95A, 0x1E95D, 0x1E960, 0x1EC70,
+	0x1ECB5, 0x1ED00, 0x1ED3E, 0x1EDFF, 0x1EE04, 0x1EE04, 0x1EE20, 0x1EE20,
+	0x1EE23, 0x1EE23, 0x1EE25, 0x1EE26, 0x1EE28, 0x1EE28, 0x1EE33, 0x1EE33,
+	0x1EE38, 0x1EE38, 0x1EE3A, 0x1EE3A, 0x1EE3C, 0x1EE41, 0x1EE43, 0x1EE46,
+	0x1EE48, 0x1EE48, 0x1EE4A, 0x1EE4A, 0x1EE4C, 0x1EE4C, 0x1EE50, 0x1EE50,
+	0x1EE53, 0x1EE53, 0x1EE55, 0x1EE56, 0x1EE58, 0x1EE58, 0x1EE5A, 0x1EE5A,
+	0x1EE5C, 0x1EE5C, 0x1EE5E, 0x1EE5E, 0x1EE60, 0x1EE60, 0x1EE63, 0x1EE63,
+	0x1EE65, 0x1EE66, 0x1EE6B, 0x1EE6B, 0x1EE73, 0x1EE73, 0x1EE78, 0x1EE78,
+	0x1EE7D, 0x1EE7D, 0x1EE7F, 0x1EE7F, 0x1EE8A, 0x1EE8A, 0x1EE9C, 0x1EEA0,
+	0x1EEA4, 0x1EEA4, 0x1EEAA, 0x1EEAA, 0x1EEBC, 0x1EEEF, 0x1EEF2, 0x1EFFF,
+	0x1F02C, 0x1F02F, 0x1F094, 0x1F09F, 0x1F0AF, 0x1F0B0, 0x1F0C0, 0x1F0C0,
+	0x1F0D0, 0x1F0D0, 0x1F0F6, 0x1F0FF, 0x1F1AE, 0x1F1E5, 0x1F203, 0x1F20F,
+	0x1F23C, 0x1F23F, 0x1F249, 0x1F24F, 0x1F252, 0x1F25F, 0x1F266, 0x1F2FF,
+	0x1F6D8, 0x1F6DB, 0x1F6ED, 0x1F6EF, 0x1F6FD, 0x1F6FF, 0x1F777, 0x1F77A,
+	0x1F7DA, 0x1F7DF, 0x1F7EC, 0x1F7EF, 0x1F7F1, 0x1F7FF, 0x1F80C, 0x1F80F,
+	0x1F848, 0x1F84F, 0x1F85A, 0x1F85F, 0x1F888, 0x1F88F, 0x1F8AE, 0x1F8AF,
+	0x1F8B2, 0x1F8FF, 0x1FA54, 0x1FA5F, 0x1FA6E, 0x1FA6F, 0x1FA7D, 0x1FA7F,
+	0x1FA89, 0x1FA8F, 0x1FABE, 0x1FABE, 0x1FAC6, 0x1FACD, 0x1FADC, 0x1FADF,
+	0x1FAE9, 0x1FAEF, 0x1FAF9, 0x1FAFF, 0x1FB93, 0x1FB93, 0x1FBCB, 0x1FBEF,
+	0x1FBFA, 0x1FFFF, 0x2A6E0, 0x2A6FF, 0x2B73A, 0x2B73F, 0x2B81E, 0x2B81F,
+	0x2CEA2, 0x2CEAF, 0x2EBE1, 0x2EBEF, 0x2EE5E, 0x2F7FF, 0x2FA1E, 0x2FFFF,
+	0x3134B, 0x3134F, 0x323B0, 0xE0000, 0xE0002, 0xE001F, 0xE0080, 0xE00FF,
+	0xE01F0, 0x10FFFF,
+	//  #260 (17139+147): scx=Common:Zyyy
 	0x0000, 0x0040, 0x005B, 0x0060, 0x007B, 0x00A9, 0x00AB, 0x00B9,
 	0x00BB, 0x00BF, 0x00D7, 0x00D7, 0x00F7, 0x00F7, 0x02B9, 0x02DF,
 	0x02E5, 0x02E9, 0x02EC, 0x02FF, 0x0374, 0x0374, 0x037E, 0x037E,
@@ -9388,8 +10717,8 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2127, 0x2129, 0x212C, 0x2131, 0x2133, 0x214D, 0x214F, 0x215F,
 	0x2189, 0x218B, 0x2190, 0x2426, 0x2440, 0x244A, 0x2460, 0x27FF,
 	0x2900, 0x2B73, 0x2B76, 0x2B95, 0x2B97, 0x2BFF, 0x2E00, 0x2E42,
-	0x2E44, 0x2E5D, 0x2FF0, 0x2FFB, 0x3000, 0x3000, 0x3004, 0x3004,
-	0x3012, 0x3012, 0x3020, 0x3020, 0x3036, 0x3036, 0x3248, 0x325F,
+	0x2E44, 0x2E5D, 0x2FF0, 0x3000, 0x3004, 0x3004, 0x3012, 0x3012,
+	0x3020, 0x3020, 0x3036, 0x3036, 0x31EF, 0x31EF, 0x3248, 0x325F,
 	0x327F, 0x327F, 0x32B1, 0x32BF, 0x32CC, 0x32CF, 0x3371, 0x337A,
 	0x3380, 0x33DF, 0x33FF, 0x33FF, 0x4DC0, 0x4DFF, 0xA708, 0xA721,
 	0xA788, 0xA78A, 0xAB5B, 0xAB5B, 0xAB6A, 0xAB6B, 0xFE10, 0xFE19,
@@ -9415,127 +10744,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB,
 	0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8, 0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA,
 	0x1FBF0, 0x1FBF9, 0xE0001, 0xE0001, 0xE0020, 0xE007F,
-	//  #261 (16669+4): scx=Coptic:Copt:Qaac
-	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF, 0x102E0, 0x102FB,
-	//  #262 (16673+2): scx=Cypro_Minoan:Cpmn
-	0x10100, 0x10101, 0x12F90, 0x12FF2,
-	//  #263 (16675+9): scx=Cypriot:Cprt
-	0x10100, 0x10102, 0x10107, 0x10133, 0x10137, 0x1013F, 0x10800, 0x10805,
-	0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838, 0x1083C, 0x1083C,
-	0x1083F, 0x1083F,
-	//  #264 (16684+11): scx=Cyrillic:Cyrl
-	0x0400, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B, 0x1D78, 0x1D78,
-	0x1DF8, 0x1DF8, 0x2DE0, 0x2DFF, 0x2E43, 0x2E43, 0xA640, 0xA69F,
-	0xFE2E, 0xFE2F, 0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
-	//  #265 (16695+8): scx=Devanagari:Deva
-	0x0900, 0x0952, 0x0955, 0x097F, 0x1CD0, 0x1CF6, 0x1CF8, 0x1CF9,
-	0x20F0, 0x20F0, 0xA830, 0xA839, 0xA8E0, 0xA8FF, 0x11B00, 0x11B09,
-	//  #266 (16703+3): scx=Dogra:Dogr
-	0x0964, 0x096F, 0xA830, 0xA839, 0x11800, 0x1183B,
-	//  #267 (16706+5): scx=Duployan:Dupl
-	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
-	0x1BC9C, 0x1BCA3,
-	//  #268 (16711+9): scx=Georgian:Geor
-	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FF,
-	0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25, 0x2D27, 0x2D27,
-	0x2D2D, 0x2D2D,
-	//  #269 (16720+10): scx=Glagolitic:Glag
-	0x0484, 0x0484, 0x0487, 0x0487, 0x2C00, 0x2C5F, 0x2E43, 0x2E43,
-	0xA66F, 0xA66F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
-	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
-	//  #270 (16730+25): scx=Grantha:Gran
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0BE6, 0x0BF3, 0x1CD0, 0x1CD0,
-	0x1CD2, 0x1CD3, 0x1CF2, 0x1CF4, 0x1CF8, 0x1CF9, 0x20F0, 0x20F0,
-	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
-	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133B, 0x11344,
-	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
-	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374, 0x11FD0, 0x11FD1,
-	0x11FD3, 0x11FD3,
-	//  #271 (16755+38): scx=Greek:Grek
-	0x0342, 0x0342, 0x0345, 0x0345, 0x0370, 0x0373, 0x0375, 0x0377,
-	0x037A, 0x037D, 0x037F, 0x037F, 0x0384, 0x0384, 0x0386, 0x0386,
-	0x0388, 0x038A, 0x038C, 0x038C, 0x038E, 0x03A1, 0x03A3, 0x03E1,
-	0x03F0, 0x03FF, 0x1D26, 0x1D2A, 0x1D5D, 0x1D61, 0x1D66, 0x1D6A,
-	0x1DBF, 0x1DC1, 0x1F00, 0x1F15, 0x1F18, 0x1F1D, 0x1F20, 0x1F45,
-	0x1F48, 0x1F4D, 0x1F50, 0x1F57, 0x1F59, 0x1F59, 0x1F5B, 0x1F5B,
-	0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D, 0x1F80, 0x1FB4, 0x1FB6, 0x1FC4,
-	0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB, 0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4,
-	0x1FF6, 0x1FFE, 0x2126, 0x2126, 0xAB65, 0xAB65, 0x10140, 0x1018E,
-	0x101A0, 0x101A0, 0x1D200, 0x1D245,
-	//  #272 (16793+17): scx=Gujarati:Gujr
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0A81, 0x0A83, 0x0A85, 0x0A8D,
-	0x0A8F, 0x0A91, 0x0A93, 0x0AA8, 0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3,
-	0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5, 0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD,
-	0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3, 0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
-	0xA830, 0xA839,
-	//  #273 (16810+7): scx=Gunjala_Gondi:Gong
-	0x0964, 0x0965, 0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E,
-	0x11D90, 0x11D91, 0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
-	//  #274 (16817+19): scx=Gurmukhi:Guru
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0A01, 0x0A03, 0x0A05, 0x0A0A,
-	0x0A0F, 0x0A10, 0x0A13, 0x0A28, 0x0A2A, 0x0A30, 0x0A32, 0x0A33,
-	0x0A35, 0x0A36, 0x0A38, 0x0A39, 0x0A3C, 0x0A3C, 0x0A3E, 0x0A42,
-	0x0A47, 0x0A48, 0x0A4B, 0x0A4D, 0x0A51, 0x0A51, 0x0A59, 0x0A5C,
-	0x0A5E, 0x0A5E, 0x0A66, 0x0A76, 0xA830, 0xA839,
-	//  #275 (16836+38): scx=Han:Hani
-	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3001, 0x3003,
-	0x3005, 0x3011, 0x3013, 0x301F, 0x3021, 0x302D, 0x3030, 0x3030,
-	0x3037, 0x303F, 0x30FB, 0x30FB, 0x3190, 0x319F, 0x31C0, 0x31E3,
-	0x3220, 0x3247, 0x3280, 0x32B0, 0x32C0, 0x32CB, 0x32FF, 0x32FF,
-	0x3358, 0x3370, 0x337B, 0x337F, 0x33E0, 0x33FE, 0x3400, 0x4DBF,
-	0x4E00, 0x9FFF, 0xA700, 0xA707, 0xF900, 0xFA6D, 0xFA70, 0xFAD9,
-	0xFE45, 0xFE46, 0xFF61, 0xFF65, 0x16FE2, 0x16FE3, 0x16FF0, 0x16FF1,
-	0x1D360, 0x1D371, 0x1F250, 0x1F251, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
-	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
-	0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #276 (16874+21): scx=Hangul:Hang
-	0x1100, 0x11FF, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
-	0x302E, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB, 0x3131, 0x318E,
-	0x3200, 0x321E, 0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3,
-	0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
-	0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7,
-	0xFFDA, 0xFFDC,
-	//  #277 (16895+7): scx=Hanifi_Rohingya:Rohg
-	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x0640, 0x0640,
-	0x06D4, 0x06D4, 0x10D00, 0x10D27, 0x10D30, 0x10D39,
-	//  #278 (16902+1): scx=Hanunoo:Hano
-	0x1720, 0x1736,
-	//  #279 (16903+17): scx=Hiragana:Hira
-	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
-	0x3037, 0x3037, 0x303C, 0x303D, 0x3041, 0x3096, 0x3099, 0x30A0,
-	0x30FB, 0x30FC, 0xFE45, 0xFE46, 0xFF61, 0xFF65, 0xFF70, 0xFF70,
-	0xFF9E, 0xFF9F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132, 0x1B150, 0x1B152,
-	0x1F200, 0x1F200,
-	//  #280 (16920+20): scx=Inherited:Zinh:Qaai
-	0x0300, 0x0341, 0x0343, 0x0344, 0x0346, 0x0362, 0x0953, 0x0954,
-	0x1AB0, 0x1ACE, 0x1DC2, 0x1DF7, 0x1DF9, 0x1DF9, 0x1DFB, 0x1DFF,
-	0x200C, 0x200D, 0x20D0, 0x20EF, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D,
-	0x101FD, 0x101FD, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46, 0x1D167, 0x1D169,
-	0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD, 0xE0100, 0xE01EF,
-	//  #281 (16940+3): scx=Javanese:Java
-	0xA980, 0xA9CD, 0xA9CF, 0xA9D9, 0xA9DE, 0xA9DF,
-	//  #282 (16943+4): scx=Kaithi:Kthi
-	0x0966, 0x096F, 0xA830, 0xA839, 0x11080, 0x110C2, 0x110CD, 0x110CD,
-	//  #283 (16947+21): scx=Kannada:Knda
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0C80, 0x0C8C, 0x0C8E, 0x0C90,
-	0x0C92, 0x0CA8, 0x0CAA, 0x0CB3, 0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4,
-	0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD, 0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE,
-	0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF, 0x0CF1, 0x0CF3, 0x1CD0, 0x1CD0,
-	0x1CD2, 0x1CD2, 0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2, 0x1CF4, 0x1CF4,
-	0xA830, 0xA835,
-	//  #284 (16968+20): scx=Katakana:Kana
-	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
-	0x3037, 0x3037, 0x303C, 0x303D, 0x3099, 0x309C, 0x30A0, 0x30FF,
-	0x31F0, 0x31FF, 0x32D0, 0x32FE, 0x3300, 0x3357, 0xFE45, 0xFE46,
-	0xFF61, 0xFF9F, 0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE,
-	0x1B000, 0x1B000, 0x1B120, 0x1B122, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
-	//  #285 (16988+1): scx=Kayah_Li:Kali
-	0xA900, 0xA92F,
-	//  #286 (16989+4): scx=Khojki:Khoj
-	0x0AE6, 0x0AEF, 0xA830, 0xA839, 0x11200, 0x11211, 0x11213, 0x11241,
-	//  #287 (16993+4): scx=Khudawadi:Sind
-	0x0964, 0x0965, 0xA830, 0xA839, 0x112B0, 0x112EA, 0x112F0, 0x112F9,
-	//  #288 (16997+47): scx=Latin:Latn
+	//  #261 (17286+47): scx=Latin:Latn
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02B8, 0x02E0, 0x02E4,
 	0x0363, 0x036F, 0x0485, 0x0486, 0x0951, 0x0952, 0x10FB, 0x10FB,
@@ -9548,84 +10757,72 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xAB30, 0xAB5A, 0xAB5C, 0xAB64, 0xAB66, 0xAB69, 0xFB00, 0xFB06,
 	0xFF21, 0xFF3A, 0xFF41, 0xFF5A, 0x10780, 0x10785, 0x10787, 0x107B0,
 	0x107B2, 0x107BA, 0x1DF00, 0x1DF1E, 0x1DF25, 0x1DF2A,
-	//  #289 (17044+6): scx=Limbu:Limb
-	0x0965, 0x0965, 0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B,
-	0x1940, 0x1940, 0x1944, 0x194F,
-	//  #290 (17050+4): scx=Linear_A:Lina
-	0x10107, 0x10133, 0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
-	//  #291 (17054+10): scx=Linear_B:Linb
-	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
-	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA, 0x10100, 0x10102,
-	0x10107, 0x10133, 0x10137, 0x1013F,
-	//  #292 (17064+3): scx=Mahajani:Mahj
-	0x0964, 0x096F, 0xA830, 0xA839, 0x11150, 0x11176,
-	//  #293 (17067+11): scx=Malayalam:Mlym
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0D00, 0x0D0C, 0x0D0E, 0x0D10,
-	0x0D12, 0x0D44, 0x0D46, 0x0D48, 0x0D4A, 0x0D4F, 0x0D54, 0x0D63,
-	0x0D66, 0x0D7F, 0x1CDA, 0x1CDA, 0xA830, 0xA832,
-	//  #294 (17078+3): scx=Mandaic:Mand
-	0x0640, 0x0640, 0x0840, 0x085B, 0x085E, 0x085E,
-	//  #295 (17081+3): scx=Manichaean:Mani
-	0x0640, 0x0640, 0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
-	//  #296 (17084+8): scx=Masaram_Gondi:Gonm
-	0x0964, 0x0965, 0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36,
-	0x11D3A, 0x11D3A, 0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
-	//  #297 (17092+3): scx=Modi:Modi
-	0xA830, 0xA839, 0x11600, 0x11644, 0x11650, 0x11659,
-	//  #298 (17095+5): scx=Mongolian:Mong
-	0x1800, 0x1819, 0x1820, 0x1878, 0x1880, 0x18AA, 0x202F, 0x202F,
-	0x11660, 0x1166C,
-	//  #299 (17100+6): scx=Multani:Mult
-	0x0A66, 0x0A6F, 0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D,
-	0x1128F, 0x1129D, 0x1129F, 0x112A9,
-	//  #300 (17106+4): scx=Myanmar:Mymr
-	0x1000, 0x109F, 0xA92E, 0xA92E, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
-	//  #301 (17110+9): scx=Nandinagari:Nand
-	0x0964, 0x0965, 0x0CE6, 0x0CEF, 0x1CE9, 0x1CE9, 0x1CF2, 0x1CF2,
-	0x1CFA, 0x1CFA, 0xA830, 0xA835, 0x119A0, 0x119A7, 0x119AA, 0x119D7,
-	0x119DA, 0x119E4,
-	//  #302 (17119+6): scx=Nko:Nkoo
-	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x07C0, 0x07FA,
-	0x07FD, 0x07FF, 0xFD3E, 0xFD3F,
-	//  #303 (17125+2): scx=Old_Permic:Perm
-	0x0483, 0x0483, 0x10350, 0x1037A,
-	//  #304 (17127+3): scx=Old_Uyghur:Ougr
-	0x0640, 0x0640, 0x10AF2, 0x10AF2, 0x10F70, 0x10F89,
-	//  #305 (17130+18): scx=Oriya:Orya
+	//  #262 (17333+38): scx=Greek:Grek
+	0x0342, 0x0342, 0x0345, 0x0345, 0x0370, 0x0373, 0x0375, 0x0377,
+	0x037A, 0x037D, 0x037F, 0x037F, 0x0384, 0x0384, 0x0386, 0x0386,
+	0x0388, 0x038A, 0x038C, 0x038C, 0x038E, 0x03A1, 0x03A3, 0x03E1,
+	0x03F0, 0x03FF, 0x1D26, 0x1D2A, 0x1D5D, 0x1D61, 0x1D66, 0x1D6A,
+	0x1DBF, 0x1DC1, 0x1F00, 0x1F15, 0x1F18, 0x1F1D, 0x1F20, 0x1F45,
+	0x1F48, 0x1F4D, 0x1F50, 0x1F57, 0x1F59, 0x1F59, 0x1F5B, 0x1F5B,
+	0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D, 0x1F80, 0x1FB4, 0x1FB6, 0x1FC4,
+	0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB, 0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4,
+	0x1FF6, 0x1FFE, 0x2126, 0x2126, 0xAB65, 0xAB65, 0x10140, 0x1018E,
+	0x101A0, 0x101A0, 0x1D200, 0x1D245,
+	//  #263 (17371+11): scx=Cyrillic:Cyrl
+	0x0400, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B, 0x1D78, 0x1D78,
+	0x1DF8, 0x1DF8, 0x2DE0, 0x2DFF, 0x2E43, 0x2E43, 0xA640, 0xA69F,
+	0xFE2E, 0xFE2F, 0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
+	//  #264 (17382+52): scx=Arabic:Arab
+	0x0600, 0x0604, 0x0606, 0x06DC, 0x06DE, 0x06FF, 0x0750, 0x077F,
+	0x0870, 0x088E, 0x0890, 0x0891, 0x0898, 0x08E1, 0x08E3, 0x08FF,
+	0xFB50, 0xFBC2, 0xFBD3, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF,
+	0xFDF0, 0xFDFF, 0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x102E0, 0x102FB,
+	0x10E60, 0x10E7E, 0x10EFD, 0x10EFF, 0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F,
+	0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24, 0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32,
+	0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39, 0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42,
+	0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49, 0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F,
+	0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54, 0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59,
+	0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D, 0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62,
+	0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77,
+	0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B,
+	0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
+	//  #265 (17434+12): scx=Syriac:Syrc
+	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0640, 0x0640,
+	0x064B, 0x0655, 0x0670, 0x0670, 0x0700, 0x070D, 0x070F, 0x074A,
+	0x074D, 0x074F, 0x0860, 0x086A, 0x1DF8, 0x1DF8, 0x1DFA, 0x1DFA,
+	//  #266 (17446+7): scx=Thaana:Thaa
+	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0660, 0x0669,
+	0x0780, 0x07B1, 0xFDF2, 0xFDF2, 0xFDFD, 0xFDFD,
+	//  #267 (17453+8): scx=Devanagari:Deva
+	0x0900, 0x0952, 0x0955, 0x097F, 0x1CD0, 0x1CF6, 0x1CF8, 0x1CF9,
+	0x20F0, 0x20F0, 0xA830, 0xA839, 0xA8E0, 0xA8FF, 0x11B00, 0x11B09,
+	//  #268 (17461+26): scx=Bengali:Beng
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0980, 0x0983, 0x0985, 0x098C,
+	0x098F, 0x0990, 0x0993, 0x09A8, 0x09AA, 0x09B0, 0x09B2, 0x09B2,
+	0x09B6, 0x09B9, 0x09BC, 0x09C4, 0x09C7, 0x09C8, 0x09CB, 0x09CE,
+	0x09D7, 0x09D7, 0x09DC, 0x09DD, 0x09DF, 0x09E3, 0x09E6, 0x09FE,
+	0x1CD0, 0x1CD0, 0x1CD2, 0x1CD2, 0x1CD5, 0x1CD6, 0x1CD8, 0x1CD8,
+	0x1CE1, 0x1CE1, 0x1CEA, 0x1CEA, 0x1CED, 0x1CED, 0x1CF2, 0x1CF2,
+	0x1CF5, 0x1CF7, 0xA8F1, 0xA8F1,
+	//  #269 (17487+19): scx=Gurmukhi:Guru
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0A01, 0x0A03, 0x0A05, 0x0A0A,
+	0x0A0F, 0x0A10, 0x0A13, 0x0A28, 0x0A2A, 0x0A30, 0x0A32, 0x0A33,
+	0x0A35, 0x0A36, 0x0A38, 0x0A39, 0x0A3C, 0x0A3C, 0x0A3E, 0x0A42,
+	0x0A47, 0x0A48, 0x0A4B, 0x0A4D, 0x0A51, 0x0A51, 0x0A59, 0x0A5C,
+	0x0A5E, 0x0A5E, 0x0A66, 0x0A76, 0xA830, 0xA839,
+	//  #270 (17506+17): scx=Gujarati:Gujr
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0A81, 0x0A83, 0x0A85, 0x0A8D,
+	0x0A8F, 0x0A91, 0x0A93, 0x0AA8, 0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3,
+	0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5, 0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD,
+	0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3, 0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
+	0xA830, 0xA839,
+	//  #271 (17523+18): scx=Oriya:Orya
 	0x0951, 0x0952, 0x0964, 0x0965, 0x0B01, 0x0B03, 0x0B05, 0x0B0C,
 	0x0B0F, 0x0B10, 0x0B13, 0x0B28, 0x0B2A, 0x0B30, 0x0B32, 0x0B33,
 	0x0B35, 0x0B39, 0x0B3C, 0x0B44, 0x0B47, 0x0B48, 0x0B4B, 0x0B4D,
 	0x0B55, 0x0B57, 0x0B5C, 0x0B5D, 0x0B5F, 0x0B63, 0x0B66, 0x0B77,
 	0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2,
-	//  #306 (17148+3): scx=Phags_Pa:Phag
-	0x1802, 0x1803, 0x1805, 0x1805, 0xA840, 0xA877,
-	//  #307 (17151+4): scx=Psalter_Pahlavi:Phlp
-	0x0640, 0x0640, 0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
-	//  #308 (17155+6): scx=Sharada:Shrd
-	0x0951, 0x0951, 0x1CD7, 0x1CD7, 0x1CD9, 0x1CD9, 0x1CDC, 0x1CDD,
-	0x1CE0, 0x1CE0, 0x11180, 0x111DF,
-	//  #309 (17161+14): scx=Sinhala:Sinh
-	0x0964, 0x0965, 0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1,
-	0x0DB3, 0x0DBB, 0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA,
-	0x0DCF, 0x0DD4, 0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF,
-	0x0DF2, 0x0DF4, 0x111E1, 0x111F4,
-	//  #310 (17175+2): scx=Sogdian:Sogd
-	0x0640, 0x0640, 0x10F30, 0x10F59,
-	//  #311 (17177+3): scx=Syloti_Nagri:Sylo
-	0x0964, 0x0965, 0x09E6, 0x09EF, 0xA800, 0xA82C,
-	//  #312 (17180+12): scx=Syriac:Syrc
-	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0640, 0x0640,
-	0x064B, 0x0655, 0x0670, 0x0670, 0x0700, 0x070D, 0x070F, 0x074A,
-	0x074D, 0x074F, 0x0860, 0x086A, 0x1DF8, 0x1DF8, 0x1DFA, 0x1DFA,
-	//  #313 (17192+3): scx=Tagalog:Tglg
-	0x1700, 0x1715, 0x171F, 0x171F, 0x1735, 0x1736,
-	//  #314 (17195+4): scx=Tagbanwa:Tagb
-	0x1735, 0x1736, 0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
-	//  #315 (17199+3): scx=Tai_Le:Tale
-	0x1040, 0x1049, 0x1950, 0x196D, 0x1970, 0x1974,
-	//  #316 (17202+4): scx=Takri:Takr
-	0x0964, 0x0965, 0xA830, 0xA839, 0x11680, 0x116B9, 0x116C0, 0x116C9,
-	//  #317 (17206+25): scx=Tamil:Taml
+	//  #272 (17541+25): scx=Tamil:Taml
 	0x0951, 0x0952, 0x0964, 0x0965, 0x0B82, 0x0B83, 0x0B85, 0x0B8A,
 	0x0B8E, 0x0B90, 0x0B92, 0x0B95, 0x0B99, 0x0B9A, 0x0B9C, 0x0B9C,
 	0x0B9E, 0x0B9F, 0x0BA3, 0x0BA4, 0x0BA8, 0x0BAA, 0x0BAE, 0x0BB9,
@@ -9633,29 +10830,196 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x0BD7, 0x0BD7, 0x0BE6, 0x0BFA, 0x1CDA, 0x1CDA, 0xA8F3, 0xA8F3,
 	0x11301, 0x11301, 0x11303, 0x11303, 0x1133B, 0x1133C, 0x11FC0, 0x11FF1,
 	0x11FFF, 0x11FFF,
-	//  #318 (17231+17): scx=Telugu:Telu
+	//  #273 (17566+17): scx=Telugu:Telu
 	0x0951, 0x0952, 0x0964, 0x0965, 0x0C00, 0x0C0C, 0x0C0E, 0x0C10,
 	0x0C12, 0x0C28, 0x0C2A, 0x0C39, 0x0C3C, 0x0C44, 0x0C46, 0x0C48,
 	0x0C4A, 0x0C4D, 0x0C55, 0x0C56, 0x0C58, 0x0C5A, 0x0C5D, 0x0C5D,
 	0x0C60, 0x0C63, 0x0C66, 0x0C6F, 0x0C77, 0x0C7F, 0x1CDA, 0x1CDA,
 	0x1CF2, 0x1CF2,
-	//  #319 (17248+7): scx=Thaana:Thaa
-	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0660, 0x0669,
-	0x0780, 0x07B1, 0xFDF2, 0xFDF2, 0xFDFD, 0xFDFD,
-	//  #320 (17255+6): scx=Tirhuta:Tirh
+	//  #274 (17583+21): scx=Kannada:Knda
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0C80, 0x0C8C, 0x0C8E, 0x0C90,
+	0x0C92, 0x0CA8, 0x0CAA, 0x0CB3, 0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4,
+	0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD, 0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE,
+	0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF, 0x0CF1, 0x0CF3, 0x1CD0, 0x1CD0,
+	0x1CD2, 0x1CD2, 0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2, 0x1CF4, 0x1CF4,
+	0xA830, 0xA835,
+	//  #275 (17604+12): scx=Malayalam:Mlym
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0D00, 0x0D0C, 0x0D0E, 0x0D10,
+	0x0D12, 0x0D44, 0x0D46, 0x0D48, 0x0D4A, 0x0D4F, 0x0D54, 0x0D63,
+	0x0D66, 0x0D7F, 0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2, 0xA830, 0xA832,
+	//  #276 (17616+15): scx=Sinhala:Sinh
+	0x0964, 0x0965, 0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1,
+	0x0DB3, 0x0DBB, 0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA,
+	0x0DCF, 0x0DD4, 0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF,
+	0x0DF2, 0x0DF4, 0x1CF2, 0x1CF2, 0x111E1, 0x111F4,
+	//  #277 (17631+4): scx=Myanmar:Mymr
+	0x1000, 0x109F, 0xA92E, 0xA92E, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
+	//  #278 (17635+9): scx=Georgian:Geor
+	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FF,
+	0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25, 0x2D27, 0x2D27,
+	0x2D2D, 0x2D2D,
+	//  #279 (17644+21): scx=Hangul:Hang
+	0x1100, 0x11FF, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
+	0x302E, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB, 0x3131, 0x318E,
+	0x3200, 0x321E, 0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3,
+	0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
+	0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7,
+	0xFFDA, 0xFFDC,
+	//  #280 (17665+5): scx=Mongolian:Mong
+	0x1800, 0x1819, 0x1820, 0x1878, 0x1880, 0x18AA, 0x202F, 0x202F,
+	0x11660, 0x1166C,
+	//  #281 (17670+17): scx=Hiragana:Hira
+	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
+	0x3037, 0x3037, 0x303C, 0x303D, 0x3041, 0x3096, 0x3099, 0x30A0,
+	0x30FB, 0x30FC, 0xFE45, 0xFE46, 0xFF61, 0xFF65, 0xFF70, 0xFF70,
+	0xFF9E, 0xFF9F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132, 0x1B150, 0x1B152,
+	0x1F200, 0x1F200,
+	//  #282 (17687+20): scx=Katakana:Kana
+	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
+	0x3037, 0x3037, 0x303C, 0x303D, 0x3099, 0x309C, 0x30A0, 0x30FF,
+	0x31F0, 0x31FF, 0x32D0, 0x32FE, 0x3300, 0x3357, 0xFE45, 0xFE46,
+	0xFF61, 0xFF9F, 0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE,
+	0x1B000, 0x1B000, 0x1B120, 0x1B122, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
+	//  #283 (17707+12): scx=Bopomofo:Bopo
+	0x02EA, 0x02EB, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
+	0x302A, 0x302D, 0x3030, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB,
+	0x3105, 0x312F, 0x31A0, 0x31BF, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
+	//  #284 (17719+39): scx=Han:Hani
+	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3001, 0x3003,
+	0x3005, 0x3011, 0x3013, 0x301F, 0x3021, 0x302D, 0x3030, 0x3030,
+	0x3037, 0x303F, 0x30FB, 0x30FB, 0x3190, 0x319F, 0x31C0, 0x31E3,
+	0x3220, 0x3247, 0x3280, 0x32B0, 0x32C0, 0x32CB, 0x32FF, 0x32FF,
+	0x3358, 0x3370, 0x337B, 0x337F, 0x33E0, 0x33FE, 0x3400, 0x4DBF,
+	0x4E00, 0x9FFF, 0xA700, 0xA707, 0xF900, 0xFA6D, 0xFA70, 0xFAD9,
+	0xFE45, 0xFE46, 0xFF61, 0xFF65, 0x16FE2, 0x16FE3, 0x16FF0, 0x16FF1,
+	0x1D360, 0x1D371, 0x1F250, 0x1F251, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
+	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2EBF0, 0x2EE5D,
+	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
+	//  #285 (17758+7): scx=Yi:Yiii
+	0x3001, 0x3002, 0x3008, 0x3011, 0x3014, 0x301B, 0x30FB, 0x30FB,
+	0xA000, 0xA48C, 0xA490, 0xA4C6, 0xFF61, 0xFF65,
+	//  #286 (17765+20): scx=Inherited:Zinh:Qaai
+	0x0300, 0x0341, 0x0343, 0x0344, 0x0346, 0x0362, 0x0953, 0x0954,
+	0x1AB0, 0x1ACE, 0x1DC2, 0x1DF7, 0x1DF9, 0x1DF9, 0x1DFB, 0x1DFF,
+	0x200C, 0x200D, 0x20D0, 0x20EF, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D,
+	0x101FD, 0x101FD, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46, 0x1D167, 0x1D169,
+	0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD, 0xE0100, 0xE01EF,
+	//  #287 (17785+3): scx=Tagalog:Tglg
+	0x1700, 0x1715, 0x171F, 0x171F, 0x1735, 0x1736,
+	//  #288 (17788+1): scx=Hanunoo:Hano
+	0x1720, 0x1736,
+	//  #289 (17789+2): scx=Buhid:Buhd
+	0x1735, 0x1736, 0x1740, 0x1753,
+	//  #290 (17791+4): scx=Tagbanwa:Tagb
+	0x1735, 0x1736, 0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
+	//  #291 (17795+6): scx=Limbu:Limb
+	0x0965, 0x0965, 0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B,
+	0x1940, 0x1940, 0x1944, 0x194F,
+	//  #292 (17801+3): scx=Tai_Le:Tale
+	0x1040, 0x1049, 0x1950, 0x196D, 0x1970, 0x1974,
+	//  #293 (17804+10): scx=Linear_B:Linb
+	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
+	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA, 0x10100, 0x10102,
+	0x10107, 0x10133, 0x10137, 0x1013F,
+	//  #294 (17814+9): scx=Cypriot:Cprt
+	0x10100, 0x10102, 0x10107, 0x10133, 0x10137, 0x1013F, 0x10800, 0x10805,
+	0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838, 0x1083C, 0x1083C,
+	0x1083F, 0x1083F,
+	//  #295 (17823+3): scx=Buginese:Bugi
+	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F, 0xA9CF, 0xA9CF,
+	//  #296 (17826+4): scx=Coptic:Copt:Qaac
+	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF, 0x102E0, 0x102FB,
+	//  #297 (17830+10): scx=Glagolitic:Glag
+	0x0484, 0x0484, 0x0487, 0x0487, 0x2C00, 0x2C5F, 0x2E43, 0x2E43,
+	0xA66F, 0xA66F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
+	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
+	//  #298 (17840+3): scx=Syloti_Nagri:Sylo
+	0x0964, 0x0965, 0x09E6, 0x09EF, 0xA800, 0xA82C,
+	//  #299 (17843+3): scx=Phags_Pa:Phag
+	0x1802, 0x1803, 0x1805, 0x1805, 0xA840, 0xA877,
+	//  #300 (17846+6): scx=Nko:Nkoo
+	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x07C0, 0x07FA,
+	0x07FD, 0x07FF, 0xFD3E, 0xFD3F,
+	//  #301 (17852+1): scx=Kayah_Li:Kali
+	0xA900, 0xA92F,
+	//  #302 (17853+3): scx=Javanese:Java
+	0xA980, 0xA9CD, 0xA9CF, 0xA9D9, 0xA9DE, 0xA9DF,
+	//  #303 (17856+4): scx=Kaithi:Kthi
+	0x0966, 0x096F, 0xA830, 0xA839, 0x11080, 0x110C2, 0x110CD, 0x110CD,
+	//  #304 (17860+3): scx=Mandaic:Mand
+	0x0640, 0x0640, 0x0840, 0x085B, 0x085E, 0x085E,
+	//  #305 (17863+4): scx=Chakma:Cakm
+	0x09E6, 0x09EF, 0x1040, 0x1049, 0x11100, 0x11134, 0x11136, 0x11147,
+	//  #306 (17867+8): scx=Sharada:Shrd
+	0x0951, 0x0951, 0x1CD7, 0x1CD7, 0x1CD9, 0x1CD9, 0x1CDC, 0x1CDD,
+	0x1CE0, 0x1CE0, 0xA830, 0xA835, 0xA838, 0xA838, 0x11180, 0x111DF,
+	//  #307 (17875+4): scx=Takri:Takr
+	0x0964, 0x0965, 0xA830, 0xA839, 0x11680, 0x116B9, 0x116C0, 0x116C9,
+	//  #308 (17879+5): scx=Duployan:Dupl
+	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
+	0x1BC9C, 0x1BCA3,
+	//  #309 (17884+25): scx=Grantha:Gran
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0BE6, 0x0BF3, 0x1CD0, 0x1CD0,
+	0x1CD2, 0x1CD3, 0x1CF2, 0x1CF4, 0x1CF8, 0x1CF9, 0x20F0, 0x20F0,
+	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
+	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133B, 0x11344,
+	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
+	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374, 0x11FD0, 0x11FD1,
+	0x11FD3, 0x11FD3,
+	//  #310 (17909+4): scx=Khojki:Khoj
+	0x0AE6, 0x0AEF, 0xA830, 0xA839, 0x11200, 0x11211, 0x11213, 0x11241,
+	//  #311 (17913+4): scx=Linear_A:Lina
+	0x10107, 0x10133, 0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
+	//  #312 (17917+3): scx=Mahajani:Mahj
+	0x0964, 0x096F, 0xA830, 0xA839, 0x11150, 0x11176,
+	//  #313 (17920+3): scx=Manichaean:Mani
+	0x0640, 0x0640, 0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
+	//  #314 (17923+3): scx=Modi
+	0xA830, 0xA839, 0x11600, 0x11644, 0x11650, 0x11659,
+	//  #315 (17926+2): scx=Old_Permic:Perm
+	0x0483, 0x0483, 0x10350, 0x1037A,
+	//  #316 (17928+4): scx=Psalter_Pahlavi:Phlp
+	0x0640, 0x0640, 0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
+	//  #317 (17932+4): scx=Khudawadi:Sind
+	0x0964, 0x0965, 0xA830, 0xA839, 0x112B0, 0x112EA, 0x112F0, 0x112F9,
+	//  #318 (17936+6): scx=Tirhuta:Tirh
 	0x0951, 0x0952, 0x0964, 0x0965, 0x1CF2, 0x1CF2, 0xA830, 0xA839,
 	0x11480, 0x114C7, 0x114D0, 0x114D9,
-	//  #321 (17261+7): scx=Yezidi:Yezi
+	//  #319 (17942+6): scx=Multani:Mult
+	0x0A66, 0x0A6F, 0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D,
+	0x1128F, 0x1129D, 0x1129F, 0x112A9,
+	//  #320 (17948+5): scx=Adlam:Adlm
+	0x061F, 0x061F, 0x0640, 0x0640, 0x1E900, 0x1E94B, 0x1E950, 0x1E959,
+	0x1E95E, 0x1E95F,
+	//  #321 (17953+8): scx=Masaram_Gondi:Gonm
+	0x0964, 0x0965, 0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36,
+	0x11D3A, 0x11D3A, 0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
+	//  #322 (17961+3): scx=Dogra:Dogr
+	0x0964, 0x096F, 0xA830, 0xA839, 0x11800, 0x1183B,
+	//  #323 (17964+7): scx=Gunjala_Gondi:Gong
+	0x0964, 0x0965, 0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E,
+	0x11D90, 0x11D91, 0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
+	//  #324 (17971+7): scx=Hanifi_Rohingya:Rohg
+	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x0640, 0x0640,
+	0x06D4, 0x06D4, 0x10D00, 0x10D27, 0x10D30, 0x10D39,
+	//  #325 (17978+2): scx=Sogdian:Sogd
+	0x0640, 0x0640, 0x10F30, 0x10F59,
+	//  #326 (17980+9): scx=Nandinagari:Nand
+	0x0964, 0x0965, 0x0CE6, 0x0CEF, 0x1CE9, 0x1CE9, 0x1CF2, 0x1CF2,
+	0x1CFA, 0x1CFA, 0xA830, 0xA835, 0x119A0, 0x119A7, 0x119AA, 0x119D7,
+	0x119DA, 0x119E4,
+	//  #327 (17989+7): scx=Yezidi:Yezi
 	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x0660, 0x0669,
 	0x10E80, 0x10EA9, 0x10EAB, 0x10EAD, 0x10EB0, 0x10EB1,
-	//  #322 (17268+7): scx=Yi:Yiii
-	0x3001, 0x3002, 0x3008, 0x3011, 0x3014, 0x301B, 0x30FB, 0x30FB,
-	0xA000, 0xA48C, 0xA490, 0xA4C6, 0xFF61, 0xFF65
+	//  #328 (17996+2): scx=Cypro_Minoan:Cpmn
+	0x10100, 0x10101, 0x12F90, 0x12FF2,
+	//  #329 (17998+3): scx=Old_Uyghur:Ougr
+	0x0640, 0x0640, 0x10AF2, 0x10AF2, 0x10F70, 0x10F89
 #if !defined(SRELL_NO_UNICODE_POS)
 	,
-	//  #323 (17275+12636/2): bp=RGI_Emoji
-	//  1338/2 + 48/2 + 1966/2 + 774/2 + 24/2 + 8486/2
-	//  #324 (17275+1338/2): bp=Basic_Emoji
+	//  #330 (18001+13532/2): bp=RGI_Emoji
+	//  1338/2 + 48/2 + 1966/2 + 774/2 + 24/2 + 9382/2
+	//  #331 (18001+1338/2): bp=Basic_Emoji
 	1, 0x231A, 0x231B,
 	1, 0x23E9, 0x23EC,
 	2, 0x23F0,
@@ -10145,7 +11509,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	3, 0x1F6F0, 0xFE0F,
 	3, 0x1F6F3, 0xFE0F,
 	0,	//  Padding.
-	//  #325 (17944+48/2): bp=Emoji_Keycap_Sequence
+	//  #332 (18670+48/2): bp=Emoji_Keycap_Sequence
 	4, 0x0023, 0xFE0F, 0x20E3,
 	4, 0x002A, 0xFE0F, 0x20E3,
 	4, 0x0030, 0xFE0F, 0x20E3,
@@ -10158,7 +11522,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	4, 0x0037, 0xFE0F, 0x20E3,
 	4, 0x0038, 0xFE0F, 0x20E3,
 	4, 0x0039, 0xFE0F, 0x20E3,
-	//  #326 (17968+1966/2): bp=RGI_Emoji_Modifier_Sequence
+	//  #333 (18694+1966/2): bp=RGI_Emoji_Modifier_Sequence
 	3, 0x261D, 0x1F3FB,
 	3, 0x261D, 0x1F3FC,
 	3, 0x261D, 0x1F3FD,
@@ -10815,7 +12179,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	3, 0x1FAF8, 0x1F3FE,
 	3, 0x1FAF8, 0x1F3FF,
 	0,	//  Padding.
-	//  #327 (18951+774/2): bp=RGI_Emoji_Flag_Sequence
+	//  #334 (19677+774/2): bp=RGI_Emoji_Flag_Sequence
 	3, 0x1F1E6, 0x1F1E8,
 	3, 0x1F1E6, 0x1F1E9,
 	3, 0x1F1E6, 0x1F1EA,
@@ -11074,11 +12438,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	3, 0x1F1FF, 0x1F1E6,
 	3, 0x1F1FF, 0x1F1F2,
 	3, 0x1F1FF, 0x1F1FC,
-	//  #328 (19338+24/2): bp=RGI_Emoji_Tag_Sequence
+	//  #335 (20064+24/2): bp=RGI_Emoji_Tag_Sequence
 	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0065, 0xE006E, 0xE0067, 0xE007F,
 	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0073, 0xE0063, 0xE0074, 0xE007F,
 	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F,
-	//  #329 (19350+8486/2): bp=RGI_Emoji_ZWJ_Sequence
+	//  #336 (20076+9382/2): bp=RGI_Emoji_ZWJ_Sequence
 	7, 0x1F468, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468,
 	9, 0x1F468, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468,
 	4, 0x1F468, 0x200D, 0x1F466,
@@ -11321,6 +12685,10 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FD,
 	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F469, 0x1F3FE,
 	6, 0x1F9D1, 0x200D, 0x1F91D, 0x200D, 0x1F9D1,
+	6, 0x1F9D1, 0x200D, 0x1F9D1, 0x200D, 0x1F9D2,
+	8, 0x1F9D1, 0x200D, 0x1F9D1, 0x200D, 0x1F9D2, 0x200D, 0x1F9D2,
+	4, 0x1F9D1, 0x200D, 0x1F9D2,
+	6, 0x1F9D1, 0x200D, 0x1F9D2, 0x200D, 0x1F9D2,
 	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FC,
 	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FD,
 	11, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F9D1, 0x1F3FE,
@@ -11329,7 +12697,6 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
 	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
 	9, 0x1F9D1, 0x1F3FB, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
-	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F384,
 	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
 	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
 	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
@@ -11343,7 +12710,6 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
 	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
 	9, 0x1F9D1, 0x1F3FC, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
-	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F384,
 	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
 	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
 	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
@@ -11357,7 +12723,6 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
 	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
 	9, 0x1F9D1, 0x1F3FD, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
-	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F384,
 	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
 	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
 	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
@@ -11371,7 +12736,6 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
 	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
 	9, 0x1F9D1, 0x1F3FE, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FF,
-	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F384,
 	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
 	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
 	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
@@ -11385,7 +12749,6 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FC,
 	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FD,
 	9, 0x1F9D1, 0x1F3FF, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F9D1, 0x1F3FE,
-	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F384,
 	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FB,
 	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FC,
 	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F91D, 0x200D, 0x1F9D1, 0x1F3FD,
@@ -11411,6 +12774,12 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FC,
 	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FD,
 	6, 0x1FAF1, 0x1F3FF, 0x200D, 0x1FAF2, 0x1F3FE,
+	5, 0x1F3C3, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FB, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FC, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FD, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FE, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F3C3, 0x1F3FF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x200D, 0x2695, 0xFE0F,
 	5, 0x1F468, 0x200D, 0x2696, 0xFE0F,
 	5, 0x1F468, 0x200D, 0x2708, 0xFE0F,
@@ -11429,8 +12798,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	4, 0x1F468, 0x200D, 0x1F680,
 	4, 0x1F468, 0x200D, 0x1F692,
 	4, 0x1F468, 0x200D, 0x1F9AF,
+	7, 0x1F468, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	4, 0x1F468, 0x200D, 0x1F9BC,
+	7, 0x1F468, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	4, 0x1F468, 0x200D, 0x1F9BD,
+	7, 0x1F468, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F468, 0x1F3FB, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F468, 0x1F3FB, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F468, 0x1F3FB, 0x200D, 0x2708, 0xFE0F,
@@ -11449,8 +12821,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F680,
 	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F692,
 	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9AF,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9BC,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FB, 0x200D, 0x1F9BD,
+	8, 0x1F468, 0x1F3FB, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F468, 0x1F3FC, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F468, 0x1F3FC, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F468, 0x1F3FC, 0x200D, 0x2708, 0xFE0F,
@@ -11469,8 +12844,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F680,
 	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F692,
 	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9AF,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9BC,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FC, 0x200D, 0x1F9BD,
+	8, 0x1F468, 0x1F3FC, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F468, 0x1F3FD, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F468, 0x1F3FD, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F468, 0x1F3FD, 0x200D, 0x2708, 0xFE0F,
@@ -11489,8 +12867,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F680,
 	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F692,
 	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9AF,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9BC,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FD, 0x200D, 0x1F9BD,
+	8, 0x1F468, 0x1F3FD, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F468, 0x1F3FE, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F468, 0x1F3FE, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F468, 0x1F3FE, 0x200D, 0x2708, 0xFE0F,
@@ -11509,8 +12890,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F680,
 	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F692,
 	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9AF,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9BC,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FE, 0x200D, 0x1F9BD,
+	8, 0x1F468, 0x1F3FE, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F468, 0x1F3FF, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F468, 0x1F3FF, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F468, 0x1F3FF, 0x200D, 0x2708, 0xFE0F,
@@ -11529,8 +12913,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F680,
 	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F692,
 	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9AF,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9BC,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F468, 0x1F3FF, 0x200D, 0x1F9BD,
+	8, 0x1F468, 0x1F3FF, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x200D, 0x2695, 0xFE0F,
 	5, 0x1F469, 0x200D, 0x2696, 0xFE0F,
 	5, 0x1F469, 0x200D, 0x2708, 0xFE0F,
@@ -11549,8 +12936,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	4, 0x1F469, 0x200D, 0x1F680,
 	4, 0x1F469, 0x200D, 0x1F692,
 	4, 0x1F469, 0x200D, 0x1F9AF,
+	7, 0x1F469, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	4, 0x1F469, 0x200D, 0x1F9BC,
+	7, 0x1F469, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	4, 0x1F469, 0x200D, 0x1F9BD,
+	7, 0x1F469, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F469, 0x1F3FB, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F469, 0x1F3FB, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F469, 0x1F3FB, 0x200D, 0x2708, 0xFE0F,
@@ -11569,8 +12959,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F680,
 	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F692,
 	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9AF,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9BC,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FB, 0x200D, 0x1F9BD,
+	8, 0x1F469, 0x1F3FB, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F469, 0x1F3FC, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F469, 0x1F3FC, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F469, 0x1F3FC, 0x200D, 0x2708, 0xFE0F,
@@ -11589,8 +12982,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F680,
 	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F692,
 	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9AF,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9BC,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FC, 0x200D, 0x1F9BD,
+	8, 0x1F469, 0x1F3FC, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F469, 0x1F3FD, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F469, 0x1F3FD, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F469, 0x1F3FD, 0x200D, 0x2708, 0xFE0F,
@@ -11609,8 +13005,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F680,
 	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F692,
 	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9AF,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9BC,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FD, 0x200D, 0x1F9BD,
+	8, 0x1F469, 0x1F3FD, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F469, 0x1F3FE, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F469, 0x1F3FE, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F469, 0x1F3FE, 0x200D, 0x2708, 0xFE0F,
@@ -11629,8 +13028,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F680,
 	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F692,
 	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9AF,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9BC,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FE, 0x200D, 0x1F9BD,
+	8, 0x1F469, 0x1F3FE, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F469, 0x1F3FF, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F469, 0x1F3FF, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F469, 0x1F3FF, 0x200D, 0x2708, 0xFE0F,
@@ -11649,14 +13051,30 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F680,
 	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F692,
 	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9AF,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9BC,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F469, 0x1F3FF, 0x200D, 0x1F9BD,
+	8, 0x1F469, 0x1F3FF, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
+	5, 0x1F6B6, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FB, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FC, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FD, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FE, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F6B6, 0x1F3FF, 0x200D, 0x27A1, 0xFE0F,
+	5, 0x1F9CE, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FB, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FC, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FD, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FE, 0x200D, 0x27A1, 0xFE0F,
+	6, 0x1F9CE, 0x1F3FF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x200D, 0x2695, 0xFE0F,
 	5, 0x1F9D1, 0x200D, 0x2696, 0xFE0F,
 	5, 0x1F9D1, 0x200D, 0x2708, 0xFE0F,
 	4, 0x1F9D1, 0x200D, 0x1F33E,
 	4, 0x1F9D1, 0x200D, 0x1F373,
 	4, 0x1F9D1, 0x200D, 0x1F37C,
+	4, 0x1F9D1, 0x200D, 0x1F384,
 	4, 0x1F9D1, 0x200D, 0x1F393,
 	4, 0x1F9D1, 0x200D, 0x1F3A4,
 	4, 0x1F9D1, 0x200D, 0x1F3A8,
@@ -11669,14 +13087,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	4, 0x1F9D1, 0x200D, 0x1F680,
 	4, 0x1F9D1, 0x200D, 0x1F692,
 	4, 0x1F9D1, 0x200D, 0x1F9AF,
+	7, 0x1F9D1, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	4, 0x1F9D1, 0x200D, 0x1F9BC,
+	7, 0x1F9D1, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	4, 0x1F9D1, 0x200D, 0x1F9BD,
+	7, 0x1F9D1, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FB, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FB, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FB, 0x200D, 0x2708, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F33E,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F373,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F384,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F393,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F3A4,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F3A8,
@@ -11689,14 +13111,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F680,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F692,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9AF,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9BC,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9BD,
+	8, 0x1F9D1, 0x1F3FB, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FC, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FC, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FC, 0x200D, 0x2708, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F33E,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F373,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F384,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F393,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F3A4,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F3A8,
@@ -11709,14 +13135,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F680,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F692,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9AF,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9BC,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9BD,
+	8, 0x1F9D1, 0x1F3FC, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FD, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FD, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FD, 0x200D, 0x2708, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F33E,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F373,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F384,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F393,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F3A4,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F3A8,
@@ -11729,14 +13159,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F680,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F692,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9AF,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9BC,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9BD,
+	8, 0x1F9D1, 0x1F3FD, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FE, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FE, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FE, 0x200D, 0x2708, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F33E,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F373,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F384,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F393,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F3A4,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F3A8,
@@ -11749,14 +13183,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F680,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F692,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9AF,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9BC,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9BD,
+	8, 0x1F9D1, 0x1F3FE, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FF, 0x200D, 0x2695, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FF, 0x200D, 0x2696, 0xFE0F,
 	6, 0x1F9D1, 0x1F3FF, 0x200D, 0x2708, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F33E,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F373,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F37C,
+	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F384,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F393,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F3A4,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F3A8,
@@ -11769,8 +13207,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F680,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F692,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9AF,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9AF, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9BC,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9BC, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9BD,
+	8, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9BD, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x26F9, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
 	6, 0x26F9, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
 	6, 0x26F9, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
@@ -11784,17 +13225,29 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	6, 0x26F9, 0xFE0F, 0x200D, 0x2640, 0xFE0F,
 	6, 0x26F9, 0xFE0F, 0x200D, 0x2642, 0xFE0F,
 	5, 0x1F3C3, 0x200D, 0x2640, 0xFE0F,
+	8, 0x1F3C3, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F3C3, 0x200D, 0x2642, 0xFE0F,
+	8, 0x1F3C3, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FB, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FB, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FC, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FC, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FD, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FD, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FE, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FE, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FF, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F3C3, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F3C3, 0x1F3FF, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F3C4, 0x200D, 0x2640, 0xFE0F,
 	5, 0x1F3C4, 0x200D, 0x2642, 0xFE0F,
 	6, 0x1F3C4, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
@@ -12074,17 +13527,29 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	6, 0x1F6B5, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
 	6, 0x1F6B5, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
 	5, 0x1F6B6, 0x200D, 0x2640, 0xFE0F,
+	8, 0x1F6B6, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F6B6, 0x200D, 0x2642, 0xFE0F,
+	8, 0x1F6B6, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FB, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FB, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FC, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FC, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FD, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FD, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FE, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FE, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FF, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F6B6, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F6B6, 0x1F3FF, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F926, 0x200D, 0x2640, 0xFE0F,
 	5, 0x1F926, 0x200D, 0x2642, 0xFE0F,
 	6, 0x1F926, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
@@ -12208,17 +13673,29 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	6, 0x1F9CD, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
 	6, 0x1F9CD, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
 	5, 0x1F9CE, 0x200D, 0x2640, 0xFE0F,
+	8, 0x1F9CE, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9CE, 0x200D, 0x2642, 0xFE0F,
+	8, 0x1F9CE, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FB, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FB, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FB, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FC, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FC, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FC, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FC, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FD, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FD, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FD, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FD, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FE, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FE, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FE, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FE, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FF, 0x200D, 0x2640, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FF, 0x200D, 0x2640, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	6, 0x1F9CE, 0x1F3FF, 0x200D, 0x2642, 0xFE0F,
+	9, 0x1F9CE, 0x1F3FF, 0x200D, 0x2642, 0xFE0F, 0x200D, 0x27A1, 0xFE0F,
 	5, 0x1F9CF, 0x200D, 0x2640, 0xFE0F,
 	5, 0x1F9CF, 0x200D, 0x2642, 0xFE0F,
 	6, 0x1F9CF, 0x1F3FB, 0x200D, 0x2640, 0xFE0F,
@@ -12415,827 +13892,55 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B1,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B2,
 	5, 0x1F9D1, 0x1F3FF, 0x200D, 0x1F9B3,
+	5, 0x26D3, 0xFE0F, 0x200D, 0x1F4A5,
 	5, 0x2764, 0xFE0F, 0x200D, 0x1F525,
 	5, 0x2764, 0xFE0F, 0x200D, 0x1FA79,
+	4, 0x1F344, 0x200D, 0x1F7EB,
+	4, 0x1F34B, 0x200D, 0x1F7E9,
 	6, 0x1F3F3, 0xFE0F, 0x200D, 0x26A7, 0xFE0F,
 	5, 0x1F3F3, 0xFE0F, 0x200D, 0x1F308,
 	5, 0x1F3F4, 0x200D, 0x2620, 0xFE0F,
 	4, 0x1F408, 0x200D, 0x2B1B,
 	4, 0x1F415, 0x200D, 0x1F9BA,
 	4, 0x1F426, 0x200D, 0x2B1B,
+	4, 0x1F426, 0x200D, 0x1F525,
 	5, 0x1F43B, 0x200D, 0x2744, 0xFE0F,
 	6, 0x1F441, 0xFE0F, 0x200D, 0x1F5E8, 0xFE0F,
 	4, 0x1F62E, 0x200D, 0x1F4A8,
 	4, 0x1F635, 0x200D, 0x1F4AB,
 	5, 0x1F636, 0x200D, 0x1F32B, 0xFE0F,
-	4, 0x1F9D1, 0x200D, 0x1F384,
-	0	//  Padding.
+	5, 0x1F642, 0x200D, 0x2194, 0xFE0F,
+	5, 0x1F642, 0x200D, 0x2195, 0xFE0F
 #endif	//  !defined(SRELL_NO_UNICODE_POS)
 };
+#define SRELL_UPDATA_VERSION 301
+//  ... "srell_updata3.h"]
 
-template <typename T3, typename T4, typename T5, typename T6>
-const T5 unicode_property_data<T3, T4, T5, T6>::rangenumbertable[] =
-{
-	{ uptype_unknown, 0, "*" },	//  #0
-	{ uptype_general_category, 1, "Other:C" },	//  #1
-	{ uptype_general_category, 2, "Control:Cc:cntrl" },	//  #2
-	{ uptype_general_category, 3, "Format:Cf" },	//  #3
-	{ uptype_general_category, 4, "Unassigned:Cn" },	//  #4
-	{ uptype_general_category, 5, "Private_Use:Co" },	//  #5
-	{ uptype_general_category, 6, "Surrogate:Cs" },	//  #6
-	{ uptype_general_category, 7, "Letter:L" },	//  #7
-	{ uptype_general_category, 8, "Cased_Letter:LC" },	//  #8
-	{ uptype_general_category, 9, "Lowercase_Letter:Ll" },	//  #9
-	{ uptype_general_category, 10, "Titlecase_Letter:Lt" },	//  #10
-	{ uptype_general_category, 11, "Uppercase_Letter:Lu" },	//  #11
-	{ uptype_general_category, 12, "Modifier_Letter:Lm" },	//  #12
-	{ uptype_general_category, 13, "Other_Letter:Lo" },	//  #13
-	{ uptype_general_category, 14, "Mark:M:Combining_Mark" },	//  #14
-	{ uptype_general_category, 15, "Spacing_Mark:Mc" },	//  #15
-	{ uptype_general_category, 16, "Enclosing_Mark:Me" },	//  #16
-	{ uptype_general_category, 17, "Nonspacing_Mark:Mn" },	//  #17
-	{ uptype_general_category, 18, "Number:N" },	//  #18
-	{ uptype_general_category, 19, "Decimal_Number:Nd:digit" },	//  #19
-	{ uptype_general_category, 20, "Letter_Number:Nl" },	//  #20
-	{ uptype_general_category, 21, "Other_Number:No" },	//  #21
-	{ uptype_general_category, 22, "Punctuation:P:punct" },	//  #22
-	{ uptype_general_category, 23, "Connector_Punctuation:Pc" },	//  #23
-	{ uptype_general_category, 24, "Dash_Punctuation:Pd" },	//  #24
-	{ uptype_general_category, 25, "Close_Punctuation:Pe" },	//  #25
-	{ uptype_general_category, 26, "Final_Punctuation:Pf" },	//  #26
-	{ uptype_general_category, 27, "Initial_Punctuation:Pi" },	//  #27
-	{ uptype_general_category, 28, "Other_Punctuation:Po" },	//  #28
-	{ uptype_general_category, 29, "Open_Punctuation:Ps" },	//  #29
-	{ uptype_general_category, 30, "Symbol:S" },	//  #30
-	{ uptype_general_category, 31, "Currency_Symbol:Sc" },	//  #31
-	{ uptype_general_category, 32, "Modifier_Symbol:Sk" },	//  #32
-	{ uptype_general_category, 33, "Math_Symbol:Sm" },	//  #33
-	{ uptype_general_category, 34, "Other_Symbol:So" },	//  #34
-	{ uptype_general_category, 35, "Separator:Z" },	//  #35
-	{ uptype_general_category, 36, "Line_Separator:Zl" },	//  #36
-	{ uptype_general_category, 37, "Paragraph_Separator:Zp" },	//  #37
-	{ uptype_general_category, 38, "Space_Separator:Zs" },	//  #38
-	{ uptype_binary, 39, "ASCII" },	//  #39
-	{ uptype_binary, 40, "ASCII_Hex_Digit:AHex" },	//  #40
-	{ uptype_binary, 41, "Alphabetic:Alpha" },	//  #41
-	{ uptype_binary, 42, "Any" },	//  #42
-	{ uptype_binary, 43, "Assigned" },	//  #43
-	{ uptype_binary, 44, "Bidi_Control:Bidi_C" },	//  #44
-	{ uptype_binary, 45, "Bidi_Mirrored:Bidi_M" },	//  #45
-	{ uptype_binary, 46, "Case_Ignorable:CI" },	//  #46
-	{ uptype_binary, 47, "Cased" },	//  #47
-	{ uptype_binary, 48, "Changes_When_Casefolded:CWCF" },	//  #48
-	{ uptype_binary, 49, "Changes_When_Casemapped:CWCM" },	//  #49
-	{ uptype_binary, 50, "Changes_When_Lowercased:CWL" },	//  #50
-	{ uptype_binary, 51, "Changes_When_NFKC_Casefolded:CWKCF" },	//  #51
-	{ uptype_binary, 52, "Changes_When_Titlecased:CWT" },	//  #52
-	{ uptype_binary, 53, "Changes_When_Uppercased:CWU" },	//  #53
-	{ uptype_binary, 54, "Dash" },	//  #54
-	{ uptype_binary, 55, "Default_Ignorable_Code_Point:DI" },	//  #55
-	{ uptype_binary, 56, "Deprecated:Dep" },	//  #56
-	{ uptype_binary, 57, "Diacritic:Dia" },	//  #57
-	{ uptype_binary, 58, "Emoji" },	//  #58
-	{ uptype_binary, 59, "Emoji_Component:EComp" },	//  #59
-	{ uptype_binary, 60, "Emoji_Modifier:EMod" },	//  #60
-	{ uptype_binary, 61, "Emoji_Modifier_Base:EBase" },	//  #61
-	{ uptype_binary, 62, "Emoji_Presentation:EPres" },	//  #62
-	{ uptype_binary, 63, "Extended_Pictographic:ExtPict" },	//  #63
-	{ uptype_binary, 64, "Extender:Ext" },	//  #64
-	{ uptype_binary, 65, "Grapheme_Base:Gr_Base" },	//  #65
-	{ uptype_binary, 66, "Grapheme_Extend:Gr_Ext" },	//  #66
-	{ uptype_binary, 67, "Hex_Digit:Hex" },	//  #67
-	{ uptype_binary, 68, "IDS_Binary_Operator:IDSB" },	//  #68
-	{ uptype_binary, 69, "IDS_Trinary_Operator:IDST" },	//  #69
-	{ uptype_binary, 70, "ID_Continue:IDC" },	//  #70
-	{ uptype_binary, 71, "ID_Start:IDS" },	//  #71
-	{ uptype_binary, 72, "Ideographic:Ideo" },	//  #72
-	{ uptype_binary, 73, "Join_Control:Join_C" },	//  #73
-	{ uptype_binary, 74, "Logical_Order_Exception:LOE" },	//  #74
-	{ uptype_binary, 75, "Lowercase:Lower" },	//  #75
-	{ uptype_binary, 76, "Math" },	//  #76
-	{ uptype_binary, 77, "Noncharacter_Code_Point:NChar" },	//  #77
-	{ uptype_binary, 78, "Pattern_Syntax:Pat_Syn" },	//  #78
-	{ uptype_binary, 79, "Pattern_White_Space:Pat_WS" },	//  #79
-	{ uptype_binary, 80, "Quotation_Mark:QMark" },	//  #80
-	{ uptype_binary, 81, "Radical" },	//  #81
-	{ uptype_binary, 82, "Regional_Indicator:RI" },	//  #82
-	{ uptype_binary, 83, "Sentence_Terminal:STerm" },	//  #83
-	{ uptype_binary, 84, "Soft_Dotted:SD" },	//  #84
-	{ uptype_binary, 85, "Terminal_Punctuation:Term" },	//  #85
-	{ uptype_binary, 86, "Unified_Ideograph:UIdeo" },	//  #86
-	{ uptype_binary, 87, "Uppercase:Upper" },	//  #87
-	{ uptype_binary, 88, "Variation_Selector:VS" },	//  #88
-	{ uptype_binary, 89, "White_Space:space" },	//  #89
-	{ uptype_binary, 90, "XID_Continue:XIDC" },	//  #90
-	{ uptype_binary, 91, "XID_Start:XIDS" },	//  #91
-	{ uptype_script, 92, "Adlam:Adlm" },	//  #92
-	{ uptype_script, 93, "Ahom:Ahom" },	//  #93
-	{ uptype_script, 94, "Anatolian_Hieroglyphs:Hluw" },	//  #94
-	{ uptype_script, 95, "Arabic:Arab" },	//  #95
-	{ uptype_script, 96, "Armenian:Armn" },	//  #96
-	{ uptype_script, 97, "Avestan:Avst" },	//  #97
-	{ uptype_script, 98, "Balinese:Bali" },	//  #98
-	{ uptype_script, 99, "Bamum:Bamu" },	//  #99
-	{ uptype_script, 100, "Bassa_Vah:Bass" },	//  #100
-	{ uptype_script, 101, "Batak:Batk" },	//  #101
-	{ uptype_script, 102, "Bengali:Beng" },	//  #102
-	{ uptype_script, 103, "Bhaiksuki:Bhks" },	//  #103
-	{ uptype_script, 104, "Bopomofo:Bopo" },	//  #104
-	{ uptype_script, 105, "Brahmi:Brah" },	//  #105
-	{ uptype_script, 106, "Braille:Brai" },	//  #106
-	{ uptype_script, 107, "Buginese:Bugi" },	//  #107
-	{ uptype_script, 108, "Buhid:Buhd" },	//  #108
-	{ uptype_script, 109, "Canadian_Aboriginal:Cans" },	//  #109
-	{ uptype_script, 110, "Carian:Cari" },	//  #110
-	{ uptype_script, 111, "Caucasian_Albanian:Aghb" },	//  #111
-	{ uptype_script, 112, "Chakma:Cakm" },	//  #112
-	{ uptype_script, 113, "Cham:Cham" },	//  #113
-	{ uptype_script, 114, "Cherokee:Cher" },	//  #114
-	{ uptype_script, 115, "Chorasmian:Chrs" },	//  #115
-	{ uptype_script, 116, "Common:Zyyy" },	//  #116
-	{ uptype_script, 117, "Coptic:Copt:Qaac" },	//  #117
-	{ uptype_script, 118, "Cypro_Minoan:Cpmn" },	//  #118
-	{ uptype_script, 119, "Cuneiform:Xsux" },	//  #119
-	{ uptype_script, 120, "Cypriot:Cprt" },	//  #120
-	{ uptype_script, 121, "Cyrillic:Cyrl" },	//  #121
-	{ uptype_script, 122, "Deseret:Dsrt" },	//  #122
-	{ uptype_script, 123, "Devanagari:Deva" },	//  #123
-	{ uptype_script, 124, "Dives_Akuru:Diak" },	//  #124
-	{ uptype_script, 125, "Dogra:Dogr" },	//  #125
-	{ uptype_script, 126, "Duployan:Dupl" },	//  #126
-	{ uptype_script, 127, "Egyptian_Hieroglyphs:Egyp" },	//  #127
-	{ uptype_script, 128, "Elbasan:Elba" },	//  #128
-	{ uptype_script, 129, "Elymaic:Elym" },	//  #129
-	{ uptype_script, 130, "Ethiopic:Ethi" },	//  #130
-	{ uptype_script, 131, "Georgian:Geor" },	//  #131
-	{ uptype_script, 132, "Glagolitic:Glag" },	//  #132
-	{ uptype_script, 133, "Gothic:Goth" },	//  #133
-	{ uptype_script, 134, "Grantha:Gran" },	//  #134
-	{ uptype_script, 135, "Greek:Grek" },	//  #135
-	{ uptype_script, 136, "Gujarati:Gujr" },	//  #136
-	{ uptype_script, 137, "Gunjala_Gondi:Gong" },	//  #137
-	{ uptype_script, 138, "Gurmukhi:Guru" },	//  #138
-	{ uptype_script, 139, "Han:Hani" },	//  #139
-	{ uptype_script, 140, "Hangul:Hang" },	//  #140
-	{ uptype_script, 141, "Hanifi_Rohingya:Rohg" },	//  #141
-	{ uptype_script, 142, "Hanunoo:Hano" },	//  #142
-	{ uptype_script, 143, "Hatran:Hatr" },	//  #143
-	{ uptype_script, 144, "Hebrew:Hebr" },	//  #144
-	{ uptype_script, 145, "Hiragana:Hira" },	//  #145
-	{ uptype_script, 146, "Imperial_Aramaic:Armi" },	//  #146
-	{ uptype_script, 147, "Inherited:Zinh:Qaai" },	//  #147
-	{ uptype_script, 148, "Inscriptional_Pahlavi:Phli" },	//  #148
-	{ uptype_script, 149, "Inscriptional_Parthian:Prti" },	//  #149
-	{ uptype_script, 150, "Javanese:Java" },	//  #150
-	{ uptype_script, 151, "Kaithi:Kthi" },	//  #151
-	{ uptype_script, 152, "Kannada:Knda" },	//  #152
-	{ uptype_script, 153, "Katakana:Kana" },	//  #153
-	{ uptype_script, 154, "Kayah_Li:Kali" },	//  #154
-	{ uptype_script, 155, "Kharoshthi:Khar" },	//  #155
-	{ uptype_script, 156, "Khitan_Small_Script:Kits" },	//  #156
-	{ uptype_script, 157, "Khmer:Khmr" },	//  #157
-	{ uptype_script, 158, "Khojki:Khoj" },	//  #158
-	{ uptype_script, 159, "Khudawadi:Sind" },	//  #159
-	{ uptype_script, 160, "Lao:Laoo" },	//  #160
-	{ uptype_script, 161, "Latin:Latn" },	//  #161
-	{ uptype_script, 162, "Lepcha:Lepc" },	//  #162
-	{ uptype_script, 163, "Limbu:Limb" },	//  #163
-	{ uptype_script, 164, "Linear_A:Lina" },	//  #164
-	{ uptype_script, 165, "Linear_B:Linb" },	//  #165
-	{ uptype_script, 166, "Lisu:Lisu" },	//  #166
-	{ uptype_script, 167, "Lycian:Lyci" },	//  #167
-	{ uptype_script, 168, "Lydian:Lydi" },	//  #168
-	{ uptype_script, 169, "Mahajani:Mahj" },	//  #169
-	{ uptype_script, 170, "Makasar:Maka" },	//  #170
-	{ uptype_script, 171, "Malayalam:Mlym" },	//  #171
-	{ uptype_script, 172, "Mandaic:Mand" },	//  #172
-	{ uptype_script, 173, "Manichaean:Mani" },	//  #173
-	{ uptype_script, 174, "Marchen:Marc" },	//  #174
-	{ uptype_script, 175, "Masaram_Gondi:Gonm" },	//  #175
-	{ uptype_script, 176, "Medefaidrin:Medf" },	//  #176
-	{ uptype_script, 177, "Meetei_Mayek:Mtei" },	//  #177
-	{ uptype_script, 178, "Mende_Kikakui:Mend" },	//  #178
-	{ uptype_script, 179, "Meroitic_Cursive:Merc" },	//  #179
-	{ uptype_script, 180, "Meroitic_Hieroglyphs:Mero" },	//  #180
-	{ uptype_script, 181, "Miao:Plrd" },	//  #181
-	{ uptype_script, 182, "Modi:Modi" },	//  #182
-	{ uptype_script, 183, "Mongolian:Mong" },	//  #183
-	{ uptype_script, 184, "Mro:Mroo" },	//  #184
-	{ uptype_script, 185, "Multani:Mult" },	//  #185
-	{ uptype_script, 186, "Myanmar:Mymr" },	//  #186
-	{ uptype_script, 187, "Nabataean:Nbat" },	//  #187
-	{ uptype_script, 188, "Nandinagari:Nand" },	//  #188
-	{ uptype_script, 189, "New_Tai_Lue:Talu" },	//  #189
-	{ uptype_script, 190, "Newa:Newa" },	//  #190
-	{ uptype_script, 191, "Nko:Nkoo" },	//  #191
-	{ uptype_script, 192, "Nushu:Nshu" },	//  #192
-	{ uptype_script, 193, "Nyiakeng_Puachue_Hmong:Hmnp" },	//  #193
-	{ uptype_script, 194, "Ogham:Ogam" },	//  #194
-	{ uptype_script, 195, "Ol_Chiki:Olck" },	//  #195
-	{ uptype_script, 196, "Old_Hungarian:Hung" },	//  #196
-	{ uptype_script, 197, "Old_Italic:Ital" },	//  #197
-	{ uptype_script, 198, "Old_North_Arabian:Narb" },	//  #198
-	{ uptype_script, 199, "Old_Permic:Perm" },	//  #199
-	{ uptype_script, 200, "Old_Persian:Xpeo" },	//  #200
-	{ uptype_script, 201, "Old_Sogdian:Sogo" },	//  #201
-	{ uptype_script, 202, "Old_South_Arabian:Sarb" },	//  #202
-	{ uptype_script, 203, "Old_Turkic:Orkh" },	//  #203
-	{ uptype_script, 204, "Old_Uyghur:Ougr" },	//  #204
-	{ uptype_script, 205, "Oriya:Orya" },	//  #205
-	{ uptype_script, 206, "Osage:Osge" },	//  #206
-	{ uptype_script, 207, "Osmanya:Osma" },	//  #207
-	{ uptype_script, 208, "Pahawh_Hmong:Hmng" },	//  #208
-	{ uptype_script, 209, "Palmyrene:Palm" },	//  #209
-	{ uptype_script, 210, "Pau_Cin_Hau:Pauc" },	//  #210
-	{ uptype_script, 211, "Phags_Pa:Phag" },	//  #211
-	{ uptype_script, 212, "Phoenician:Phnx" },	//  #212
-	{ uptype_script, 213, "Psalter_Pahlavi:Phlp" },	//  #213
-	{ uptype_script, 214, "Rejang:Rjng" },	//  #214
-	{ uptype_script, 215, "Runic:Runr" },	//  #215
-	{ uptype_script, 216, "Samaritan:Samr" },	//  #216
-	{ uptype_script, 217, "Saurashtra:Saur" },	//  #217
-	{ uptype_script, 218, "Sharada:Shrd" },	//  #218
-	{ uptype_script, 219, "Shavian:Shaw" },	//  #219
-	{ uptype_script, 220, "Siddham:Sidd" },	//  #220
-	{ uptype_script, 221, "SignWriting:Sgnw" },	//  #221
-	{ uptype_script, 222, "Sinhala:Sinh" },	//  #222
-	{ uptype_script, 223, "Sogdian:Sogd" },	//  #223
-	{ uptype_script, 224, "Sora_Sompeng:Sora" },	//  #224
-	{ uptype_script, 225, "Soyombo:Soyo" },	//  #225
-	{ uptype_script, 226, "Sundanese:Sund" },	//  #226
-	{ uptype_script, 227, "Syloti_Nagri:Sylo" },	//  #227
-	{ uptype_script, 228, "Syriac:Syrc" },	//  #228
-	{ uptype_script, 229, "Tagalog:Tglg" },	//  #229
-	{ uptype_script, 230, "Tagbanwa:Tagb" },	//  #230
-	{ uptype_script, 231, "Tai_Le:Tale" },	//  #231
-	{ uptype_script, 232, "Tai_Tham:Lana" },	//  #232
-	{ uptype_script, 233, "Tai_Viet:Tavt" },	//  #233
-	{ uptype_script, 234, "Takri:Takr" },	//  #234
-	{ uptype_script, 235, "Tamil:Taml" },	//  #235
-	{ uptype_script, 236, "Tangsa:Tnsa" },	//  #236
-	{ uptype_script, 237, "Tangut:Tang" },	//  #237
-	{ uptype_script, 238, "Telugu:Telu" },	//  #238
-	{ uptype_script, 239, "Thaana:Thaa" },	//  #239
-	{ uptype_script, 240, "Thai:Thai" },	//  #240
-	{ uptype_script, 241, "Tibetan:Tibt" },	//  #241
-	{ uptype_script, 242, "Tifinagh:Tfng" },	//  #242
-	{ uptype_script, 243, "Tirhuta:Tirh" },	//  #243
-	{ uptype_script, 244, "Toto" },	//  #244
-	{ uptype_script, 245, "Ugaritic:Ugar" },	//  #245
-	{ uptype_script, 246, "Vai:Vaii" },	//  #246
-	{ uptype_script, 247, "Vithkuqi:Vith" },	//  #247
-	{ uptype_script, 248, "Wancho:Wcho" },	//  #248
-	{ uptype_script, 249, "Warang_Citi:Wara" },	//  #249
-	{ uptype_script, 250, "Yezidi:Yezi" },	//  #250
-	{ uptype_script, 251, "Yi:Yiii" },	//  #251
-	{ uptype_script, 252, "Zanabazar_Square:Zanb" },	//  #252
-	{ uptype_script_extensions, 253, "Adlam:Adlm" },	//  #253
-	{ uptype_script_extensions, 93, "Ahom:Ahom" },	//  #254
-	{ uptype_script_extensions, 94, "Anatolian_Hieroglyphs:Hluw" },	//  #255
-	{ uptype_script_extensions, 254, "Arabic:Arab" },	//  #256
-	{ uptype_script_extensions, 96, "Armenian:Armn" },	//  #257
-	{ uptype_script_extensions, 97, "Avestan:Avst" },	//  #258
-	{ uptype_script_extensions, 98, "Balinese:Bali" },	//  #259
-	{ uptype_script_extensions, 99, "Bamum:Bamu" },	//  #260
-	{ uptype_script_extensions, 100, "Bassa_Vah:Bass" },	//  #261
-	{ uptype_script_extensions, 101, "Batak:Batk" },	//  #262
-	{ uptype_script_extensions, 255, "Bengali:Beng" },	//  #263
-	{ uptype_script_extensions, 103, "Bhaiksuki:Bhks" },	//  #264
-	{ uptype_script_extensions, 256, "Bopomofo:Bopo" },	//  #265
-	{ uptype_script_extensions, 105, "Brahmi:Brah" },	//  #266
-	{ uptype_script_extensions, 106, "Braille:Brai" },	//  #267
-	{ uptype_script_extensions, 257, "Buginese:Bugi" },	//  #268
-	{ uptype_script_extensions, 258, "Buhid:Buhd" },	//  #269
-	{ uptype_script_extensions, 109, "Canadian_Aboriginal:Cans" },	//  #270
-	{ uptype_script_extensions, 110, "Carian:Cari" },	//  #271
-	{ uptype_script_extensions, 111, "Caucasian_Albanian:Aghb" },	//  #272
-	{ uptype_script_extensions, 259, "Chakma:Cakm" },	//  #273
-	{ uptype_script_extensions, 113, "Cham:Cham" },	//  #274
-	{ uptype_script_extensions, 114, "Cherokee:Cher" },	//  #275
-	{ uptype_script_extensions, 115, "Chorasmian:Chrs" },	//  #276
-	{ uptype_script_extensions, 260, "Common:Zyyy" },	//  #277
-	{ uptype_script_extensions, 261, "Coptic:Copt:Qaac" },	//  #278
-	{ uptype_script_extensions, 262, "Cypro_Minoan:Cpmn" },	//  #279
-	{ uptype_script_extensions, 119, "Cuneiform:Xsux" },	//  #280
-	{ uptype_script_extensions, 263, "Cypriot:Cprt" },	//  #281
-	{ uptype_script_extensions, 264, "Cyrillic:Cyrl" },	//  #282
-	{ uptype_script_extensions, 122, "Deseret:Dsrt" },	//  #283
-	{ uptype_script_extensions, 265, "Devanagari:Deva" },	//  #284
-	{ uptype_script_extensions, 124, "Dives_Akuru:Diak" },	//  #285
-	{ uptype_script_extensions, 266, "Dogra:Dogr" },	//  #286
-	{ uptype_script_extensions, 267, "Duployan:Dupl" },	//  #287
-	{ uptype_script_extensions, 127, "Egyptian_Hieroglyphs:Egyp" },	//  #288
-	{ uptype_script_extensions, 128, "Elbasan:Elba" },	//  #289
-	{ uptype_script_extensions, 129, "Elymaic:Elym" },	//  #290
-	{ uptype_script_extensions, 130, "Ethiopic:Ethi" },	//  #291
-	{ uptype_script_extensions, 268, "Georgian:Geor" },	//  #292
-	{ uptype_script_extensions, 269, "Glagolitic:Glag" },	//  #293
-	{ uptype_script_extensions, 133, "Gothic:Goth" },	//  #294
-	{ uptype_script_extensions, 270, "Grantha:Gran" },	//  #295
-	{ uptype_script_extensions, 271, "Greek:Grek" },	//  #296
-	{ uptype_script_extensions, 272, "Gujarati:Gujr" },	//  #297
-	{ uptype_script_extensions, 273, "Gunjala_Gondi:Gong" },	//  #298
-	{ uptype_script_extensions, 274, "Gurmukhi:Guru" },	//  #299
-	{ uptype_script_extensions, 275, "Han:Hani" },	//  #300
-	{ uptype_script_extensions, 276, "Hangul:Hang" },	//  #301
-	{ uptype_script_extensions, 277, "Hanifi_Rohingya:Rohg" },	//  #302
-	{ uptype_script_extensions, 278, "Hanunoo:Hano" },	//  #303
-	{ uptype_script_extensions, 143, "Hatran:Hatr" },	//  #304
-	{ uptype_script_extensions, 144, "Hebrew:Hebr" },	//  #305
-	{ uptype_script_extensions, 279, "Hiragana:Hira" },	//  #306
-	{ uptype_script_extensions, 146, "Imperial_Aramaic:Armi" },	//  #307
-	{ uptype_script_extensions, 280, "Inherited:Zinh:Qaai" },	//  #308
-	{ uptype_script_extensions, 148, "Inscriptional_Pahlavi:Phli" },	//  #309
-	{ uptype_script_extensions, 149, "Inscriptional_Parthian:Prti" },	//  #310
-	{ uptype_script_extensions, 281, "Javanese:Java" },	//  #311
-	{ uptype_script_extensions, 282, "Kaithi:Kthi" },	//  #312
-	{ uptype_script_extensions, 283, "Kannada:Knda" },	//  #313
-	{ uptype_script_extensions, 284, "Katakana:Kana" },	//  #314
-	{ uptype_script_extensions, 285, "Kayah_Li:Kali" },	//  #315
-	{ uptype_script_extensions, 155, "Kharoshthi:Khar" },	//  #316
-	{ uptype_script_extensions, 156, "Khitan_Small_Script:Kits" },	//  #317
-	{ uptype_script_extensions, 157, "Khmer:Khmr" },	//  #318
-	{ uptype_script_extensions, 286, "Khojki:Khoj" },	//  #319
-	{ uptype_script_extensions, 287, "Khudawadi:Sind" },	//  #320
-	{ uptype_script_extensions, 160, "Lao:Laoo" },	//  #321
-	{ uptype_script_extensions, 288, "Latin:Latn" },	//  #322
-	{ uptype_script_extensions, 162, "Lepcha:Lepc" },	//  #323
-	{ uptype_script_extensions, 289, "Limbu:Limb" },	//  #324
-	{ uptype_script_extensions, 290, "Linear_A:Lina" },	//  #325
-	{ uptype_script_extensions, 291, "Linear_B:Linb" },	//  #326
-	{ uptype_script_extensions, 166, "Lisu:Lisu" },	//  #327
-	{ uptype_script_extensions, 167, "Lycian:Lyci" },	//  #328
-	{ uptype_script_extensions, 168, "Lydian:Lydi" },	//  #329
-	{ uptype_script_extensions, 292, "Mahajani:Mahj" },	//  #330
-	{ uptype_script_extensions, 170, "Makasar:Maka" },	//  #331
-	{ uptype_script_extensions, 293, "Malayalam:Mlym" },	//  #332
-	{ uptype_script_extensions, 294, "Mandaic:Mand" },	//  #333
-	{ uptype_script_extensions, 295, "Manichaean:Mani" },	//  #334
-	{ uptype_script_extensions, 174, "Marchen:Marc" },	//  #335
-	{ uptype_script_extensions, 296, "Masaram_Gondi:Gonm" },	//  #336
-	{ uptype_script_extensions, 176, "Medefaidrin:Medf" },	//  #337
-	{ uptype_script_extensions, 177, "Meetei_Mayek:Mtei" },	//  #338
-	{ uptype_script_extensions, 178, "Mende_Kikakui:Mend" },	//  #339
-	{ uptype_script_extensions, 179, "Meroitic_Cursive:Merc" },	//  #340
-	{ uptype_script_extensions, 180, "Meroitic_Hieroglyphs:Mero" },	//  #341
-	{ uptype_script_extensions, 181, "Miao:Plrd" },	//  #342
-	{ uptype_script_extensions, 297, "Modi:Modi" },	//  #343
-	{ uptype_script_extensions, 298, "Mongolian:Mong" },	//  #344
-	{ uptype_script_extensions, 184, "Mro:Mroo" },	//  #345
-	{ uptype_script_extensions, 299, "Multani:Mult" },	//  #346
-	{ uptype_script_extensions, 300, "Myanmar:Mymr" },	//  #347
-	{ uptype_script_extensions, 187, "Nabataean:Nbat" },	//  #348
-	{ uptype_script_extensions, 301, "Nandinagari:Nand" },	//  #349
-	{ uptype_script_extensions, 189, "New_Tai_Lue:Talu" },	//  #350
-	{ uptype_script_extensions, 190, "Newa:Newa" },	//  #351
-	{ uptype_script_extensions, 302, "Nko:Nkoo" },	//  #352
-	{ uptype_script_extensions, 192, "Nushu:Nshu" },	//  #353
-	{ uptype_script_extensions, 193, "Nyiakeng_Puachue_Hmong:Hmnp" },	//  #354
-	{ uptype_script_extensions, 194, "Ogham:Ogam" },	//  #355
-	{ uptype_script_extensions, 195, "Ol_Chiki:Olck" },	//  #356
-	{ uptype_script_extensions, 196, "Old_Hungarian:Hung" },	//  #357
-	{ uptype_script_extensions, 197, "Old_Italic:Ital" },	//  #358
-	{ uptype_script_extensions, 198, "Old_North_Arabian:Narb" },	//  #359
-	{ uptype_script_extensions, 303, "Old_Permic:Perm" },	//  #360
-	{ uptype_script_extensions, 200, "Old_Persian:Xpeo" },	//  #361
-	{ uptype_script_extensions, 201, "Old_Sogdian:Sogo" },	//  #362
-	{ uptype_script_extensions, 202, "Old_South_Arabian:Sarb" },	//  #363
-	{ uptype_script_extensions, 203, "Old_Turkic:Orkh" },	//  #364
-	{ uptype_script_extensions, 304, "Old_Uyghur:Ougr" },	//  #365
-	{ uptype_script_extensions, 305, "Oriya:Orya" },	//  #366
-	{ uptype_script_extensions, 206, "Osage:Osge" },	//  #367
-	{ uptype_script_extensions, 207, "Osmanya:Osma" },	//  #368
-	{ uptype_script_extensions, 208, "Pahawh_Hmong:Hmng" },	//  #369
-	{ uptype_script_extensions, 209, "Palmyrene:Palm" },	//  #370
-	{ uptype_script_extensions, 210, "Pau_Cin_Hau:Pauc" },	//  #371
-	{ uptype_script_extensions, 306, "Phags_Pa:Phag" },	//  #372
-	{ uptype_script_extensions, 212, "Phoenician:Phnx" },	//  #373
-	{ uptype_script_extensions, 307, "Psalter_Pahlavi:Phlp" },	//  #374
-	{ uptype_script_extensions, 214, "Rejang:Rjng" },	//  #375
-	{ uptype_script_extensions, 215, "Runic:Runr" },	//  #376
-	{ uptype_script_extensions, 216, "Samaritan:Samr" },	//  #377
-	{ uptype_script_extensions, 217, "Saurashtra:Saur" },	//  #378
-	{ uptype_script_extensions, 308, "Sharada:Shrd" },	//  #379
-	{ uptype_script_extensions, 219, "Shavian:Shaw" },	//  #380
-	{ uptype_script_extensions, 220, "Siddham:Sidd" },	//  #381
-	{ uptype_script_extensions, 221, "SignWriting:Sgnw" },	//  #382
-	{ uptype_script_extensions, 309, "Sinhala:Sinh" },	//  #383
-	{ uptype_script_extensions, 310, "Sogdian:Sogd" },	//  #384
-	{ uptype_script_extensions, 224, "Sora_Sompeng:Sora" },	//  #385
-	{ uptype_script_extensions, 225, "Soyombo:Soyo" },	//  #386
-	{ uptype_script_extensions, 226, "Sundanese:Sund" },	//  #387
-	{ uptype_script_extensions, 311, "Syloti_Nagri:Sylo" },	//  #388
-	{ uptype_script_extensions, 312, "Syriac:Syrc" },	//  #389
-	{ uptype_script_extensions, 313, "Tagalog:Tglg" },	//  #390
-	{ uptype_script_extensions, 314, "Tagbanwa:Tagb" },	//  #391
-	{ uptype_script_extensions, 315, "Tai_Le:Tale" },	//  #392
-	{ uptype_script_extensions, 232, "Tai_Tham:Lana" },	//  #393
-	{ uptype_script_extensions, 233, "Tai_Viet:Tavt" },	//  #394
-	{ uptype_script_extensions, 316, "Takri:Takr" },	//  #395
-	{ uptype_script_extensions, 317, "Tamil:Taml" },	//  #396
-	{ uptype_script_extensions, 236, "Tangsa:Tnsa" },	//  #397
-	{ uptype_script_extensions, 237, "Tangut:Tang" },	//  #398
-	{ uptype_script_extensions, 318, "Telugu:Telu" },	//  #399
-	{ uptype_script_extensions, 319, "Thaana:Thaa" },	//  #400
-	{ uptype_script_extensions, 240, "Thai:Thai" },	//  #401
-	{ uptype_script_extensions, 241, "Tibetan:Tibt" },	//  #402
-	{ uptype_script_extensions, 242, "Tifinagh:Tfng" },	//  #403
-	{ uptype_script_extensions, 320, "Tirhuta:Tirh" },	//  #404
-	{ uptype_script_extensions, 244, "Toto" },	//  #405
-	{ uptype_script_extensions, 245, "Ugaritic:Ugar" },	//  #406
-	{ uptype_script_extensions, 246, "Vai:Vaii" },	//  #407
-	{ uptype_script_extensions, 247, "Vithkuqi:Vith" },	//  #408
-	{ uptype_script_extensions, 248, "Wancho:Wcho" },	//  #409
-	{ uptype_script_extensions, 249, "Warang_Citi:Wara" },	//  #410
-	{ uptype_script_extensions, 321, "Yezidi:Yezi" },	//  #411
-	{ uptype_script_extensions, 322, "Yi:Yiii" },	//  #412
-	{ uptype_script_extensions, 252, "Zanabazar_Square:Zanb" },	//  #413
-#if !defined(SRELL_NO_UNICODE_POS)
-	{ uptype_binary, 323, "RGI_Emoji" },	//  #414
-	{ uptype_binary, 324, "Basic_Emoji" },	//  #415
-	{ uptype_binary, 325, "Emoji_Keycap_Sequence" },	//  #416
-	{ uptype_binary, 326, "RGI_Emoji_Modifier_Sequence" },	//  #417
-	{ uptype_binary, 327, "RGI_Emoji_Flag_Sequence" },	//  #418
-	{ uptype_binary, 328, "RGI_Emoji_Tag_Sequence" },	//  #419
-	{ uptype_binary, 329, "RGI_Emoji_ZWJ_Sequence" },	//  #420
-#endif	//  !defined(SRELL_NO_UNICODE_POS)
-	{ uptype_unknown, 0, "" }
-};
-
-template <typename T3, typename T4, typename T5, typename T6>
-const T6 unicode_property_data<T3, T4, T5, T6>::positiontable[] =
-{
-	{ 0, 0 },	//  #0 unknown
-	{ 0, 734 },	//  #1 gc=Other:C
-	{ 0, 2 },	//  #2 gc=Control:Cc:cntrl
-	{ 2, 21 },	//  #3 gc=Format:Cf
-	{ 23, 707 },	//  #4 gc=Unassigned:Cn
-	{ 730, 3 },	//  #5 gc=Private_Use:Co
-	{ 733, 1 },	//  #6 gc=Surrogate:Cs
-	{ 734, 1895 },	//  #7 gc=Letter:L
-	{ 734, 1314 },	//  #8 gc=Cased_Letter:LC
-	{ 734, 658 },	//  #9 gc=Lowercase_Letter:Ll
-	{ 1392, 10 },	//  #10 gc=Titlecase_Letter:Lt
-	{ 1402, 646 },	//  #11 gc=Uppercase_Letter:Lu
-	{ 2048, 71 },	//  #12 gc=Modifier_Letter:Lm
-	{ 2119, 510 },	//  #13 gc=Other_Letter:Lo
-	{ 2629, 533 },	//  #14 gc=Mark:M:Combining_Mark
-	{ 2629, 182 },	//  #15 gc=Spacing_Mark:Mc
-	{ 2811, 5 },	//  #16 gc=Enclosing_Mark:Me
-	{ 2816, 346 },	//  #17 gc=Nonspacing_Mark:Mn
-	{ 3162, 148 },	//  #18 gc=Number:N
-	{ 3162, 64 },	//  #19 gc=Decimal_Number:Nd:digit
-	{ 3226, 12 },	//  #20 gc=Letter_Number:Nl
-	{ 3238, 72 },	//  #21 gc=Other_Number:No
-	{ 3310, 388 },	//  #22 gc=Punctuation:P:punct
-	{ 3310, 6 },	//  #23 gc=Connector_Punctuation:Pc
-	{ 3316, 19 },	//  #24 gc=Dash_Punctuation:Pd
-	{ 3335, 76 },	//  #25 gc=Close_Punctuation:Pe
-	{ 3411, 10 },	//  #26 gc=Final_Punctuation:Pf
-	{ 3421, 11 },	//  #27 gc=Initial_Punctuation:Pi
-	{ 3432, 187 },	//  #28 gc=Other_Punctuation:Po
-	{ 3619, 79 },	//  #29 gc=Open_Punctuation:Ps
-	{ 3698, 300 },	//  #30 gc=Symbol:S
-	{ 3698, 21 },	//  #31 gc=Currency_Symbol:Sc
-	{ 3719, 31 },	//  #32 gc=Modifier_Symbol:Sk
-	{ 3750, 64 },	//  #33 gc=Math_Symbol:Sm
-	{ 3814, 184 },	//  #34 gc=Other_Symbol:So
-	{ 3998, 9 },	//  #35 gc=Separator:Z
-	{ 3998, 1 },	//  #36 gc=Line_Separator:Zl
-	{ 3999, 1 },	//  #37 gc=Paragraph_Separator:Zp
-	{ 4000, 7 },	//  #38 gc=Space_Separator:Zs
-	{ 4007, 1 },	//  #39 bp=ASCII
-	{ 4008, 3 },	//  #40 bp=ASCII_Hex_Digit:AHex
-	{ 4011, 732 },	//  #41 bp=Alphabetic:Alpha
-	{ 4743, 1 },	//  #42 bp=Any
-	{ 4744, 0 },	//  #43 bp=Assigned
-	{ 4744, 4 },	//  #44 bp=Bidi_Control:Bidi_C
-	{ 4748, 114 },	//  #45 bp=Bidi_Mirrored:Bidi_M
-	{ 4862, 437 },	//  #46 bp=Case_Ignorable:CI
-	{ 5299, 157 },	//  #47 bp=Cased
-	{ 5456, 622 },	//  #48 bp=Changes_When_Casefolded:CWCF
-	{ 6078, 131 },	//  #49 bp=Changes_When_Casemapped:CWCM
-	{ 6209, 609 },	//  #50 bp=Changes_When_Lowercased:CWL
-	{ 6818, 839 },	//  #51 bp=Changes_When_NFKC_Casefolded:CWKCF
-	{ 7657, 626 },	//  #52 bp=Changes_When_Titlecased:CWT
-	{ 8283, 627 },	//  #53 bp=Changes_When_Uppercased:CWU
-	{ 8910, 23 },	//  #54 bp=Dash
-	{ 8933, 17 },	//  #55 bp=Default_Ignorable_Code_Point:DI
-	{ 8950, 8 },	//  #56 bp=Deprecated:Dep
-	{ 8958, 195 },	//  #57 bp=Diacritic:Dia
-	{ 9153, 151 },	//  #58 bp=Emoji
-	{ 9304, 10 },	//  #59 bp=Emoji_Component:EComp
-	{ 9314, 1 },	//  #60 bp=Emoji_Modifier:EMod
-	{ 9315, 40 },	//  #61 bp=Emoji_Modifier_Base:EBase
-	{ 9355, 81 },	//  #62 bp=Emoji_Presentation:EPres
-	{ 9436, 78 },	//  #63 bp=Extended_Pictographic:ExtPict
-	{ 9514, 33 },	//  #64 bp=Extender:Ext
-	{ 9547, 875 },	//  #65 bp=Grapheme_Base:Gr_Base
-	{ 10422, 363 },	//  #66 bp=Grapheme_Extend:Gr_Ext
-	{ 10785, 6 },	//  #67 bp=Hex_Digit:Hex
-	{ 10791, 2 },	//  #68 bp=IDS_Binary_Operator:IDSB
-	{ 10793, 1 },	//  #69 bp=IDS_Trinary_Operator:IDST
-	{ 10794, 768 },	//  #70 bp=ID_Continue:IDC
-	{ 11562, 659 },	//  #71 bp=ID_Start:IDS
-	{ 12221, 20 },	//  #72 bp=Ideographic:Ideo
-	{ 12241, 1 },	//  #73 bp=Join_Control:Join_C
-	{ 12242, 7 },	//  #74 bp=Logical_Order_Exception:LOE
-	{ 12249, 671 },	//  #75 bp=Lowercase:Lower
-	{ 12920, 138 },	//  #76 bp=Math
-	{ 13058, 18 },	//  #77 bp=Noncharacter_Code_Point:NChar
-	{ 13076, 28 },	//  #78 bp=Pattern_Syntax:Pat_Syn
-	{ 13104, 5 },	//  #79 bp=Pattern_White_Space:Pat_WS
-	{ 13109, 13 },	//  #80 bp=Quotation_Mark:QMark
-	{ 13122, 3 },	//  #81 bp=Radical
-	{ 13125, 1 },	//  #82 bp=Regional_Indicator:RI
-	{ 13126, 80 },	//  #83 bp=Sentence_Terminal:STerm
-	{ 13206, 34 },	//  #84 bp=Soft_Dotted:SD
-	{ 13240, 108 },	//  #85 bp=Terminal_Punctuation:Term
-	{ 13348, 16 },	//  #86 bp=Unified_Ideograph:UIdeo
-	{ 13364, 651 },	//  #87 bp=Uppercase:Upper
-	{ 14015, 4 },	//  #88 bp=Variation_Selector:VS
-	{ 14019, 10 },	//  #89 bp=White_Space:space
-	{ 14029, 775 },	//  #90 bp=XID_Continue:XIDC
-	{ 14804, 666 },	//  #91 bp=XID_Start:XIDS
-	{ 15470, 3 },	//  #92 sc=Adlam:Adlm
-	{ 15473, 3 },	//  #93 sc=Ahom:Ahom scx=Ahom:Ahom
-	{ 15476, 1 },	//  #94 sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
-	{ 15477, 58 },	//  #95 sc=Arabic:Arab
-	{ 15535, 4 },	//  #96 sc=Armenian:Armn scx=Armenian:Armn
-	{ 15539, 2 },	//  #97 sc=Avestan:Avst scx=Avestan:Avst
-	{ 15541, 2 },	//  #98 sc=Balinese:Bali scx=Balinese:Bali
-	{ 15543, 2 },	//  #99 sc=Bamum:Bamu scx=Bamum:Bamu
-	{ 15545, 2 },	//  #100 sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
-	{ 15547, 2 },	//  #101 sc=Batak:Batk scx=Batak:Batk
-	{ 15549, 14 },	//  #102 sc=Bengali:Beng
-	{ 15563, 4 },	//  #103 sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
-	{ 15567, 3 },	//  #104 sc=Bopomofo:Bopo
-	{ 15570, 3 },	//  #105 sc=Brahmi:Brah scx=Brahmi:Brah
-	{ 15573, 1 },	//  #106 sc=Braille:Brai scx=Braille:Brai
-	{ 15574, 2 },	//  #107 sc=Buginese:Bugi
-	{ 15576, 1 },	//  #108 sc=Buhid:Buhd
-	{ 15577, 3 },	//  #109 sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
-	{ 15580, 1 },	//  #110 sc=Carian:Cari scx=Carian:Cari
-	{ 15581, 2 },	//  #111 sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
-	{ 15583, 2 },	//  #112 sc=Chakma:Cakm
-	{ 15585, 4 },	//  #113 sc=Cham:Cham scx=Cham:Cham
-	{ 15589, 3 },	//  #114 sc=Cherokee:Cher scx=Cherokee:Cher
-	{ 15592, 1 },	//  #115 sc=Chorasmian:Chrs scx=Chorasmian:Chrs
-	{ 15593, 173 },	//  #116 sc=Common:Zyyy
-	{ 15766, 3 },	//  #117 sc=Coptic:Copt:Qaac
-	{ 15769, 1 },	//  #118 sc=Cypro_Minoan:Cpmn
-	{ 15770, 4 },	//  #119 sc=Cuneiform:Xsux scx=Cuneiform:Xsux
-	{ 15774, 6 },	//  #120 sc=Cypriot:Cprt
-	{ 15780, 10 },	//  #121 sc=Cyrillic:Cyrl
-	{ 15790, 1 },	//  #122 sc=Deseret:Dsrt scx=Deseret:Dsrt
-	{ 15791, 5 },	//  #123 sc=Devanagari:Deva
-	{ 15796, 8 },	//  #124 sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
-	{ 15804, 1 },	//  #125 sc=Dogra:Dogr
-	{ 15805, 5 },	//  #126 sc=Duployan:Dupl
-	{ 15810, 1 },	//  #127 sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
-	{ 15811, 1 },	//  #128 sc=Elbasan:Elba scx=Elbasan:Elba
-	{ 15812, 1 },	//  #129 sc=Elymaic:Elym scx=Elymaic:Elym
-	{ 15813, 36 },	//  #130 sc=Ethiopic:Ethi scx=Ethiopic:Ethi
-	{ 15849, 10 },	//  #131 sc=Georgian:Geor
-	{ 15859, 6 },	//  #132 sc=Glagolitic:Glag
-	{ 15865, 1 },	//  #133 sc=Gothic:Goth scx=Gothic:Goth
-	{ 15866, 15 },	//  #134 sc=Grantha:Gran
-	{ 15881, 36 },	//  #135 sc=Greek:Grek
-	{ 15917, 14 },	//  #136 sc=Gujarati:Gujr
-	{ 15931, 6 },	//  #137 sc=Gunjala_Gondi:Gong
-	{ 15937, 16 },	//  #138 sc=Gurmukhi:Guru
-	{ 15953, 21 },	//  #139 sc=Han:Hani
-	{ 15974, 14 },	//  #140 sc=Hangul:Hang
-	{ 15988, 2 },	//  #141 sc=Hanifi_Rohingya:Rohg
-	{ 15990, 1 },	//  #142 sc=Hanunoo:Hano
-	{ 15991, 3 },	//  #143 sc=Hatran:Hatr scx=Hatran:Hatr
-	{ 15994, 9 },	//  #144 sc=Hebrew:Hebr scx=Hebrew:Hebr
-	{ 16003, 6 },	//  #145 sc=Hiragana:Hira
-	{ 16009, 2 },	//  #146 sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
-	{ 16011, 29 },	//  #147 sc=Inherited:Zinh:Qaai
-	{ 16040, 2 },	//  #148 sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
-	{ 16042, 2 },	//  #149 sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
-	{ 16044, 3 },	//  #150 sc=Javanese:Java
-	{ 16047, 2 },	//  #151 sc=Kaithi:Kthi
-	{ 16049, 13 },	//  #152 sc=Kannada:Knda
-	{ 16062, 14 },	//  #153 sc=Katakana:Kana
-	{ 16076, 2 },	//  #154 sc=Kayah_Li:Kali
-	{ 16078, 8 },	//  #155 sc=Kharoshthi:Khar scx=Kharoshthi:Khar
-	{ 16086, 2 },	//  #156 sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
-	{ 16088, 4 },	//  #157 sc=Khmer:Khmr scx=Khmer:Khmr
-	{ 16092, 2 },	//  #158 sc=Khojki:Khoj
-	{ 16094, 2 },	//  #159 sc=Khudawadi:Sind
-	{ 16096, 11 },	//  #160 sc=Lao:Laoo scx=Lao:Laoo
-	{ 16107, 39 },	//  #161 sc=Latin:Latn
-	{ 16146, 3 },	//  #162 sc=Lepcha:Lepc scx=Lepcha:Lepc
-	{ 16149, 5 },	//  #163 sc=Limbu:Limb
-	{ 16154, 3 },	//  #164 sc=Linear_A:Lina
-	{ 16157, 7 },	//  #165 sc=Linear_B:Linb
-	{ 16164, 2 },	//  #166 sc=Lisu:Lisu scx=Lisu:Lisu
-	{ 16166, 1 },	//  #167 sc=Lycian:Lyci scx=Lycian:Lyci
-	{ 16167, 2 },	//  #168 sc=Lydian:Lydi scx=Lydian:Lydi
-	{ 16169, 1 },	//  #169 sc=Mahajani:Mahj
-	{ 16170, 1 },	//  #170 sc=Makasar:Maka scx=Makasar:Maka
-	{ 16171, 7 },	//  #171 sc=Malayalam:Mlym
-	{ 16178, 2 },	//  #172 sc=Mandaic:Mand
-	{ 16180, 2 },	//  #173 sc=Manichaean:Mani
-	{ 16182, 3 },	//  #174 sc=Marchen:Marc scx=Marchen:Marc
-	{ 16185, 7 },	//  #175 sc=Masaram_Gondi:Gonm
-	{ 16192, 1 },	//  #176 sc=Medefaidrin:Medf scx=Medefaidrin:Medf
-	{ 16193, 3 },	//  #177 sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
-	{ 16196, 2 },	//  #178 sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
-	{ 16198, 3 },	//  #179 sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
-	{ 16201, 1 },	//  #180 sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
-	{ 16202, 3 },	//  #181 sc=Miao:Plrd scx=Miao:Plrd
-	{ 16205, 2 },	//  #182 sc=Modi:Modi
-	{ 16207, 6 },	//  #183 sc=Mongolian:Mong
-	{ 16213, 3 },	//  #184 sc=Mro:Mroo scx=Mro:Mroo
-	{ 16216, 5 },	//  #185 sc=Multani:Mult
-	{ 16221, 3 },	//  #186 sc=Myanmar:Mymr
-	{ 16224, 2 },	//  #187 sc=Nabataean:Nbat scx=Nabataean:Nbat
-	{ 16226, 3 },	//  #188 sc=Nandinagari:Nand
-	{ 16229, 4 },	//  #189 sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
-	{ 16233, 2 },	//  #190 sc=Newa:Newa scx=Newa:Newa
-	{ 16235, 2 },	//  #191 sc=Nko:Nkoo
-	{ 16237, 2 },	//  #192 sc=Nushu:Nshu scx=Nushu:Nshu
-	{ 16239, 4 },	//  #193 sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
-	{ 16243, 1 },	//  #194 sc=Ogham:Ogam scx=Ogham:Ogam
-	{ 16244, 1 },	//  #195 sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
-	{ 16245, 3 },	//  #196 sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
-	{ 16248, 2 },	//  #197 sc=Old_Italic:Ital scx=Old_Italic:Ital
-	{ 16250, 1 },	//  #198 sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
-	{ 16251, 1 },	//  #199 sc=Old_Permic:Perm
-	{ 16252, 2 },	//  #200 sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
-	{ 16254, 1 },	//  #201 sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
-	{ 16255, 1 },	//  #202 sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
-	{ 16256, 1 },	//  #203 sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
-	{ 16257, 1 },	//  #204 sc=Old_Uyghur:Ougr
-	{ 16258, 14 },	//  #205 sc=Oriya:Orya
-	{ 16272, 2 },	//  #206 sc=Osage:Osge scx=Osage:Osge
-	{ 16274, 2 },	//  #207 sc=Osmanya:Osma scx=Osmanya:Osma
-	{ 16276, 5 },	//  #208 sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
-	{ 16281, 1 },	//  #209 sc=Palmyrene:Palm scx=Palmyrene:Palm
-	{ 16282, 1 },	//  #210 sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
-	{ 16283, 1 },	//  #211 sc=Phags_Pa:Phag
-	{ 16284, 2 },	//  #212 sc=Phoenician:Phnx scx=Phoenician:Phnx
-	{ 16286, 3 },	//  #213 sc=Psalter_Pahlavi:Phlp
-	{ 16289, 2 },	//  #214 sc=Rejang:Rjng scx=Rejang:Rjng
-	{ 16291, 2 },	//  #215 sc=Runic:Runr scx=Runic:Runr
-	{ 16293, 2 },	//  #216 sc=Samaritan:Samr scx=Samaritan:Samr
-	{ 16295, 2 },	//  #217 sc=Saurashtra:Saur scx=Saurashtra:Saur
-	{ 16297, 1 },	//  #218 sc=Sharada:Shrd
-	{ 16298, 1 },	//  #219 sc=Shavian:Shaw scx=Shavian:Shaw
-	{ 16299, 2 },	//  #220 sc=Siddham:Sidd scx=Siddham:Sidd
-	{ 16301, 3 },	//  #221 sc=SignWriting:Sgnw scx=SignWriting:Sgnw
-	{ 16304, 13 },	//  #222 sc=Sinhala:Sinh
-	{ 16317, 1 },	//  #223 sc=Sogdian:Sogd
-	{ 16318, 2 },	//  #224 sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
-	{ 16320, 1 },	//  #225 sc=Soyombo:Soyo scx=Soyombo:Soyo
-	{ 16321, 2 },	//  #226 sc=Sundanese:Sund scx=Sundanese:Sund
-	{ 16323, 1 },	//  #227 sc=Syloti_Nagri:Sylo
-	{ 16324, 4 },	//  #228 sc=Syriac:Syrc
-	{ 16328, 2 },	//  #229 sc=Tagalog:Tglg
-	{ 16330, 3 },	//  #230 sc=Tagbanwa:Tagb
-	{ 16333, 2 },	//  #231 sc=Tai_Le:Tale
-	{ 16335, 5 },	//  #232 sc=Tai_Tham:Lana scx=Tai_Tham:Lana
-	{ 16340, 2 },	//  #233 sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
-	{ 16342, 2 },	//  #234 sc=Takri:Takr
-	{ 16344, 18 },	//  #235 sc=Tamil:Taml
-	{ 16362, 2 },	//  #236 sc=Tangsa:Tnsa scx=Tangsa:Tnsa
-	{ 16364, 4 },	//  #237 sc=Tangut:Tang scx=Tangut:Tang
-	{ 16368, 13 },	//  #238 sc=Telugu:Telu
-	{ 16381, 1 },	//  #239 sc=Thaana:Thaa
-	{ 16382, 2 },	//  #240 sc=Thai:Thai scx=Thai:Thai
-	{ 16384, 7 },	//  #241 sc=Tibetan:Tibt scx=Tibetan:Tibt
-	{ 16391, 3 },	//  #242 sc=Tifinagh:Tfng scx=Tifinagh:Tfng
-	{ 16394, 2 },	//  #243 sc=Tirhuta:Tirh
-	{ 16396, 1 },	//  #244 sc=Toto scx=Toto
-	{ 16397, 2 },	//  #245 sc=Ugaritic:Ugar scx=Ugaritic:Ugar
-	{ 16399, 1 },	//  #246 sc=Vai:Vaii scx=Vai:Vaii
-	{ 16400, 8 },	//  #247 sc=Vithkuqi:Vith scx=Vithkuqi:Vith
-	{ 16408, 2 },	//  #248 sc=Wancho:Wcho scx=Wancho:Wcho
-	{ 16410, 2 },	//  #249 sc=Warang_Citi:Wara scx=Warang_Citi:Wara
-	{ 16412, 3 },	//  #250 sc=Yezidi:Yezi
-	{ 16415, 2 },	//  #251 sc=Yi:Yiii
-	{ 16417, 1 },	//  #252 sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
-	{ 16418, 5 },	//  #253 scx=Adlam:Adlm
-	{ 16423, 52 },	//  #254 scx=Arabic:Arab
-	{ 16475, 26 },	//  #255 scx=Bengali:Beng
-	{ 16501, 12 },	//  #256 scx=Bopomofo:Bopo
-	{ 16513, 3 },	//  #257 scx=Buginese:Bugi
-	{ 16516, 2 },	//  #258 scx=Buhid:Buhd
-	{ 16518, 4 },	//  #259 scx=Chakma:Cakm
-	{ 16522, 147 },	//  #260 scx=Common:Zyyy
-	{ 16669, 4 },	//  #261 scx=Coptic:Copt:Qaac
-	{ 16673, 2 },	//  #262 scx=Cypro_Minoan:Cpmn
-	{ 16675, 9 },	//  #263 scx=Cypriot:Cprt
-	{ 16684, 11 },	//  #264 scx=Cyrillic:Cyrl
-	{ 16695, 8 },	//  #265 scx=Devanagari:Deva
-	{ 16703, 3 },	//  #266 scx=Dogra:Dogr
-	{ 16706, 5 },	//  #267 scx=Duployan:Dupl
-	{ 16711, 9 },	//  #268 scx=Georgian:Geor
-	{ 16720, 10 },	//  #269 scx=Glagolitic:Glag
-	{ 16730, 25 },	//  #270 scx=Grantha:Gran
-	{ 16755, 38 },	//  #271 scx=Greek:Grek
-	{ 16793, 17 },	//  #272 scx=Gujarati:Gujr
-	{ 16810, 7 },	//  #273 scx=Gunjala_Gondi:Gong
-	{ 16817, 19 },	//  #274 scx=Gurmukhi:Guru
-	{ 16836, 38 },	//  #275 scx=Han:Hani
-	{ 16874, 21 },	//  #276 scx=Hangul:Hang
-	{ 16895, 7 },	//  #277 scx=Hanifi_Rohingya:Rohg
-	{ 16902, 1 },	//  #278 scx=Hanunoo:Hano
-	{ 16903, 17 },	//  #279 scx=Hiragana:Hira
-	{ 16920, 20 },	//  #280 scx=Inherited:Zinh:Qaai
-	{ 16940, 3 },	//  #281 scx=Javanese:Java
-	{ 16943, 4 },	//  #282 scx=Kaithi:Kthi
-	{ 16947, 21 },	//  #283 scx=Kannada:Knda
-	{ 16968, 20 },	//  #284 scx=Katakana:Kana
-	{ 16988, 1 },	//  #285 scx=Kayah_Li:Kali
-	{ 16989, 4 },	//  #286 scx=Khojki:Khoj
-	{ 16993, 4 },	//  #287 scx=Khudawadi:Sind
-	{ 16997, 47 },	//  #288 scx=Latin:Latn
-	{ 17044, 6 },	//  #289 scx=Limbu:Limb
-	{ 17050, 4 },	//  #290 scx=Linear_A:Lina
-	{ 17054, 10 },	//  #291 scx=Linear_B:Linb
-	{ 17064, 3 },	//  #292 scx=Mahajani:Mahj
-	{ 17067, 11 },	//  #293 scx=Malayalam:Mlym
-	{ 17078, 3 },	//  #294 scx=Mandaic:Mand
-	{ 17081, 3 },	//  #295 scx=Manichaean:Mani
-	{ 17084, 8 },	//  #296 scx=Masaram_Gondi:Gonm
-	{ 17092, 3 },	//  #297 scx=Modi:Modi
-	{ 17095, 5 },	//  #298 scx=Mongolian:Mong
-	{ 17100, 6 },	//  #299 scx=Multani:Mult
-	{ 17106, 4 },	//  #300 scx=Myanmar:Mymr
-	{ 17110, 9 },	//  #301 scx=Nandinagari:Nand
-	{ 17119, 6 },	//  #302 scx=Nko:Nkoo
-	{ 17125, 2 },	//  #303 scx=Old_Permic:Perm
-	{ 17127, 3 },	//  #304 scx=Old_Uyghur:Ougr
-	{ 17130, 18 },	//  #305 scx=Oriya:Orya
-	{ 17148, 3 },	//  #306 scx=Phags_Pa:Phag
-	{ 17151, 4 },	//  #307 scx=Psalter_Pahlavi:Phlp
-	{ 17155, 6 },	//  #308 scx=Sharada:Shrd
-	{ 17161, 14 },	//  #309 scx=Sinhala:Sinh
-	{ 17175, 2 },	//  #310 scx=Sogdian:Sogd
-	{ 17177, 3 },	//  #311 scx=Syloti_Nagri:Sylo
-	{ 17180, 12 },	//  #312 scx=Syriac:Syrc
-	{ 17192, 3 },	//  #313 scx=Tagalog:Tglg
-	{ 17195, 4 },	//  #314 scx=Tagbanwa:Tagb
-	{ 17199, 3 },	//  #315 scx=Tai_Le:Tale
-	{ 17202, 4 },	//  #316 scx=Takri:Takr
-	{ 17206, 25 },	//  #317 scx=Tamil:Taml
-	{ 17231, 17 },	//  #318 scx=Telugu:Telu
-	{ 17248, 7 },	//  #319 scx=Thaana:Thaa
-	{ 17255, 6 },	//  #320 scx=Tirhuta:Tirh
-	{ 17261, 7 },	//  #321 scx=Yezidi:Yezi
-	{ 17268, 7 },	//  #322 scx=Yi:Yiii
-	{ 17275, 6318 },	//  #323 bp=RGI_Emoji
-	{ 17275, 669 },	//  #324 bp=Basic_Emoji
-	{ 17944, 24 },	//  #325 bp=Emoji_Keycap_Sequence
-	{ 17968, 983 },	//  #326 bp=RGI_Emoji_Modifier_Sequence
-	{ 18951, 387 },	//  #327 bp=RGI_Emoji_Flag_Sequence
-	{ 19338, 12 },	//  #328 bp=RGI_Emoji_Tag_Sequence
-	{ 19350, 4243 }	//  #329 bp=RGI_Emoji_ZWJ_Sequence
-};
-#define SRELL_UPDATA_VERSION 201
-//  ... "srell_updata2.hpp"]
-
-			static const uint_l32 error_property = static_cast<uint_l32>(-1);
+			static const ui_l32 error_property = static_cast<ui_l32>(-1);
 		}	//  namespace up_constants
 
 		namespace up_internal
 		{
-			typedef up_constants::up_type pname_type;
-			typedef const char *pname_string_type;
+			typedef int up_type;
+			typedef const char *pname_type;
 
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-			struct pvalue_type
+			struct pnameno_map_type
 			{
-				pname_type pname;
-				uint_l32 pnumber;
-				pname_string_type csstrings;
+				pname_type name;
+				up_type pno;
 			};
-#else
-			struct pvalue_type
-			{
-				pname_type pname;
-				pname_string_type csstrings;
-				uint_l32 pnumber;
-			};
-#endif
 
-			struct offset_and_number
+			struct posinfo
 			{
-				std::size_t offset;
-				std::size_t number_of_pairs;
+				ui_l32 offset;
+				ui_l32 numofpairs;
 			};
 
 			typedef up_constants::unicode_property_data<
-				pname_string_type,
-				uchar32,
-				pvalue_type,
-				offset_and_number
-				>
-				updata;
+				pnameno_map_type,
+				posinfo,
+				ui_l32
+				> updata;
 
 		}	//  namespace up_internal
 
@@ -13262,139 +13967,107 @@ public:
 	}
 #endif
 
-	static uint_l32 lookup_property(const pstring &name, const pstring &value)
+	static ui_l32 lookup_property(const pstring &name, const pstring &value)
 	{
-		pname_type ptype = name.size() ? lookup_property_name(name) : up_constants::uptype_general_category;
-//		property_type property_number = lookup_property_value(ptype, value);
-		uint_l32 property_number = lookup_property_value(ptype, value);
+		up_type ptype = name.size() > 1 ? lookup_property_name(name) : up_constants::uptype_gc;
+		const posinfo *pos = &updata::positiontable[ptype];
+		ui_l32 pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 
-		if (property_number == static_cast<uint_l32>(up_constants::upid_unknown) && name.size() == 0)
+		if (pno == upid_error && name.size() < 2)
 		{
-			ptype = up_constants::uptype_binary;
-			property_number = lookup_property_value(ptype, value);
+			ptype = up_constants::uptype_bp;
+			pos = &updata::positiontable[ptype];
+			pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 		}
 
-		return property_number != static_cast<uint_l32>(up_constants::upid_unknown) ? property_number : up_constants::error_property;
+		return pno != upid_error ? pno : up_constants::error_property;
 	}
 
-	static std::size_t ranges_offset(const uint_l32 property_number)
+	static ui_l32 ranges_offset(const ui_l32 property_number)
 	{
-#if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].offset;
-#else
-		const offset_and_number *const postable = updata::position_table();
-		return postable[property_number].offset;
-#endif
 	}
 
-	static std::size_t number_of_ranges(const uint_l32 property_number)
+	static ui_l32 number_of_ranges(const ui_l32 property_number)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		return updata::positiontable[property_number].number_of_pairs;
-#else
-		const offset_and_number *const postable = updata::position_table();
-		return postable[property_number].number_of_pairs;
-#endif
+		return updata::positiontable[property_number].numofpairs;
 	}
 
-	static const uchar32 *ranges_address(const uint_l32 property_number)
+	static const ui_l32 *ranges_address(const ui_l32 pno)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		return &updata::rangetable[ranges_offset(property_number) << 1];
-#else
-		const uchar32 *const ranges = updata::ranges();
-		return &ranges[ranges_offset(property_number) << 1];
-#endif
+		return &updata::rangetable[ranges_offset(pno) << 1];
 	}
 
-	static bool is_valid_pno(const uint_l32 pno)
+	static bool is_valid_pno(const ui_l32 pno)
 	{
 		return pno != up_constants::error_property && pno <= max_property_number;
 	}
 
-	static bool is_pos(const uint_l32 pno)
+	static bool is_pos(const ui_l32 pno)
 	{
 		return pno > max_property_number && pno <= max_pos_number;
 	}
 
 private:
 
+	typedef up_internal::up_type up_type;
 	typedef up_internal::pname_type pname_type;
-	typedef up_internal::pname_string_type pname_string_type;
-	typedef up_internal::pvalue_type pvalue_type;
-	typedef up_internal::offset_and_number offset_and_number;
+	typedef up_internal::pnameno_map_type pnameno_map_type;
+	typedef up_internal::posinfo posinfo;
 	typedef up_internal::updata updata;
 
-	static pname_type lookup_property_name(const pstring &name)
+	static up_type lookup_property_name(const pstring &name)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		for (std::size_t pno = 0; *updata::propertynametable[pno]; ++pno)
-		{
-			if (check_if_included(name, updata::propertynametable[pno]))
-				return static_cast<pname_type>(pno);
-		}
-#else
-		const pname_string_type *const pname_table = updata::propertyname_table();
-
-		for (std::size_t pno = 0; *pname_table[pno]; ++pno)
-		{
-			if (check_if_included(name, pname_table[pno]))
-				return static_cast<pname_type>(pno);
-		}
-#endif
-		return up_constants::uptype_unknown;
+		return lookup_property_value(name, 1, updata::propertynumbertable[0].pno);
 	}
 
-	//  Checks if value is included in colon-separated strings.
-	static bool check_if_included(const pstring &value, pname_string_type csstrings)
+	static ui_l32 lookup_property_value(const pstring &value, const ui_l32 offset, ui_l32 count)
 	{
-		if (static_cast<uchar32>(*csstrings) != meta_char::mc_astrsk)	//  '*'
+		const pnameno_map_type *base = &updata::propertynumbertable[offset];
+
+		while (count)
 		{
-			while (*csstrings)
+			ui_l32 mid = count >> 1;
+			const pnameno_map_type &map = base[mid];
+			const int cmp = compare(value, map.name);
+
+			if (cmp < 0)
 			{
-				const pname_string_type begin = csstrings;
-
-				for (; static_cast<uchar32>(*csstrings) != meta_char::mc_colon && static_cast<uchar32>(*csstrings) != char_ctrl::cc_nul; ++csstrings);
-
-				const std::size_t length = csstrings - begin;
-
-				if (static_cast<std::size_t>(value.size()) == length)
-					if (value.compare(0, value.size(), begin, length) == 0)
-						return true;
-
-				if (static_cast<uchar32>(*csstrings) == meta_char::mc_colon)
-					++csstrings;
+				count = mid;
 			}
+			else if (cmp > 0)
+			{
+				++mid;
+				count -= mid;
+				base += mid;
+			}
+			else	//if (cmp == 0)
+				return static_cast<ui_l32>(map.pno);
 		}
-		return false;
+		return upid_error;
 	}
 
-	static uint_l32 lookup_property_value(const pname_type ptype, const pstring &value)
+	static int compare(const pstring &value, pname_type pname)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		for (std::size_t pno = 0; *updata::rangenumbertable[pno].csstrings; ++pno)
+		for (pstring::size_type i = 0;; ++i, ++pname)
 		{
-			const pvalue_type &pvalue = updata::rangenumbertable[pno];
-			if (pvalue.pname == ptype && check_if_included(value, pvalue.csstrings))
-				return pvalue.pnumber;
-		}
-#else
-		const pvalue_type *const pvalue_table = updata::rangenumber_table();
+			if (value[i] == 0)
+				return (*pname == 0) ? 0 : (value[i] < *pname ? -1 : 1);
 
-		for (std::size_t pno = 0; *pvalue_table[pno].csstrings; ++pno)
-		{
-			const pvalue_type &pvalue = pvalue_table[pno];
-			if (pvalue.pname == ptype && check_if_included(value, pvalue.csstrings))
-				return pvalue.pnumber;
+			if (value[i] != *pname)
+				return value[i] < *pname ? -1 : 1;
 		}
-#endif
-		return static_cast<uint_l32>(up_constants::upid_unknown);
 	}
 
 private:
 
-	static const std::size_t max_property_number = static_cast<std::size_t>(up_constants::upid_max_property_number);
-	static const std::size_t max_pos_number = static_cast<std::size_t>(up_constants::upid_max_pos_number);
+	static const ui_l32 max_property_number = static_cast<ui_l32>(up_constants::upid_max_property_number);
+	static const ui_l32 max_pos_number = static_cast<ui_l32>(up_constants::upid_max_pos_number);
+#if (SRELL_UPDATA_VERSION > 300)
+	static const ui_l32 upid_error = static_cast<ui_l32>(up_constants::upid_error);
+#else
+	static const ui_l32 upid_error = static_cast<ui_l32>(up_constants::upid_unknown);
+#endif
 };
 //  unicode_property
 
@@ -13409,16 +14082,16 @@ private:
 
 struct range_pair	//  , public std::pair<charT, charT>
 {
-	uchar32 second;
-	uchar32 first;
+	ui_l32 second;
+	ui_l32 first;
 
-	void set(const uchar32 min, const uchar32 max)
+	void set(const ui_l32 min, const ui_l32 max)
 	{
 		this->first = min;
 		this->second = max;
 	}
 
-	void set(const uchar32 minmax)
+	void set(const ui_l32 minmax)
 	{
 		this->first = minmax;
 		this->second = minmax;
@@ -13474,13 +14147,13 @@ struct range_pair	//  , public std::pair<charT, charT>
 
 struct range_pair_helper : public range_pair
 {
-	range_pair_helper(const uchar32 min, const uchar32 max)
+	range_pair_helper(const ui_l32 min, const ui_l32 max)
 	{
 		this->first = min;
 		this->second = max;
 	}
 
-	range_pair_helper(const uchar32 minmax)
+	range_pair_helper(const ui_l32 minmax)
 	{
 		this->first = minmax;
 		this->second = minmax;
@@ -13607,11 +14280,11 @@ public:
 			join(right[i]);
 	}
 
-	bool same(uchar32 pos, const uchar32 count, const range_pairs &right) const
+	bool same(ui_l32 pos, const ui_l32 count, const range_pairs &right) const
 	{
 		if (count == right.size())
 		{
-			for (uchar32 i = 0; i < count; ++i, ++pos)
+			for (ui_l32 i = 0; i < count; ++i, ++pos)
 				if (!(rparray_[pos] == right[i]))
 					return false;
 
@@ -13642,7 +14315,7 @@ public:
 
 	void negation()
 	{
-		uchar32 begin = 0;
+		ui_l32 begin = 0;
 		range_pairs newpairs;
 
 		for (size_type i = 0; i < rparray_.size(); ++i)
@@ -13679,7 +14352,7 @@ public:
 		return false;
 	}
 
-	void load_from_memory(const uchar32 *array, size_type number_of_pairs)
+	void load_from_memory(const ui_l32 *array, ui_l32 number_of_pairs)
 	{
 		for (; number_of_pairs; --number_of_pairs, array += 2)
 			join(range_pair_helper(array[0], array[1]));
@@ -13687,18 +14360,18 @@ public:
 
 	void make_caseunfoldedcharset()
 	{
-		uchar32 table[ucf_constants::rev_maxset] = {};
+		ui_l32 table[ucf_constants::rev_maxset] = {};
 		bitset<constants::unicode_max_codepoint + 1> bs;
 
 		for (size_type i = 0; i < rparray_.size(); ++i)
 		{
 			const range_pair &range = rparray_[i];
 
-			for (uchar32 ucp = range.first; ucp <= range.second; ++ucp)
+			for (ui_l32 ucp = range.first; ucp <= range.second; ++ucp)
 			{
-				const uint_l32 setnum = unicode_case_folding::do_caseunfolding(table, ucp);
+				const ui_l32 setnum = unicode_case_folding::do_caseunfolding(table, ucp);
 
-				for (uint_l32 j = 0; j < setnum; ++j)
+				for (ui_l32 j = 0; j < setnum; ++j)
 					bs.set(table[j]);
 			}
 		}
@@ -13747,18 +14420,18 @@ public:
 	}
 
 //	template <typename ucf>
-	uchar32 consists_of_one_character(const bool icase) const
+	ui_l32 consists_of_one_character(const bool icase) const
 	{
 		if (rparray_.size() >= 1)
 		{
-			uchar32 (*const casefolding_func)(const uchar32) = !icase ? do_nothing : unicode_case_folding::do_casefolding;
-			const uchar32 ucp1st = casefolding_func(rparray_[0].first);
+			ui_l32 (*const casefolding_func)(const ui_l32) = !icase ? do_nothing : unicode_case_folding::do_casefolding;
+			const ui_l32 ucp1st = casefolding_func(rparray_[0].first);
 
 			for (size_type no = 0; no < rparray_.size(); ++no)
 			{
 				const range_pair &cr = rparray_[no];
 
-				for (uchar32 ucp = cr.first;; ++ucp)
+				for (ui_l32 ucp = cr.first;; ++ucp)
 				{
 					if (ucp1st != casefolding_func(ucp))
 						return constants::invalid_u32value;
@@ -13831,7 +14504,7 @@ public:
 	}
 
 #if defined(SRELLDBG_NO_BITSET)
-	bool is_included(const uchar32 ch) const
+	bool is_included(const ui_l32 ch) const
 	{
 #if 01
 		const range_pair *const end = rparray_.data() + rparray_.size();
@@ -13853,7 +14526,7 @@ public:
 
 	//  For multiple_range_pairs functions.
 
-	bool is_included_ls(const uchar32 pos, uchar32 count, const uchar32 c) const
+	bool is_included_ls(const ui_l32 pos, ui_l32 count, const ui_l32 c) const
 	{
 		const range_pair *cur = &rparray_[pos];
 
@@ -13865,13 +14538,13 @@ public:
 		return false;
 	}
 
-	bool is_included(const uchar32 pos, uchar32 count, const uchar32 c) const
+	bool is_included(const ui_l32 pos, ui_l32 count, const ui_l32 c) const
 	{
 		const range_pair *base = &rparray_[pos];
 
 		while (count)
 		{
-			uchar32 mid = count >> 1;
+			ui_l32 mid = count >> 1;
 			const range_pair &rp = base[mid];
 
 			if (c <= rp.second)
@@ -13900,7 +14573,7 @@ public:
 
 	//  For Eytzinger layout functions.
 
-	bool is_included_el(uchar32 pos, const uchar32 len, const uchar32 c) const
+	bool is_included_el(ui_l32 pos, const ui_l32 len, const ui_l32 c) const
 	{
 		const range_pair *const base = &rparray_[pos];
 
@@ -13926,9 +14599,9 @@ public:
 		return false;
 	}
 
-	uchar32 create_el(const range_pair *srcbase, const uchar32 srcsize)
+	ui_l32 create_el(const range_pair *srcbase, const ui_l32 srcsize)
 	{
-		const uchar32 basepos = static_cast<uchar32>(rparray_.size());
+		const ui_l32 basepos = static_cast<ui_l32>(rparray_.size());
 
 		rparray_.resize(basepos + srcsize);
 		set_eytzinger_layout(0, srcbase, srcsize, &rparray_[basepos], 0);
@@ -13938,9 +14611,9 @@ public:
 
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
 
-	uint_l32 total_codepoints() const
+	ui_l32 total_codepoints() const
 	{
-		uint_l32 num = 0;
+		ui_l32 num = 0;
 
 		for (size_type no = 0; no < rparray_.size(); ++no)
 		{
@@ -13955,12 +14628,12 @@ private:
 
 #if !defined(SRELLDBG_NO_CCPOS)
 
-	uchar32 set_eytzinger_layout(uchar32 srcpos, const range_pair *const srcbase, const uchar32 srclen,
-		range_pair *const destbase, const uchar32 destpos)
+	ui_l32 set_eytzinger_layout(ui_l32 srcpos, const range_pair *const srcbase, const ui_l32 srclen,
+		range_pair *const destbase, const ui_l32 destpos)
 	{
 		if (destpos < srclen)
 		{
-			const uchar32 nextpos = (destpos << 1) + 1;
+			const ui_l32 nextpos = (destpos << 1) + 1;
 
 			srcpos = set_eytzinger_layout(srcpos, srcbase, srclen, destbase, nextpos);
 			destbase[destpos] = srcbase[srcpos++];
@@ -13971,7 +14644,7 @@ private:
 
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
 
-	static uchar32 do_nothing(const uchar32 cp)
+	static ui_l32 do_nothing(const ui_l32 cp)
 	{
 		return cp;
 	}
@@ -13979,10 +14652,10 @@ private:
 	template <typename BitSetT>
 	void load_from_bitset(const BitSetT &bs)
 	{
-		uchar32 begin = constants::invalid_u32value;
+		ui_l32 begin = constants::invalid_u32value;
 		range_pairs newranges;
 
-		for (uchar32 ucp = 0;; ++ucp)
+		for (ui_l32 ucp = 0;; ++ucp)
 		{
 			if (ucp > constants::unicode_max_codepoint || !bs.test(ucp))
 			{
@@ -14033,7 +14706,7 @@ public:
 	{
 		if (char_class_pos_.size() == 0)
 		{
-			static const uchar32 additions[] = {
+			static const ui_l32 additions[] = {
 				//  reg_exp_identifier_start, reg_exp_identifier_part.
 				0x24, 0x24, 0x5f, 0x5f, 0x200c, 0x200d	//  '$' '_' <ZWNJ>-<ZWJ>
 			};
@@ -14041,8 +14714,8 @@ public:
 
 			//  For reg_exp_identifier_start.
 			{
-				const uchar32 *const IDs_address = unicode_property::ranges_address(upid_bp_ID_Start);
-				const std::size_t IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
+				const ui_l32 *const IDs_address = unicode_property::ranges_address(upid_bp_ID_Start);
+				const ui_l32 IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
 				ranges.load_from_memory(IDs_address, IDs_number);
 			}
 			ranges.load_from_memory(&additions[0], 2);
@@ -14051,8 +14724,8 @@ public:
 			//  For reg_exp_identifier_part.
 			ranges.clear();
 			{
-				const uchar32 *const IDc_address = unicode_property::ranges_address(upid_bp_ID_Continue);
-				const std::size_t IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
+				const ui_l32 *const IDc_address = unicode_property::ranges_address(upid_bp_ID_Continue);
+				const ui_l32 IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
 				ranges.load_from_memory(IDc_address, IDc_number);
 			}
 			ranges.load_from_memory(&additions[0], 3);
@@ -14060,7 +14733,7 @@ public:
 		}
 	}
 
-	bool is_identifier(const uchar32 ch, const bool part) const
+	bool is_identifier(const ui_l32 ch, const bool part) const
 	{
 		const range_pair &rp = char_class_pos_[part ? 1 : 0];
 
@@ -14071,7 +14744,7 @@ private:
 
 	void append_charclass(const range_pairs &rps)
 	{
-		char_class_pos_.push_back(range_pair_helper(static_cast<uchar32>(char_class_.size()), static_cast<uchar32>(rps.size())));
+		char_class_pos_.push_back(range_pair_helper(static_cast<ui_l32>(char_class_.size()), static_cast<ui_l32>(rps.size())));
 		char_class_.append_newclass(rps);
 	}
 
@@ -14082,8 +14755,8 @@ private:
 //    any Unicode code point with the Unicode property "ID_Start"
 //  UnicodeIDContinue::
 //    any Unicode code point with the Unicode property "ID_Continue"
-	static const uint_l32 upid_bp_ID_Start = static_cast<uint_l32>(up_constants::bp_ID_Start);
-	static const uint_l32 upid_bp_ID_Continue = static_cast<uint_l32>(up_constants::bp_ID_Continue);
+	static const ui_l32 upid_bp_ID_Start = static_cast<ui_l32>(up_constants::bp_ID_Start);
+	static const ui_l32 upid_bp_ID_Continue = static_cast<ui_l32>(up_constants::bp_ID_Continue);
 };
 //  identifier_charclass
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -14138,7 +14811,7 @@ public:
 	}
 #endif
 
-	bool is_included(const uint_l32 class_number, const uchar32 c) const
+	bool is_included(const ui_l32 class_number, const ui_l32 c) const
 	{
 //		return char_class_.is_included(char_class_pos_[class_number], c);
 		const range_pair &rp = char_class_pos_[class_number];
@@ -14147,8 +14820,7 @@ public:
 	}
 
 #if !defined(SRELLDBG_NO_CCPOS)
-//	bool is_included(const uint_l32 pos, const uint_l32 len, const uchar32 &c) const
-	bool is_included(const uchar32 pos, const uchar32 len, const uchar32 c) const
+	bool is_included(const ui_l32 pos, const ui_l32 len, const ui_l32 c) const
 	{
 			return char_class_el_.is_included_el(pos, len, c);
 	}
@@ -14169,14 +14841,14 @@ public:
 
 			char_class_.replace(icase_pos.first, icase_pos.second, icasewordclass);
 
-			if (icase_pos.second < static_cast<uchar32>(icasewordclass.size()))
+			if (icase_pos.second < static_cast<ui_l32>(icasewordclass.size()))
 			{
-				const uchar32 delta = static_cast<uchar32>(icasewordclass.size() - icase_pos.second);
+				const ui_l32 delta = static_cast<ui_l32>(icasewordclass.size() - icase_pos.second);
 
 				for (int i = number_of_predefcls; i < static_cast<int>(char_class_pos_.size()); ++i)
 					char_class_pos_[i].first += delta;
 			}
-			icase_pos.second = static_cast<uchar32>(icasewordclass.size());
+			icase_pos.second = static_cast<ui_l32>(icasewordclass.size());
 		}
 	}
 
@@ -14184,7 +14856,7 @@ public:
 	{
 		char_class_pos_.resize(number_of_predefcls);
 
-		uchar32 basesize = 0;
+		ui_l32 basesize = 0;
 		for (int i = 0; i < number_of_predefcls; ++i)
 			basesize += char_class_pos_[i].second;
 
@@ -14196,26 +14868,26 @@ public:
 #endif
 	}
 
-	uint_l32 register_newclass(const range_pairs &rps)
+	ui_l32 register_newclass(const range_pairs &rps)
 	{
 		for (range_pairs::size_type no = 0; no < char_class_pos_.size(); ++no)
 		{
 			const range_pair &rp = char_class_pos_[no];
 
 			if (char_class_.same(rp.first, rp.second, rps))
-				return static_cast<uint_l32>(no);
+				return static_cast<ui_l32>(no);
 		}
 
 		append_charclass(rps);
-		return static_cast<uint_l32>(char_class_pos_.size() - 1);
+		return static_cast<ui_l32>(char_class_pos_.size() - 1);
 	}
 
-	range_pairs operator[](const uint_l32 no) const
+	range_pairs operator[](const ui_l32 no) const
 	{
 		const range_pair &ccpos = char_class_pos_[no];
 		range_pairs rp(ccpos.second);
 
-		for (uchar32 i = 0; i < ccpos.second; ++i)
+		for (ui_l32 i = 0; i < ccpos.second; ++i)
 			rp[i] = char_class_[ccpos.first + i];
 
 		return rp;
@@ -14223,7 +14895,7 @@ public:
 
 #if !defined(SRELLDBG_NO_CCPOS)
 
-	const range_pair &charclasspos(const uint_l32 no)	//  const
+	const range_pair &charclasspos(const ui_l32 no)	//  const
 	{
 		range_pair &elpos = char_class_pos_el_[no];
 
@@ -14233,7 +14905,7 @@ public:
 
 			if (posinfo.second > 0)
 			{
-				elpos.first = static_cast<uchar32>(char_class_el_.size());
+				elpos.first = static_cast<ui_l32>(char_class_el_.size());
 				elpos.second = char_class_el_.create_el(&char_class_[posinfo.first], posinfo.second);
 			}
 		}
@@ -14255,14 +14927,14 @@ public:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	uint_l32 get_propertynumber(const pstring &pname, const pstring &pvalue) const
+	ui_l32 get_propertynumber(const pstring &pname, const pstring &pvalue) const
 	{
-		const uint_l32 pno = static_cast<uint_l32>(unicode_property::lookup_property(pname, pvalue));
+		const ui_l32 pno = static_cast<ui_l32>(unicode_property::lookup_property(pname, pvalue));
 
 		return (pno != up_constants::error_property) ? pno : up_constants::error_property;
 	}
 
-	bool load_upranges(range_pairs &newranges, const uint_l32 property_number) const
+	bool load_upranges(range_pairs &newranges, const ui_l32 property_number) const
 	{
 		newranges.clear();
 
@@ -14282,24 +14954,24 @@ public:
 	}
 
 	//  Properties of strings.
-	bool is_pos(const uint_l32 pno) const
+	bool is_pos(const ui_l32 pno) const
 	{
 		return unicode_property::is_pos(pno);
 	}
 
-	bool get_prawdata(simple_array<uchar32> &seq, uint_l32 property_number)
+	bool get_prawdata(simple_array<ui_l32> &seq, ui_l32 property_number)
 	{
 		if (property_number != up_constants::error_property)
 		{
 			if (property_number == upid_bp_Assigned)
 				property_number = upid_gc_Cn;
 
-			const uchar32 *const address = unicode_property::ranges_address(property_number);
-//			const std::size_t offset = unicode_property::ranges_offset(property_number);
-			const std::size_t number = unicode_property::number_of_ranges(property_number) * 2;
+			const ui_l32 *const address = unicode_property::ranges_address(property_number);
+//			const ui_l32 offset = unicode_property::ranges_offset(property_number);
+			const ui_l32 number = unicode_property::number_of_ranges(property_number) * 2;
 
 			seq.resize(number);
-			for (uchar32 i = 0; i < number; ++i)
+			for (ui_l32 i = 0; i < number; ++i)
 				seq[i] = address[i];
 
 			return true;
@@ -14327,11 +14999,11 @@ private:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	void load_updata(range_pairs &newranges, const uint_l32 property_number) const
+	void load_updata(range_pairs &newranges, const ui_l32 property_number) const
 	{
-		const uchar32 *const address = unicode_property::ranges_address(property_number);
-//		const std::size_t offset = unicode_property::ranges_offset(property_number);
-		const std::size_t number = unicode_property::number_of_ranges(property_number);
+		const ui_l32 *const address = unicode_property::ranges_address(property_number);
+//		const ui_l32 offset = unicode_property::ranges_offset(property_number);
+		const ui_l32 number = unicode_property::number_of_ranges(property_number);
 
 		newranges.load_from_memory(address, number);
 	}
@@ -14340,7 +15012,7 @@ private:
 
 	void append_charclass(const range_pairs &rps)
 	{
-		char_class_pos_.push_back(range_pair_helper(static_cast<uchar32>(char_class_.size()), static_cast<uchar32>(rps.size())));
+		char_class_pos_.push_back(range_pair_helper(static_cast<ui_l32>(char_class_.size()), static_cast<ui_l32>(rps.size())));
 		char_class_.append_newclass(rps);
 	}
 
@@ -14354,16 +15026,16 @@ private:
 	void setup_predefinedclass()
 	{
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-		const uchar32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
-//		const std::size_t Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
-		const std::size_t Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
+		const ui_l32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
+//		const ui_l32 Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
+		const ui_l32 Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
 #else
-		static const uchar32 Zs[] = {
+		static const ui_l32 Zs[] = {
 			0x1680, 0x1680, 0x2000, 0x200a,	// 0x2028, 0x2029,
 			0x202f, 0x202f, 0x205f, 0x205f, 0x3000, 0x3000
 		};
 #endif	//  defined(SRELL_NO_UNICODE_PROPERTY)
-		static const uchar32 allranges[] = {
+		static const ui_l32 allranges[] = {
 			//  dotall.
 			0x0000, 0x10ffff,
 			//  newline.
@@ -14426,9 +15098,9 @@ private:
 #endif
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-	static const uint_l32 upid_gc_Zs = static_cast<uint_l32>(up_constants::gc_Space_Separator);
-	static const uint_l32 upid_gc_Cn = static_cast<uint_l32>(up_constants::gc_Unassigned);
-	static const uint_l32 upid_bp_Assigned = static_cast<uint_l32>(up_constants::bp_Assigned);
+	static const ui_l32 upid_gc_Zs = static_cast<ui_l32>(up_constants::gc_Space_Separator);
+	static const ui_l32 upid_gc_Cn = static_cast<ui_l32>(up_constants::gc_Unassigned);
+	static const ui_l32 upid_bp_Assigned = static_cast<ui_l32>(up_constants::bp_Assigned);
 
 #endif
 
@@ -14455,7 +15127,7 @@ public:
 
 	typedef simple_array<charT> gname_string;
 	typedef typename gname_string::size_type size_type;
-	static const uint_l32 notfound = static_cast<uint_l32>(-1);
+	static const ui_l32 notfound = 0u;
 
 	groupname_mapper()
 	{
@@ -14501,14 +15173,14 @@ public:
 		keysize_classno_.clear();
 	}
 
-	uint_l32 operator[](const gname_string &gname) const
+	ui_l32 operator[](const gname_string &gname) const
 	{
-		uint_l32 pos = 0;
+		ui_l32 pos = 0;
 		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); i += 2)
 		{
-			const uint_l32 keysize = keysize_classno_[i];
+			const ui_l32 keysize = keysize_classno_[i];
 
-			if (keysize == static_cast<uint_l32>(gname.size()) && sameseq(pos, gname))
+			if (keysize == static_cast<ui_l32>(gname.size()) && sameseq(pos, gname))
 				return keysize_classno_[++i];
 
 			pos += keysize;
@@ -14516,13 +15188,13 @@ public:
 		return notfound;
 	}
 
-	gname_string operator[](const uint_l32 indexno) const
+	gname_string operator[](const ui_l32 indexno) const
 	{
-		uint_l32 pos = 0;
+		ui_l32 pos = 0;
 		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); ++i)
 		{
-			const uint_l32 keysize = keysize_classno_[i];
-			const uint_l32 classno = keysize_classno_[++i];
+			const ui_l32 keysize = keysize_classno_[i];
+			const ui_l32 classno = keysize_classno_[++i];
 
 			if (classno == indexno)
 				return gname_string(names_, pos, keysize);
@@ -14537,14 +15209,14 @@ public:
 		return static_cast<size_type>(keysize_classno_.size() >> 1);
 	}
 
-	bool push_back(const gname_string &gname, const uint_l32 class_number)
+	bool push_back(const gname_string &gname, const ui_l32 class_number)
 	{
-		const uint_l32 num = operator[](gname);
+		const ui_l32 num = operator[](gname);
 
 		if (num == notfound)
 		{
 			names_.append(gname);
-			keysize_classno_.append(1, static_cast<uint_l32>(gname.size()));
+			keysize_classno_.append(1, static_cast<ui_l32>(gname.size()));
 			keysize_classno_.append(1, class_number);
 			return true;
 		}
@@ -14569,14 +15241,14 @@ private:
 	}
 
 	gname_string names_;
-	simple_array<uint_l32> keysize_classno_;
+	simple_array<ui_l32> keysize_classno_;
 
 public:	//  For debug.
 
 	void print_mappings(const int) const;
 };
 template <typename charT>
-const uint_l32 groupname_mapper<charT>::notfound;
+const ui_l32 groupname_mapper<charT>::notfound;
 //  groupname_mapper
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
@@ -14592,56 +15264,40 @@ const uint_l32 groupname_mapper<charT>::notfound;
 struct re_quantifier
 {
 	//  atleast and atmost: for check_counter.
-	//  offset and length: for charcter_class, bol, eol, boundary.
-	//  (Special case 1) in roundbracket_open and roundbracket_pop atleast and atmost represent
+	//  (Special case 1) in charcter_class, bol, eol, boundary, represents the offset and length
+	//    of the range in the array of character classes.
+	//  (Special case 2) in roundbracket_open and roundbracket_pop atleast and atmost represent
 	//    the minimum and maximum bracket numbers respectively inside the brackets itself.
-	//  (Special case 2) in repeat_in_push and repeat_in_pop atleast and atmost represent the
+	//  (Special case 3) in repeat_in_push and repeat_in_pop atleast and atmost represent the
 	//    minimum and maximum bracket numbers respectively inside the repetition.
-	union
-	{
-		uint_l32 atleast;
-		//  (Special case 3: v1) in lookaround_open represents the number of characters to be rewound.
-		//  (Special case 3: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
+
+	ui_l32 atleast;
+		//  (Special case 4: v1) in lookaround_open represents the number of characters to be rewound.
+		//  (Special case 4: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
 		//    2=matchpointrewinder, 3=rewinder+rerun.
-		//  (Special case 4) in NFA_states[0] represents the class number of the first character class.
-		uchar32 offset;
-	};
-	union
-	{
-		uint_l32 atmost;
-		uchar32 length;
-	};
+		//  (Special case 5) in NFA_states[0] represents the class number of the first character class.
 
-	union
-	{
-		bool is_greedy;
-		bool backrefno_resolved;	//  Used only in compiler.
-		uint_l32 padding_;
-	};
+	ui_l32 atmost;
 
-	void reset(const uint_l32 len = 1)
+	ui_l32 is_greedy;
+
+	void reset(const ui_l32 len = 1)
 	{
 		atleast = atmost = len;
 		is_greedy = true;
 	}
 
-	void set(const uint_l32 min, const uint_l32 max)
+	void set(const ui_l32 min, const ui_l32 max)
 	{
 		atleast = min;
 		atmost = max;
 	}
 
-	void set(const uint_l32 min, const uint_l32 max, const bool greedy)
+	void set(const ui_l32 min, const ui_l32 max, const ui_l32 greedy)
 	{
 		atleast = min;
 		atmost = max;
 		is_greedy = greedy;
-	}
-
-	void setccpos(const uchar32 o, const uchar32 l)
-	{
-		offset = o;
-		length = l;
 	}
 
 	bool is_valid() const
@@ -14729,13 +15385,11 @@ struct re_quantifier
 
 struct re_state
 {
-	union
-	{
-		uchar32 character;	//  For character.
-			//  (Special case) in [0] represents an entry point code unit if the firstchar
-			//    class consists of a single code unit; otherwise invalid_u32value.
-		uint_l32 number;	//  For character_class, brackets, counter, repeat, backreference.
-	};
+	ui_l32 char_num;
+		//  character: for character.
+		//  number: for character_class, brackets, counter, repeat, backreference.
+		//  (Special case) in [0] represents a code unit for finding an entry point if
+		//    the firstchar class consists of a single code unit; otherwise invalid_u32value.
 
 	re_state_type type;
 
@@ -14743,7 +15397,6 @@ struct re_state
 	{
 		std::ptrdiff_t next1;
 		re_state *next_state1;
-		//  Points to the next state.
 		//  (Special case 1) in lookaround_open points to the next of lookaround_close.
 	};
 	union
@@ -14766,167 +15419,19 @@ struct re_state
 
 	union
 	{
-		bool is_not;	//  For \B, (?!...) and (?<!...).
-		bool dont_push;	//  For check_counter.
-		bool icase;	//  For [0], backreference.
-		bool multiline;	//  For bol, eol.
-		uint_l32 padding_;
+		ui_l32 is_not;	//  For \B, (?!...) and (?<!...).
+		ui_l32 icase;	//  For [0], backreference.
+		ui_l32 multiline;	//  For bol, eol.
+
+		ui_l32 icase_backrefno_unresolved;	//  For backreference.
+			//  Bit 0: Used across compiler and algorithm.
+			//  Bit 1: Used only in compiler.
 	};
 
-	//  st_character,               //  0x00
-		//  char/number:        character
-		//  next1:              gen.
-		//  next2:              +1 (exit. used only when '*' or '?')
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_character_class,         //  0x01
-		//  char/number:        character class number
-		//  next1:              gen.
-		//  next2:              +1 (exit. used only when '*' or '?')
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_epsilon,                 //  0x02
-		//  char/number:        - (some symbols used only in compiler).
-		//  next1:              gen.
-		//  next2:              alt.
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_check_counter,           //  0x03
-		//  char/number:        counter number
-		//  next1:              greedy: epsilon that may push backtracking data to decrement_counter.
-		//                      not-greedy: out-of-loop
-		//  next2:              complementary to next1
-		//  q.atleast:          gen.
-		//  q.atmost:           gen.
-		//  q.greedy:           gen.
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_decrement_counter,       //  0x04
-		//  char/number:        counter number
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_save_and_reset_counter,  //  0x05
-		//  char/number:        counter number
-		//  next1:              +2 (check_counter)
-		//  next2:              +1 (restore_counter)
-		//  quantifiers:        -
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_restore_counter,         //  0x06
-		//  char/number:        counter number
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_roundbracket_open,       //  0x07
-		//  char/number:        bracket number
-		//  next1:              +2 (next of roundbracket_pop, atom)
-		//  next2:              +1 (roundbracket_pop)
-		//  q.atleast:          min bracket number inside this bracket (except myself's number)
-		//  q.atmost:           max bracket number inside this bracket
-		//  q.greedy:           -
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_roundbracket_pop,        //  0x08
-		//  char/number:        bracket number
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  q.atleast:          min bracket number inside this bracket (i.except myself's number)
-		//  q.atmost:           max bracket number inside this bracket
-		//  q.greedy:           -
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_roundbracket_close,      //  0x09
-		//  char/number:        bracket number
-		//  next1:              gen.
-		//  next2:              +1 (exit for 0 width loop)
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_repeat_in_push,          //  0x0a
-		//  char/number:        repeat counter
-		//  next1:              +2 (next of repeat_in_pop, atom)
-		//  next2:              +1 (repeat_in_pop)
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_repeat_in_pop,           //  0x0b
-		//  char/number:        repeat counter
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_check_0_width_repeat,    //  0x0c
-		//  char/number:        repeat counter
-		//  next1:              gen. (epsilon or check_counter)
-		//  next2:              +1 (exit for 0 width loop)
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_backreference,           //  0x0d
-		//  char/number:        bracket number
-		//  next1:              gen.
-		//  next2:              +1 (exit for 0 width match)
-		//  quantifiers:        -
-		//  is_not/dont_push:   icase
-
-	//  st_lookaround_open,         //  0x0e
-		//  char/number:        -
-		//  next1:              next of lookaround_close (to where jumps after lookaround assertion)
-		//  next2:              +2 (the contents of brackets)
-		//  q.atleast:          <fixed-width> number of chars to be rewound (for (?<=...) (?<!...))
-		//                      <variable-width> 0: lookahead, 1: lookbehind, 2: mprewinder.
-		//  q.atmost:           -
-		//  q.greedy:           -
-		//  is_not/dont_push:   not
-
-	//  st_bol,                     //  0x0f
-		//  char/number:        character class number of newline
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_eol,                     //  0x10
-		//  char/number:        character class number of newline
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_boundary,                //  0x11
-		//  char/number:        character class number of \w
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   not
-
-	//  st_success,                 //  0x12
-		//  char/number:        -
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_move_nextpos,            //  0x13
-		//  char/number:        -
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	void reset()
-	{
-		reset(st_character);
-	}
-
-	void reset(const re_state_type t)
+	void reset(const re_state_type t = st_character, const ui_l32 c = char_ctrl::cc_nul)
 	{
 		type = t;
-		character = char_ctrl::cc_nul;
+		char_num = c;
 		next1 = 1;
 		next2 = 0;
 		is_not = false;
@@ -14951,19 +15456,9 @@ struct re_state
 #if !defined(SRELL_ENABLE_GT)
 		return type < st_zero_width_boundary;
 #else
-		//  5.5. independent: size == ? && type == lookaround && character == '>',
-		return type < st_zero_width_boundary || (type == st_lookaround_open && character == meta_char::mc_gt);
+		//  5.5. independent: size == ? && type == lookaround && char_num == '>',
+		return type < st_zero_width_boundary || (type == st_lookaround_open && char_num == meta_char::mc_gt);
 #endif
-	}
-
-	bool is_noncapturinggroup() const
-	{
-		return type == st_epsilon && next2 == 0 && character == meta_char::mc_colon;
-	}
-
-	bool is_noncapturinggroup_begin_or_end() const
-	{
-		return type == st_epsilon && next2 == 0 && (character == meta_char::mc_colon || character == char_other::co_smcln);
 	}
 
 	bool has_0widthchecker() const
@@ -14971,14 +15466,29 @@ struct re_state
 		return type == st_roundbracket_open || type == st_backreference;
 	}
 
-	bool is_branch() const
+	bool is_noncapturinggroup() const
 	{
-		return type == st_epsilon && next2 != 0 && character == meta_char::mc_bar;	//  '|'
+		return type == st_epsilon && char_num == epsilon_type::et_ncgopen;
 	}
 
-	bool is_question_or_asterisk() const
+	bool is_noncapturinggroup_begin_or_end() const
 	{
-		return type == st_epsilon && character == meta_char::mc_astrsk && next2 != 0;
+		return type == st_epsilon && next2 == 0 && (char_num == epsilon_type::et_ncgopen || char_num == epsilon_type::et_ncgclose);
+	}
+
+	bool is_noncapturinggroup_containing_capturinggroup() const
+	{
+		return is_noncapturinggroup() && quantifier.is_valid();
+	}
+
+	bool is_branch() const
+	{
+		return type == st_epsilon && next2 != 0 && char_num == epsilon_type::et_alt;	//  '|'
+	}
+
+	bool is_question_or_asterisk_before_corcc() const
+	{
+		return type == st_epsilon && char_num == epsilon_type::et_ccastrsk;
 	}
 
 	bool is_asterisk_or_plus_for_onelen_atom() const
@@ -14988,7 +15498,7 @@ struct re_state
 
 	bool is_same_character_or_charclass(const re_state &right) const
 	{
-		return type == right.type && (type == st_character ? character == right.character : number == right.number);
+		return type == right.type && char_num == right.char_num;
 	}
 
 	std::ptrdiff_t nearnext() const
@@ -15040,7 +15550,7 @@ struct re_flags
 template <typename charT>
 struct re_compiler_state : public re_flags
 {
-	const uchar32 *begin;
+	const ui_l32 *begin;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 	groupname_mapper<charT> unresolved_gnames;
@@ -15050,7 +15560,7 @@ struct re_compiler_state : public re_flags
 	identifier_charclass idchecker;
 #endif
 
-	void reset(const regex_constants::syntax_option_type flags, const uchar32 *const b)
+	void reset(const regex_constants::syntax_option_type flags, const ui_l32 *const b)
 	{
 		re_flags::reset(flags);
 
@@ -15072,9 +15582,6 @@ struct re_compiler_state : public re_flags
 //  ... "rei_state.hpp"]
 //  ["rei_search_state.hpp" ...
 
-template <typename BidirectionalIterator>
-class sub_match /* : std::pair<BidirectionalIterator, BidirectionalIterator> */;
-
 	namespace regex_internal
 	{
 
@@ -15084,8 +15591,8 @@ struct re_state;
 template </* typename charT, */typename BidirectionalIterator>
 struct re_search_state_core
 {
-	const re_state/* <charT> */ *in_NFA_states;
-	BidirectionalIterator in_string;
+	const re_state/* <charT> */ *state;
+	BidirectionalIterator iter;
 };
 
 template <typename BidirectionalIterator>
@@ -15099,7 +15606,13 @@ template <typename BidirectionalIterator>
 struct re_submatch_type
 {
 	re_submatch_core<BidirectionalIterator> core;
-	uint_l32 counter;
+	ui_l32 counter;
+
+	void init(const BidirectionalIterator b)
+	{
+		core.open_at = core.close_at = b;
+		counter = 0u;
+	}
 };
 
 template </*typename charT, */typename BidirectionalIterator>
@@ -15107,14 +15620,14 @@ struct re_search_state_types
 {
 	typedef re_submatch_core<BidirectionalIterator> submatch_core;
 	typedef re_submatch_type<BidirectionalIterator> submatch_type;
-	typedef uint_l32 counter_type;
+	typedef ui_l32 counter_type;
 	typedef BidirectionalIterator position_type;
 
 	typedef std::vector<submatch_type> submatch_array;
 
-	typedef re_search_state_core</*charT, */BidirectionalIterator> search_core_state;
+	typedef re_search_state_core</*charT, */BidirectionalIterator> search_state_core;
 
-	typedef std::vector<search_core_state> backtracking_array;
+	typedef std::vector<search_state_core> backtracking_array;
 	typedef std::vector<submatch_core> capture_array;
 	typedef simple_array<counter_type> counter_array;
 	typedef std::vector<position_type> repeat_array;
@@ -15125,17 +15638,17 @@ struct re_search_state_types</*charT1, */const charT2 *>
 {
 	typedef re_submatch_core<const charT2 *> submatch_core;
 	typedef re_submatch_type<const charT2 *> submatch_type;
-	typedef uint_l32 counter_type;
+	typedef ui_l32 counter_type;
 	typedef const charT2 *position_type;
 
 	typedef simple_array<submatch_type> submatch_array;
 
-	typedef re_search_state_core</*charT1, */const charT2 *> search_core_state;
+	typedef re_search_state_core</*charT1, */const charT2 *> search_state_core;
 
-	typedef simple_array<search_core_state> backtracking_array;
+	typedef simple_array<search_state_core> backtracking_array;
 	typedef simple_array<submatch_core> capture_array;
-	typedef simple_array<position_type> repeat_array;
 	typedef simple_array<counter_type> counter_array;
+	typedef simple_array<position_type> repeat_array;
 };
 //  re_search_state_types
 
@@ -15155,7 +15668,7 @@ public:
 
 	typedef typename base_type::submatch_array submatch_array;
 
-	typedef typename base_type::search_core_state search_core_state;
+	typedef typename base_type::search_state_core search_state_core;
 
 	typedef typename base_type::backtracking_array backtracking_array;
 	typedef typename base_type::capture_array capture_array;
@@ -15188,14 +15701,14 @@ public:
 
 public:
 
-	search_core_state nth;
+	search_state_core ssc;
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 	std::size_t failure_counter;
 #endif
 
-	BidirectionalIterator srchend;
 	BidirectionalIterator lblim;
+	BidirectionalIterator srchend;
 
 	BidirectionalIterator nextpos;
 
@@ -15213,6 +15726,11 @@ public:
 
 	BidirectionalIterator srchbegin;
 
+	BidirectionalIterator reallblim;
+
+	regex_constants::match_flag_type flags;
+	const re_state/* <charT> */ *entry_state;
+
 public:
 
 	void init
@@ -15220,25 +15738,20 @@ public:
 		const BidirectionalIterator begin,
 		const BidirectionalIterator end,
 		const BidirectionalIterator lookbehindlimit,
-		const regex_constants::match_flag_type flags
+		const regex_constants::match_flag_type f
 	)
 	{
-		lblim = lookbehindlimit;
+		reallblim = lblim = lookbehindlimit;
 		nextpos = srchbegin = begin;
 		srchend = end;
-		flags_ = flags;
-	}
-
-	void set_entrypoint(const re_state *const entry)
-	{
-		entry_state_ = entry;
+		flags = f;
 	}
 
 	void init_for_automaton
 	(
-		uint_l32 num_of_submatches,
-		const uint_l32 num_of_counters,
-		const uint_l32 num_of_repeats
+		ui_l32 num_of_submatches,
+		const ui_l32 num_of_counters,
+		const ui_l32 num_of_repeats
 	)
 	{
 
@@ -15246,21 +15759,16 @@ public:
 		counter.resize(num_of_counters);
 		repeat.resize(num_of_repeats);
 
-		nth.in_string = (flags_ & regex_constants::match_continuous) ? srchbegin : srchend;
+		ssc.iter = (flags & regex_constants::match_continuous) ? srchbegin : srchend;
 
 		while (num_of_submatches > 1)
-		{
-			submatch_type &br = bracket[--num_of_submatches];
-
-			br.core.open_at = br.core.close_at = this->srchend;
-			br.counter = 0;
+			bracket[--num_of_submatches].init(this->srchend);
 			//  15.10.2.9; AtomEscape:
 			//  If the regular expression has n or more capturing parentheses
 			//  but the nth one is undefined because it hasn't captured anything,
 			//  then the backreference always succeeds.
 
 			//  C.f., table 27 and 28 on TR1, table 142 and 143 on C++11.
-		}
 
 		clear_stacks();
 	}
@@ -15271,9 +15779,9 @@ public:
 	void reset(/* const BidirectionalIterator start, */ const std::size_t limit)
 #endif
 	{
-		nth.in_NFA_states = this->entry_state_;
+		ssc.state = this->entry_state;
 
-		bracket[0].core.open_at = nth.in_string;
+		bracket[0].core.open_at = ssc.iter;
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 		failure_counter = limit;
@@ -15282,83 +15790,83 @@ public:
 
 	bool is_at_lookbehindlimit() const
 	{
-		return nth.in_string == this->lblim;
+		return ssc.iter == this->lblim;
 	}
 
 	bool is_at_srchend() const
 	{
-		return nth.in_string == this->srchend;
+		return ssc.iter == this->srchend;
 	}
 
 	bool is_null() const
 	{
-		return nth.in_string == bracket[0].core.open_at;
+		return ssc.iter == bracket[0].core.open_at;
 	}
-
-//	regex_constants::match_flag_type flags() const
-//	{
-//		return this->flags_;
-//	}
 
 	bool match_not_bol_flag() const
 	{
-		if (this->flags_ & regex_constants::match_not_bol)
+		if (this->flags & regex_constants::match_not_bol)
 			return true;
 		return false;
 	}
 
 	bool match_not_eol_flag() const
 	{
-		if (this->flags_ & regex_constants::match_not_eol)
+		if (this->flags & regex_constants::match_not_eol)
 			return true;
 		return false;
 	}
 
 	bool match_not_bow_flag() const
 	{
-		if (this->flags_ & regex_constants::match_not_bow)
+		if (this->flags & regex_constants::match_not_bow)
 			return true;
 		return false;
 	}
 
 	bool match_not_eow_flag() const
 	{
-		if (this->flags_ & regex_constants::match_not_eow)
+		if (this->flags & regex_constants::match_not_eow)
 			return true;
 		return false;
 	}
 
 	bool match_prev_avail_flag() const
 	{
-		if (this->flags_ & regex_constants::match_prev_avail)
+		if (this->flags & regex_constants::match_prev_avail)
 			return true;
 		return false;
 	}
 
 	bool match_not_null_flag() const
 	{
-		if (this->flags_ & regex_constants::match_not_null)
+		if (this->flags & regex_constants::match_not_null)
 			return true;
 		return false;
 	}
 
 	bool match_continuous_flag() const
 	{
-		if (this->flags_ & regex_constants::match_continuous)
+		if (this->flags & regex_constants::match_continuous)
 			return true;
 		return false;
 	}
 
 	bool match_match_flag() const
 	{
-		if (this->flags_ & regex_constants::match_match_)
+		if (this->flags & regex_constants::match_match_)
 			return true;
 		return false;
 	}
 
+	bool is_prev_avail() const
+	{
+		return reallblim != lblim || (flags & regex_constants::match_prev_avail) != 0;
+	}
+
 	bool set_bracket0(const BidirectionalIterator begin, const BidirectionalIterator end)
 	{
-		nth.in_string = begin;
+		ssc.iter = begin;
 		nextpos = end;
 		return true;
 	}
@@ -15388,11 +15896,6 @@ public:
 
 		return false;
 	}
-
-private:
-
-	/* const */regex_constants::match_flag_type flags_;
-	const re_state/* <charT> */ * /* const */entry_state_;
 };
 //  re_search_state
 
@@ -15461,7 +15964,7 @@ public:
 		repseq_.clear();
 	}
 
-	void setup(const simple_array<uchar32> &u32s, const bool icase)
+	void setup(const simple_array<ui_l32> &u32s, const bool icase)
 	{
 		u32string_ = u32s;
 		setup_();
@@ -15535,8 +16038,8 @@ public:
 		const RandomAccessIterator begin = sstate.srchbegin;
 		const RandomAccessIterator end = sstate.srchend;
 		std::size_t offset = bmtable_[256];
-		const uchar32 entrychar = u32string_[u32string_.size() - 1];
-		const uchar32 *const re2ndlastchar = &u32string_[u32string_.size() - 2];
+		const ui_l32 entrychar = u32string_[u32string_.size() - 1];
+		const ui_l32 *const re2ndlastchar = &u32string_[u32string_.size() - 2];
 		RandomAccessIterator curpos = begin;
 
 		for (; static_cast<std::size_t>(end - curpos) > offset;)
@@ -15547,11 +16050,11 @@ public:
 				if (++curpos == end)
 					return false;
 
-			const uchar32 txtlastchar = utf_traits::codepoint(curpos, end);
+			const ui_l32 txtlastchar = utf_traits::codepoint(curpos, end);
 
 			if (txtlastchar == entrychar || unicode_case_folding::do_casefolding(txtlastchar) == entrychar)
 			{
-				const uchar32 *re = re2ndlastchar;
+				const ui_l32 *re = re2ndlastchar;
 				RandomAccessIterator tail = curpos;
 
 //				for (; *--re == unicode_case_folding::do_casefolding(utf_traits::dec_codepoint(tail, begin));)
@@ -15580,8 +16083,8 @@ public:
 		if (begin != end)
 		{
 			std::size_t offset = bmtable_[256];	//static_cast<std::size_t>(u32string_.size() - 1);
-			const uchar32 entrychar = u32string_[offset];
-			const uchar32 *const re2ndlastchar = &u32string_[offset - 1];
+			const ui_l32 entrychar = u32string_[offset];
+			const ui_l32 *const re2ndlastchar = &u32string_[offset - 1];
 			BidirectionalIterator curpos = begin;
 
 			for (;;)
@@ -15594,14 +16097,13 @@ public:
 						if (--offset == 0)
 							break;
 				}
-//				const uchar32 txtlastchar = unicode_case_folding::do_casefolding(utf_traits::codepoint(curpos, end));
-				const uchar32 txtlastchar = utf_traits::codepoint(curpos, end);
+				const ui_l32 txtlastchar = utf_traits::codepoint(curpos, end);
 
 //				if (txtlastchar == *re2ndlastchar)
 //				if (txtlastchar == *re2ndlastchar || unicode_case_folding::do_casefolding(txtlastchar) == *re2ndlastchar)
 				if (txtlastchar == entrychar || unicode_case_folding::do_casefolding(txtlastchar) == entrychar)
 				{
-					const uchar32 *re = re2ndlastchar;
+					const ui_l32 *re = re2ndlastchar;
 					BidirectionalIterator tail = curpos;
 
 					for (; *re == unicode_case_folding::do_casefolding(utf_traits::dec_codepoint(tail, begin)); --re)
@@ -15637,13 +16139,13 @@ private:
 
 		for (std::size_t i = 0; i <= u32str_lastcharpos_; ++i)
 		{
-			const uint_l32 seqlen = utf_traits::to_codeunits(mbstr, u32string_[i]);
+			const ui_l32 seqlen = utf_traits::to_codeunits(mbstr, u32string_[i]);
 
-			for (uint_l32 j = 0; j < seqlen; ++j)
+			for (ui_l32 j = 0; j < seqlen; ++j)
 				repseq_.push_back(mbstr[j]);
 		}
 
-		for (uint_l32 i = 0; i < 256; ++i)
+		for (ui_l32 i = 0; i < 256; ++i)
 			bmtable_[i] = static_cast<std::size_t>(repseq_.size());
 
 		const std::size_t repseq_lastcharpos_ = static_cast<std::size_t>(repseq_.size() - 1);
@@ -15655,17 +16157,17 @@ private:
 	void setup_for_icase()
 	{
 		charT mbstr[utf_traits::maxseqlen];
-		uchar32 u32table[ucf_constants::rev_maxset];
+		ui_l32 u32table[ucf_constants::rev_maxset];
 		const std::size_t u32str_lastcharpos = static_cast<std::size_t>(u32string_.size() - 1);
 		simple_array<std::size_t> minlen(u32string_.size());
 		std::size_t cu_repseq_lastcharpos = 0;
 
 		for (std::size_t i = 0; i <= u32str_lastcharpos; ++i)
 		{
-			const uint_l32 setnum = unicode_case_folding::do_caseunfolding(u32table, u32string_[i]);
-			uchar32 u32c = u32table[0];
+			const ui_l32 setnum = unicode_case_folding::do_caseunfolding(u32table, u32string_[i]);
+			ui_l32 u32c = u32table[0];
 
-			for (uint_l32 j = 1; j < setnum; ++j)
+			for (ui_l32 j = 1; j < setnum; ++j)
 				if (u32c > u32table[j])
 					u32c = u32table[j];
 
@@ -15682,9 +16184,9 @@ private:
 
 		for (std::size_t i = 0; i < u32str_lastcharpos; ++i)
 		{
-			const uint_l32 setnum = unicode_case_folding::do_caseunfolding(u32table, u32string_[i]);
+			const ui_l32 setnum = unicode_case_folding::do_caseunfolding(u32table, u32string_[i]);
 
-			for (uint_l32 j = 0; j < setnum; ++j)
+			for (ui_l32 j = 0; j < setnum; ++j)
 				bmtable_[u32table[j] & 0xff] = cu_repseq_lastcharpos;
 
 			cu_repseq_lastcharpos -= minlen[i];
@@ -15698,7 +16200,7 @@ public:	//  For debug.
 
 private:
 
-	simple_array<uchar32> u32string_;
+	simple_array<ui_l32> u32string_;
 //	std::size_t bmtable_[256];
 	simple_array<std::size_t> bmtable_;
 	simple_array<charT> repseq_;
@@ -15716,8 +16218,8 @@ private:
 
 struct posdata_holder
 {
-	simple_array<uchar32> indices;
-	simple_array<uchar32> seqs;
+	simple_array<ui_l32> indices;
+	simple_array<ui_l32> seqs;
 	range_pairs ranges;
 	range_pair length;
 
@@ -15754,36 +16256,36 @@ struct posdata_holder
 
 	void do_union(const posdata_holder &right)
 	{
-		simple_array<uchar32> curseq;
+		simple_array<ui_l32> curseq;
 
 		ranges.merge(right.ranges);
 
 		if (right.has_empty() && !has_empty())
 			register_emptystring();
 
-		for (uchar32 seqlen = 2; seqlen < static_cast<uchar32>(right.indices.size()); ++seqlen)
+		for (ui_l32 seqlen = 2; seqlen < static_cast<ui_l32>(right.indices.size()); ++seqlen)
 		{
-			const uchar32 end = right.indices[seqlen - 1];
-			uchar32 begin = right.indices[seqlen];
+			const ui_l32 end = right.indices[seqlen - 1];
+			ui_l32 begin = right.indices[seqlen];
 
 			if (begin != end)
 			{
-				const std::size_t complen = seqlen * sizeof (uchar32);
+				const std::size_t complen = seqlen * sizeof (ui_l32);
 
 				ensure_length(seqlen);
 				curseq.resize(seqlen);
 
 				for (; begin < end;)
 				{
-					const uchar32 inspos = find_seq(&right.seqs[begin], seqlen, complen);
+					const ui_l32 inspos = find_seq(&right.seqs[begin], seqlen, complen);
 
 					if (inspos == indices[seqlen - 1])
 					{
-						for (uchar32 i = 0; i < seqlen; ++i, ++begin)
+						for (ui_l32 i = 0; i < seqlen; ++i, ++begin)
 							curseq[i] = right.seqs[begin];
 
 						seqs.insert(inspos, curseq);
-						for (uchar32 i = 0; i < seqlen; ++i)
+						for (ui_l32 i = 0; i < seqlen; ++i)
 							indices[i] += seqlen;
 					}
 					else
@@ -15796,7 +16298,7 @@ struct posdata_holder
 
 	void do_subtract(const posdata_holder &right)
 	{
-		const uchar32 maxlen = static_cast<uchar32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
+		const ui_l32 maxlen = static_cast<ui_l32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
 
 		{
 			range_pairs kept;
@@ -15809,24 +16311,24 @@ struct posdata_holder
 		if (right.has_empty() && has_empty())
 			unregister_emptystring();
 
-		for (uchar32 seqlen = 2; seqlen < maxlen; ++seqlen)
+		for (ui_l32 seqlen = 2; seqlen < maxlen; ++seqlen)
 		{
-			const uchar32 end = right.indices[seqlen - 1];
-			uchar32 begin = right.indices[seqlen];
+			const ui_l32 end = right.indices[seqlen - 1];
+			ui_l32 begin = right.indices[seqlen];
 
 			if (begin != end)
 			{
-				const std::size_t complen = seqlen * sizeof (uchar32);
+				const std::size_t complen = seqlen * sizeof (ui_l32);
 
 				for (; begin < end;)
 				{
-					const uchar32 delpos = find_seq(&right.seqs[begin], seqlen, complen);
+					const ui_l32 delpos = find_seq(&right.seqs[begin], seqlen, complen);
 
 					if (delpos < indices[seqlen - 1])
 					{
 						seqs.erase(delpos, seqlen);
 
-						for (uchar32 i = 0; i < seqlen; ++i)
+						for (ui_l32 i = 0; i < seqlen; ++i)
 							indices[i] -= seqlen;
 					}
 					else
@@ -15839,9 +16341,9 @@ struct posdata_holder
 
 	void do_and(const posdata_holder &right)
 	{
-		const uchar32 maxlen = static_cast<uchar32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
+		const ui_l32 maxlen = static_cast<ui_l32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
 		posdata_holder newpos;
-		simple_array<uchar32> curseq;
+		simple_array<ui_l32> curseq;
 
 		{
 			range_pairs kept;
@@ -15855,35 +16357,35 @@ struct posdata_holder
 		else if (may_contain_strings() || right.may_contain_strings())
 			ensure_length(1);
 
-		for (uchar32 seqlen = 2; seqlen < maxlen; ++seqlen)
+		for (ui_l32 seqlen = 2; seqlen < maxlen; ++seqlen)
 		{
-			const uchar32 end = right.indices[seqlen - 1];
-			uchar32 begin = right.indices[seqlen];
+			const ui_l32 end = right.indices[seqlen - 1];
+			ui_l32 begin = right.indices[seqlen];
 
 			if (begin != end)
 			{
-				const std::size_t complen = seqlen * sizeof (uchar32);
-				const uchar32 myend = indices[seqlen - 1];
+				const std::size_t complen = seqlen * sizeof (ui_l32);
+				const ui_l32 myend = indices[seqlen - 1];
 
 				curseq.resize(seqlen);
 
 				for (; begin < end; begin += seqlen)
 				{
-					const uchar32 srcpos = find_seq(&right.seqs[begin], seqlen, complen);
+					const ui_l32 srcpos = find_seq(&right.seqs[begin], seqlen, complen);
 
 					if (srcpos < myend)
 					{
 						newpos.ensure_length(seqlen);
 
-						const uchar32 inspos = newpos.find_seq(&right.seqs[begin], seqlen, complen);
+						const ui_l32 inspos = newpos.find_seq(&right.seqs[begin], seqlen, complen);
 
 						if (inspos == newpos.indices[seqlen - 1])
 						{
-							for (uchar32 i = 0; i < seqlen; ++i)
+							for (ui_l32 i = 0; i < seqlen; ++i)
 								curseq[i] = right.seqs[begin + i];
 
 							newpos.seqs.insert(inspos, curseq);
-							for (uchar32 i = 0; i < seqlen; ++i)
+							for (ui_l32 i = 0; i < seqlen; ++i)
 								newpos.indices[i] += seqlen;
 						}
 					}
@@ -15895,16 +16397,16 @@ struct posdata_holder
 		check_lengths();
 	}
 
-	void split_seqs_and_ranges(const simple_array<uchar32> &inseqs, const bool icase, const bool back)
+	void split_seqs_and_ranges(const simple_array<ui_l32> &inseqs, const bool icase, const bool back)
 	{
-		const uchar32 max = static_cast<uchar32>(inseqs.size());
-		simple_array<uchar32> curseq;
+		const ui_l32 max = static_cast<ui_l32>(inseqs.size());
+		simple_array<ui_l32> curseq;
 
 		clear();
 
-		for (uchar32 indx = 0; indx < max;)
+		for (ui_l32 indx = 0; indx < max;)
 		{
-			const uchar32 elen = inseqs[indx++];
+			const ui_l32 elen = inseqs[indx++];
 
 			if (elen == 1)	//  Range.
 			{
@@ -15913,7 +16415,7 @@ struct posdata_holder
 			}
 			else if (elen == 2)
 			{
-				const uchar32 ucpval = inseqs[indx++];
+				const ui_l32 ucpval = inseqs[indx++];
 
 				if (ucpval != constants::ccstr_empty)
 					ranges.join(range_pair_helper(ucpval));
@@ -15922,38 +16424,38 @@ struct posdata_holder
 			}
 			else if (elen >= 3)
 			{
-				const uchar32 seqlen = elen - 1;
+				const ui_l32 seqlen = elen - 1;
 
 				ensure_length(seqlen);
 
-				const uchar32 inspos = indices[seqlen - 1];
+				const ui_l32 inspos = indices[seqlen - 1];
 
 				curseq.resize(seqlen);
 				if (!back)
 				{
-					for (uchar32 j = 0; j < seqlen; ++j, ++indx)
+					for (ui_l32 j = 0; j < seqlen; ++j, ++indx)
 						curseq[j] = inseqs[indx];
 				}
 				else
 				{
-					for (uchar32 j = seqlen; j; ++indx)
+					for (ui_l32 j = seqlen; j; ++indx)
 						curseq[--j] = inseqs[indx];
 				}
 
 				if (icase)
 				{
-					for (simple_array<uchar32>::size_type i = 0; i < curseq.size(); ++i)
+					for (simple_array<ui_l32>::size_type i = 0; i < curseq.size(); ++i)
 						curseq[i] = unicode_case_folding::do_casefolding(curseq[i]);
 				}
 
-				const std::size_t complen = seqlen * sizeof (uchar32);
+				const std::size_t complen = seqlen * sizeof (ui_l32);
 
-				for (uchar32 i = indices[seqlen];; i += seqlen)
+				for (ui_l32 i = indices[seqlen];; i += seqlen)
 				{
 					if (i == inspos)
 					{
 						seqs.insert(inspos, curseq);
-						for (uchar32 j = 0; j < seqlen; ++j)
+						for (ui_l32 j = 0; j < seqlen; ++j)
 							indices[j] += seqlen;
 						break;
 					}
@@ -15997,9 +16499,9 @@ private:
 			indices[0] = indices[1];
 	}
 
-	void ensure_length(const uchar32 seqlen)
+	void ensure_length(const ui_l32 seqlen)
 	{
-		uchar32 curlen = static_cast<uchar32>(indices.size());
+		ui_l32 curlen = static_cast<ui_l32>(indices.size());
 
 		if (seqlen >= curlen)
 		{
@@ -16009,11 +16511,11 @@ private:
 		}
 	}
 
-	uchar32 find_seq(const uchar32 *const seqbegin, const uchar32 seqlen, const std::size_t complen) const
+	ui_l32 find_seq(const ui_l32 *const seqbegin, const ui_l32 seqlen, const std::size_t complen) const
 	{
-		const uchar32 end = indices[seqlen - 1];
+		const ui_l32 end = indices[seqlen - 1];
 
-		for (uchar32 begin = indices[seqlen]; begin < end; begin += seqlen)
+		for (ui_l32 begin = indices[seqlen]; begin < end; begin += seqlen)
 		{
 			if (std::memcmp(seqbegin, &seqs[begin], complen) == 0)
 				return begin;
@@ -16025,7 +16527,7 @@ private:
 	{
 		length.set(constants::max_u32value, 0);
 
-		for (uchar32 i = 2; i < static_cast<uchar32>(indices.size()); ++i)
+		for (ui_l32 i = 2; i < static_cast<ui_l32>(indices.size()); ++i)
 		{
 			if (indices[i] != indices[i - 1])
 			{
@@ -16090,9 +16592,9 @@ protected:
 
 	typedef typename traits::utf_traits utf_traits;
 
-	uint_l32 number_of_brackets;
-	uint_l32 number_of_counters;
-	uint_l32 number_of_repeats;
+	ui_l32 number_of_brackets;
+	ui_l32 number_of_counters;
+	ui_l32 number_of_repeats;
 	regex_constants::syntax_option_type soflags;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
@@ -16301,17 +16803,17 @@ protected:
 //			this->utf_traits_inst.swap(right.utf_traits_inst);
 
 			{
-				const uint_l32 tmp_numof_brackets = this->number_of_brackets;
+				const ui_l32 tmp_numof_brackets = this->number_of_brackets;
 				this->number_of_brackets = right.number_of_brackets;
 				right.number_of_brackets = tmp_numof_brackets;
 			}
 			{
-				const uint_l32 tmp_numof_counters = this->number_of_counters;
+				const ui_l32 tmp_numof_counters = this->number_of_counters;
 				this->number_of_counters = right.number_of_counters;
 				right.number_of_counters = tmp_numof_counters;
 			}
 			{
-				const uint_l32 tmp_numof_repeats = this->number_of_repeats;
+				const ui_l32 tmp_numof_repeats = this->number_of_repeats;
 				this->number_of_repeats = right.number_of_repeats;
 				right.number_of_repeats = tmp_numof_repeats;
 			}
@@ -16375,11 +16877,11 @@ protected:
 	template <typename ForwardIterator>
 	bool compile(ForwardIterator begin, const ForwardIterator end, const regex_constants::syntax_option_type flags /* = regex_constants::ECMAScript */)
 	{
-		simple_array<uchar32> u32;
+		simple_array<ui_l32> u32;
 
 		while (begin != end)
 		{
-			const uchar32 u32c = utf_traits::codepoint_inc(begin, end);
+			const ui_l32 u32c = utf_traits::codepoint_inc(begin, end);
 
 			if (u32c > constants::unicode_max_codepoint)
 				this->throw_error(regex_constants::error_utf8);
@@ -16400,7 +16902,7 @@ protected:
 	bool is_ricase() const
 	{
 #if !defined(SRELL_NO_ICASE)
-		return /* this->NFA_states.size() && */ this->NFA_states[0].icase == true;
+		return /* this->NFA_states.size() && */ this->NFA_states[0].icase ? true : false;
 #else
 		return false;
 #endif
@@ -16447,27 +16949,26 @@ private:
 #endif
 	typedef typename state_array::size_type state_size_type;
 
-	typedef simple_array<uchar32> u32array;
+	typedef simple_array<ui_l32> u32array;
 	typedef typename u32array::size_type u32array_size_type;
 
-	typedef re_compiler_state<charT> cstate_type;
+	typedef re_compiler_state<charT> cvars_type;
 
-	bool compile_core(const uchar32 *begin, const uchar32 *const end, const regex_constants::syntax_option_type flags)
+	bool compile_core(const ui_l32 *begin, const ui_l32 *const end, const regex_constants::syntax_option_type flags)
 	{
 		re_quantifier piecesize;
-		cstate_type cstate;
-		state_type atom;
+		cvars_type cvars;
+		state_type flstate;
 
 		this->reset(flags);
 //		this->soflags = flags;
-		cstate.reset(flags, begin);
+		cvars.reset(flags, begin);
 
-		atom.reset();
-		atom.type = st_epsilon;
-		atom.next2 = 1;
-		this->NFA_states.push_back(atom);
+		flstate.reset(st_epsilon);
+		flstate.next2 = 1;
+		this->NFA_states.push_back(flstate);
 
-		if (!make_nfa_states(this->NFA_states, piecesize, begin, end, cstate))
+		if (!make_nfa_states(this->NFA_states, piecesize, begin, end, cvars))
 		{
 			return false;
 		}
@@ -16475,7 +16976,7 @@ private:
 		if (begin != end)
 			this->throw_error(regex_constants::error_paren);	//  ')'s are too many.
 
-		if (!check_backreferences(cstate))
+		if (!check_backreferences(cvars))
 			this->throw_error(regex_constants::error_backref);
 
 #if !defined(SRELL_NO_ICASE)
@@ -16487,10 +16988,10 @@ private:
 		setup_bmhdata();
 #endif
 
-		atom.type = st_success;
-		atom.next1 = 0;
-		atom.next2 = 0;
-		this->NFA_states.push_back(atom);
+		flstate.type = st_success;
+		flstate.next1 = 0;
+		flstate.next2 = 0;
+		this->NFA_states.push_back(flstate);
 
 		optimise();
 		relativejump_to_absolutejump();
@@ -16498,20 +16999,22 @@ private:
 		return true;
 	}
 
-	bool make_nfa_states(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool make_nfa_states(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
-		typename state_array::size_type prevbranch_end = 0;
-		state_type atom;
+		state_size_type prevbranch_end = 0;
+		state_type bstate;
 		state_array branch;
 		re_quantifier branchsize;
 
 		piecesize.set(constants::infinity, 0u);
 
+		bstate.reset(st_epsilon, epsilon_type::et_alt);
+
 		for (;;)
 		{
 			branch.clear();
 
-			if (!make_branch(branch, branchsize, curpos, end, cstate))
+			if (!make_branch(branch, branchsize, curpos, end, cvars))
 				return false;
 
 			if (!piecesize.is_valid() || piecesize.atleast > branchsize.atleast)
@@ -16522,35 +17025,35 @@ private:
 
 			if (curpos != end && *curpos == meta_char::mc_bar)
 			{
-				atom.reset();
-				atom.character = meta_char::mc_bar;
-				atom.type = st_epsilon;
-				atom.next2 = static_cast<std::ptrdiff_t>(branch.size()) + 2;
-				branch.insert(0, atom);
+				bstate.next2 = static_cast<std::ptrdiff_t>(branch.size() + 2);
+				branch.insert(0, bstate);
 			}
 
 			if (prevbranch_end)
-				piece[prevbranch_end].next1 = static_cast<std::ptrdiff_t>(branch.size()) + 1;
+			{
+				state_type &pbend = piece[prevbranch_end];
+
+				pbend.next1 = static_cast<std::ptrdiff_t>(branch.size() + 1);
+				pbend.char_num = epsilon_type::et_brnchend;	//  '/'
+			}
 
 			piece += branch;
 
-				//  end or ')'
 			if (curpos == end || *curpos == meta_char::mc_rbracl)
 				break;
 
 			//  *curpos == '|'
 
 			prevbranch_end = piece.size();
-			atom.reset();
-			atom.type = st_epsilon;
-			piece.push_back(atom);
+			bstate.next2 = 0;
+			piece.push_back(bstate);
 
 			++curpos;
 		}
 		return true;
 	}
 
-	bool make_branch(state_array &branch, re_quantifier &branchsize, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool make_branch(state_array &branch, re_quantifier &branchsize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
 		state_array piece;
 		state_array piece_with_quantifier;
@@ -16562,37 +17065,28 @@ private:
 		{
 			re_quantifier piecesize;
 
-			if (curpos == end)
+			if (curpos == end || *curpos == meta_char::mc_bar || *curpos == meta_char::mc_rbracl /* || *curpos == char_ctrl::cc_nul */)	//  '|', ')', '\0'.
 				return true;
 
 			piece.clear();
 			piece_with_quantifier.clear();
 
-			switch (*curpos)
-			{
-//			case char_ctrl::cc_nul:	//  '\0':
-			case meta_char::mc_bar:	//  '|':
-			case meta_char::mc_rbracl:	//  ')':
-				return true;
-
-			default:
-				if (!get_atom(piece, piecesize, curpos, end, cstate))
-					return false;
-			}
+			if (!get_atom(piece, piecesize, curpos, end, cvars))
+				return false;
 
 			if (piece.size())
 			{
-				const state_type &firstatom = piece[0];
+				const state_type &firststate = piece[0];
 
 				quantifier.reset();	//  quantifier.atleast = quantifier.atmost = 1;
 
-				if (firstatom.has_quantifier())
+				if (firststate.has_quantifier())
 				{
 					if (curpos != end && !get_quantifier(quantifier, curpos, end))
 						return false;
 				}
 
-				if (piece.size() == 2 && firstatom.is_noncapturinggroup())
+				if (piece.size() == 2 && firststate.is_noncapturinggroup())
 				{
 					//  (?:) alone or followed by a quantifier.
 //					piece_with_quantifier += piece;
@@ -16601,23 +17095,12 @@ private:
 				else
 					combine_piece_with_quantifier(piece_with_quantifier, piece, quantifier, piecesize);
 
-#if 01
 				piecesize.multiply(quantifier);
 				branchsize.add(piecesize);
-#else
-				branchsize.atleast += piecesize.atleast * quantifier.atleast;
-				if (!branchsize.is_infinity())
-				{
-					if (piecesize.is_infinity() || quantifier.is_infinity())
-						branchsize.set_infinity();
-					else
-						branchsize.atmost += piecesize.atmost * quantifier.atmost;
-				}
-#endif
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 
-				if (!cstate.back)
+				if (!cvars.back)
 					branch += piece_with_quantifier;
 				else
 					branch.insert(0, piece_with_quantifier);
@@ -16628,30 +17111,29 @@ private:
 		}
 	}
 
-	bool get_atom(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool get_atom(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
-		state_type atom;
+		state_type astate;
 
-		atom.reset();
-		atom.character = *curpos++;
+		astate.reset(st_character, *curpos++);
 
-		switch (atom.character)
+		switch (astate.char_num)
 		{
 		case meta_char::mc_rbraop:	//  '(':
-			return get_piece_in_roundbrackets(piece, piecesize, curpos, end, cstate);
+			return get_piece_in_roundbrackets(piece, piecesize, curpos, end, cvars);
 
 		case meta_char::mc_sbraop:	//  '[':
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 			if (this->is_vmode())	//  vmode.
-				return parse_charclass_v(piece, piecesize, curpos, end, cstate);
+				return parse_charclass_v(piece, piecesize, curpos, end, cvars);
 #endif
-			if (!register_character_class(atom, curpos, end, cstate))
+			if (!register_character_class(astate, curpos, end, cvars))
 				return false;
 
 			break;
 
 		case meta_char::mc_escape:	//  '\\':
-			if (!translate_atom_escape(atom, piece, piecesize, curpos, end, cstate))
+			if (!translate_atom_escape(astate, piece, piecesize, curpos, end, cvars))
 				return false;
 
 			if (piece.size())
@@ -16659,39 +17141,39 @@ private:
 			break;
 
 		case meta_char::mc_period:	//  '.':
-			atom.type = st_character_class;
+			astate.type = st_character_class;
 #if !defined(SRELL_NO_SINGLELINE)
 			if (this->is_dotall())
 			{
-				atom.number = static_cast<uint_l32>(re_character_class::dotall);
+				astate.char_num = static_cast<ui_l32>(re_character_class::dotall);
 			}
 			else
 #endif
 			{
-//				atom.number = static_cast<uint_l32>(re_character_class::newline);
-				range_pairs nlclass = this->character_class[static_cast<uint_l32>(re_character_class::newline)];
+//				astate.char_num = static_cast<ui_l32>(re_character_class::newline);
+				range_pairs nlclass = this->character_class[static_cast<ui_l32>(re_character_class::newline)];
 
 				nlclass.negation();
-				atom.number = this->character_class.register_newclass(nlclass);
+				astate.char_num = this->character_class.register_newclass(nlclass);
 			}
 			break;
 
 		case meta_char::mc_caret:	//  '^':
-			atom.type = st_bol;
-			atom.number = static_cast<uint_l32>(re_character_class::newline);
-			atom.quantifier.reset(0);
+			astate.type = st_bol;
+			astate.char_num = static_cast<ui_l32>(re_character_class::newline);
+			astate.quantifier.reset(0);
 //			if (current_flags.m)
 			if (is_multiline())
-				atom.multiline = true;
+				astate.multiline = 1u;
 			break;
 
 		case meta_char::mc_dollar:	//  '$':
-			atom.type = st_eol;
-			atom.number = static_cast<uint_l32>(re_character_class::newline);
-			atom.quantifier.reset(0);
+			astate.type = st_eol;
+			astate.char_num = static_cast<ui_l32>(re_character_class::newline);
+			astate.quantifier.reset(0);
 //			if (current_flags.m)
 			if (is_multiline())
-				atom.multiline = true;
+				astate.multiline = 1u;
 			break;
 
 		case meta_char::mc_astrsk:	//  '*':
@@ -16703,52 +17185,51 @@ private:
 		default:;
 		}
 
-		if (atom.type == st_character)
+		if (astate.type == st_character)
 		{
 			if (this->is_icase())
-				atom.character = unicode_case_folding::do_casefolding(atom.character);
+				astate.char_num = unicode_case_folding::do_casefolding(astate.char_num);
 		}
 
-		piece.push_back(atom);
-		piecesize = atom.quantifier;
+		piece.push_back(astate);
+		piecesize = astate.quantifier;
 
 		return true;
 	}
 
 	//  '('.
 
-	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
-		const re_flags originalflags(cstate);
-		state_type atom;
+		const re_flags originalflags(cvars);
+		state_type rbstate;
 
 		if (curpos == end)
 			this->throw_error(regex_constants::error_paren);
 
-		atom.reset();
-		atom.type = st_roundbracket_open;
+		rbstate.reset(st_roundbracket_open);
 
 		if (*curpos == meta_char::mc_query)	//  '?'
 		{
-			if (!extended_roundbrackets(piece, atom, ++curpos, end, cstate))
+			if (!extended_roundbrackets(piece, rbstate, ++curpos, end, cvars))
 				return false;
 
-			if (atom.type == st_roundbracket_close)
+			if (rbstate.type == st_roundbracket_close)
 			{
 				++curpos;
 				return true;
 			}
 		}
 
-		if (atom.type == st_roundbracket_open)
+		if (rbstate.type == st_roundbracket_open)
 		{
-			push_bracket_open(piece, atom);
+			push_bracket_open(piece, rbstate);
 		}
 
 //		if (curpos == end)
 //			this->throw_error(regex_constants::error_paren);
 
-		if (!make_nfa_states(piece, piecesize, curpos, end, cstate))
+		if (!make_nfa_states(piece, piecesize, curpos, end, cvars))
 			return false;
 
 		//  end or ')'?
@@ -16757,13 +17238,13 @@ private:
 
 		++curpos;
 
-		cstate.restore_from(originalflags);
+		cvars.restore_from(originalflags);
 
-		switch (atom.type)
+		switch (rbstate.type)
 		{
 		case st_epsilon:
 			{
-				state_type &firstatom = piece[0];
+				state_type &firststate = piece[0];
 
 				if (piece.size() == 2)	//  ':' + something.
 				{
@@ -16771,50 +17252,50 @@ private:
 					return true;
 				}
 
-				firstatom.quantifier.atmost = this->number_of_brackets - 1;
-				firstatom.quantifier.is_greedy = piecesize.atleast != 0u ? true : false;
-				atom.character = char_other::co_smcln;	//  ';'
+				firststate.quantifier.atmost = this->number_of_brackets - 1;
+				firststate.quantifier.is_greedy = piecesize.atleast != 0u;
+				rbstate.char_num = epsilon_type::et_ncgclose;
 			}
 			break;
 
 //		case st_lookaround_pop:
 		case st_lookaround_open:
 			{
-				state_type &firstatom = piece[0];
+				state_type &firststate = piece[0];
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-//				if (firstatom.reverse)
-				if (firstatom.quantifier.atleast)	//  > 0 means lookbehind.
+//				if (firststate.reverse)
+				if (firststate.quantifier.atleast)	//  > 0 means lookbehind.
 				{
 					if (!piecesize.is_same() || piecesize.is_infinity())
 						this->throw_error(regex_constants::error_lookbehind);
 
-					firstatom.quantifier = piecesize;
+					firststate.quantifier = piecesize;
 				}
 #endif
 
 #if defined(SRELL_ENABLE_GT)
-				if (firstatom.character != meta_char::mc_gt)
+				if (firststate.char_num != meta_char::mc_gt)
 #endif
 					piecesize.reset(0);
 
-				firstatom.next1 = static_cast<std::ptrdiff_t>(piece.size()) + 1;
+				firststate.next1 = static_cast<std::ptrdiff_t>(piece.size() + 1);
 
-				atom.type  = st_lookaround_close;
-				atom.next1 = 0;
-				atom.next2 = 0;
+				rbstate.type  = st_lookaround_close;
+				rbstate.next1 = 0;
+				rbstate.next2 = 0;
 			}
 			break;
 
 		default:
-			set_bracket_close(piece, atom, piecesize, cstate);
+			set_bracket_close(piece, rbstate, piecesize, cvars);
 		}
 
-		piece.push_back(atom);
+		piece.push_back(rbstate);
 		return true;
 	}
 
-	bool extended_roundbrackets(state_array &piece, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool extended_roundbrackets(state_array &piece, state_type &erbstate, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		bool lookbehind = false;
@@ -16823,9 +17304,9 @@ private:
 		if (curpos == end)
 			this->throw_error(regex_constants::error_paren);
 
-		atom.character = *curpos;
+		erbstate.char_num = *curpos;
 
-		if (atom.character == meta_char::mc_lt)	//  '<'
+		if (erbstate.char_num == meta_char::mc_lt)	//  '<'
 		{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 			lookbehind = true;
@@ -16833,46 +17314,46 @@ private:
 			if (++curpos == end)
 				this->throw_error(regex_constants::error_paren);
 
-			atom.character = *curpos;
+			erbstate.char_num = *curpos;
 
-			if (atom.character != meta_char::mc_eq && atom.character != meta_char::mc_exclam)
+			if (erbstate.char_num != meta_char::mc_eq && erbstate.char_num != meta_char::mc_exclam)
 			{
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-				return parse_groupname(curpos, end, cstate);
+				return parse_groupname(curpos, end, cvars);
 #else
 				this->throw_error(regex_constants::error_paren);
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 			}
 		}
 		else
-			atom.quantifier.atleast = 0;
+			erbstate.quantifier.atleast = 0;
 			//  Sets atleast to 0 for other assertions than lookbehinds. The automaton
 			//  checks atleast to know whether lookbehinds or other assertions.
 
-		switch (atom.character)
+		switch (erbstate.char_num)
 		{
 		case meta_char::mc_exclam:	//  '!':
-			atom.is_not = true;
+			erbstate.is_not = 1u;
 			//@fallthrough@
 
 		case meta_char::mc_eq:	//  '=':
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-			cstate.back = lookbehind;
+			cvars.back = lookbehind;
 #else
-//			atom.reverse = lookbehind;
+//			erbstate.reverse = lookbehind;
 #endif
 
 #if defined(SRELL_ENABLE_GT)
 			//@fallthrough@
 		case meta_char::mc_gt:
 #endif
-			atom.type = st_lookaround_open;
-			atom.next2 = 1;
+			erbstate.type = st_lookaround_open;
+			erbstate.next2 = 1;
 			break;
 
 		default:
 #if !defined(SRELL_NO_UBMOD)
-			if (!parse_modflags(atom, curpos, end, cstate))
+			if (!parse_modflags(erbstate, curpos, end, cvars))
 #endif
 			{
 				this->throw_error(regex_constants::error_paren);
@@ -16880,26 +17361,27 @@ private:
 
 			if (*curpos == meta_char::mc_rbracl)
 			{
-				atom.type = st_roundbracket_close;
+				erbstate.type = st_roundbracket_close;
 				return true;
 			}
 			//@fallthrough@
 
 		case meta_char::mc_colon:
-			atom.type = st_epsilon;
-			atom.quantifier.atleast = this->number_of_brackets;
+			erbstate.type = st_epsilon;
+			erbstate.char_num = epsilon_type::et_ncgopen;
+			erbstate.quantifier.atleast = this->number_of_brackets;
 		}
 
 		++curpos;
-		piece.push_back(atom);
+		piece.push_back(erbstate);
 		return true;
 	}
 
 #if !defined(SRELL_NO_UBMOD)
 
-	bool parse_modflags(state_type &atom, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool parse_modflags(state_type &fstate, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
-		const u32array_size_type boffset = curpos - cstate.begin;
+		const u32array_size_type boffset = curpos - cvars.begin;
 		regex_constants::syntax_option_type modified = regex_constants::ECMAScript;
 		regex_constants::syntax_option_type localflags = this->soflags;
 		bool negate = false;
@@ -16907,7 +17389,7 @@ private:
 
 		for (;;)
 		{
-			switch (atom.character)
+			switch (fstate.char_num)
 			{
 #if 0
 			case meta_char::mc_colon:	//  ':':
@@ -16984,91 +17466,83 @@ private:
 			if (++curpos == end)
 				return false;
 
-			atom.character = *curpos;
+			fstate.char_num = *curpos;
 		}
 	}
 
 #endif	//  !defined(SRELL_NO_UBMOD)
 
-	void push_bracket_open(state_array &piece, state_type &atom)
+	void push_bracket_open(state_array &piece, state_type &rbstate)
 	{
-		atom.number = this->number_of_brackets;
-		atom.next1  = 2;
-		atom.next2  = 1;
-		piece.push_back(atom);
+		rbstate.char_num = this->number_of_brackets;
+		rbstate.next1  = 2;
+		rbstate.next2  = 1;
+		piece.push_back(rbstate);
 		++this->number_of_brackets;
 
-		atom.type  = st_roundbracket_pop;
-		atom.next1 = 0;
-		atom.next2 = 0;
-		piece.push_back(atom);
+		rbstate.type  = st_roundbracket_pop;
+		rbstate.next1 = 0;
+		rbstate.next2 = 0;
+		piece.push_back(rbstate);
 	}
 
-	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier &piecesize, cstate_type & /* cstate */)
+	void set_bracket_close(state_array &piece, state_type &rbstate, const re_quantifier &piecesize, cvars_type & /* cvars */)
 	{
-//		uint_l32 max_bracketno = atom.number;
+//		ui_l32 max_bracketno = rbstate.char_num;
 
-		atom.type = st_roundbracket_close;
-		atom.next1 = 1;
-		atom.next2 = 1;
+		rbstate.type = st_roundbracket_close;
+		rbstate.next1 = 1;
+		rbstate.next2 = 1;
 #if 0
-		for (typename state_array::size_type i = 0; i < piece.size(); ++i)
+		for (state_size_type i = 0; i < piece.size(); ++i)
 		{
 			const state_type &state = piece[i];
 
-			if (state.type == st_roundbracket_open && max_bracketno < state.number)
-				max_bracketno = state.number;
+			if (state.type == st_roundbracket_open && max_bracketno < state.char_num)
+				max_bracketno = state.char_num;
 		}
 #endif
 
 		re_quantifier &rb_open = piece[0].quantifier;
 		re_quantifier &rb_pop = piece[1].quantifier;
 
-		rb_open.atleast = rb_pop.atleast = atom.number + 1;
+		rb_open.atleast = rb_pop.atleast = rbstate.char_num + 1;
 		rb_open.atmost = rb_pop.atmost = this->number_of_brackets - 1;	//  max_bracketno;
-		rb_open.is_greedy = piecesize.atleast != 0u ? true : false;
+		rb_open.is_greedy = piecesize.atleast != 0u;
 	}
 
 	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
 	{
-		state_type &firstatom = piece[0];
-//		const bool firstpiece_is_roundbracket_open = (firstatom.type == st_roundbracket_open);
-		const bool piece_has_0widthchecker = firstatom.has_0widthchecker();
-		const bool piece_is_noncapturinggroup_contaning_capturinggroup = firstatom.is_noncapturinggroup() && firstatom.quantifier.is_valid();
-		state_type atom;
+		state_type &firststate = piece[0];
+		const bool piece_has_0widthchecker = firststate.has_0widthchecker();
+		const bool piece_is_noncapturinggroup_containing_capturinggroup = firststate.is_noncapturinggroup_containing_capturinggroup();
+		state_type qstate;
 
 		if (quantifier.atmost == 0)
 			return;
 
-		atom.reset();
-		atom.quantifier = quantifier;
+		qstate.reset();
+		qstate.quantifier = quantifier;
 
-		if (firstatom.is_character_or_class())
-			atom.character = meta_char::mc_astrsk;
+		if (firststate.is_character_or_class())
+			qstate.char_num = epsilon_type::et_ccastrsk;
 
 		if (quantifier.atmost == 1)
 		{
 			if (quantifier.atleast == 0)
 			{
-				atom.type  = st_epsilon;
-				atom.next2 = static_cast<std::ptrdiff_t>(piece.size()) + 1;
+				qstate.type  = st_epsilon;
+				qstate.next2 = static_cast<std::ptrdiff_t>(piece.size() + 1);
 
 				if (!quantifier.is_greedy)
 				{
-					atom.next1 = atom.next2;
-					atom.next2 = 1;
+					qstate.next1 = qstate.next2;
+					qstate.next2 = 1;
 				}
 
-				if (atom.character == meta_char::mc_astrsk)
-					firstatom.quantifier = quantifier;
+				piece[piece.size() - 1].quantifier = quantifier;
 
-				piece_with_quantifier.push_back(atom);
-			}
-
-			if (piece.size() >= 2 && firstatom.type == st_roundbracket_open)
-			{
-				firstatom.quantifier.atmost = 0u;
-				piece[1].quantifier.atmost = 0u;
+				piece_with_quantifier.push_back(qstate);
 			}
 
 			piece_with_quantifier += piece;
@@ -17078,7 +17552,8 @@ private:
 		//  atmost >= 2
 
 #if !defined(SRELLDBG_NO_SIMPLEEQUIV)
-		//  The counter requires at least 6 states: save, restore, check, inc, dec, atom(s).
+
+		//  A counter requires at least 6 states: save, restore, check, inc, dec, ATOM(s).
 		//  A character or charclass quantified by one of these has a simple equivalent representation:
 		//  a{0,2}  1.epsilon(2|5), 2.CHorCL(3), 3.epsilon(4|5), 4.CHorCL(5), [5].
 		//  a{0,3}  1.epsilon(2|7), 2.CHorCL(3), 3.epsilon(4|7), 4.CHorCL(5), 5.epsilon(6|7), 6.CHorCL(7), [7].
@@ -17086,165 +17561,164 @@ private:
 		//  a{1,3}  1.CHorCL(2), 2.epsilon(3|6), 3.CHorCL(4), 4.epsilon(5|6), 5.CHorCL(6), [6].
 		//  a{2,3}  1.CHorCL(2), 2.CHorCL(3), 3.epsilon(4|5), 4.CHorCL(5), [5].
 		//  a{2,4}  1.CHorCL(2), 2.CHorCL(3), 3.epsilon(4|7), 4.CHorCL(5), 5.epsilon(6|7), 6.CHorCL(7), [7].
-		if (firstatom.is_character_or_class() && quantifier.has_simple_equivalence())
+		if (firststate.is_character_or_class() && quantifier.has_simple_equivalence())
 		{
-			const typename state_array::size_type branchsize = piece.size() + 1;
+			const state_size_type branchsize = piece.size() + 1;
 
-			for (uint_l32 i = 0; i < quantifier.atleast; ++i)
+			for (ui_l32 i = 0; i < quantifier.atleast; ++i)
 				piece_with_quantifier += piece;
 
-			if (atom.character == meta_char::mc_astrsk)
-				firstatom.quantifier.set(0, 1, quantifier.is_greedy);
+			if (qstate.char_num == epsilon_type::et_ccastrsk)
+				firststate.quantifier.set(0, 1, quantifier.is_greedy);
 
-			atom.type = st_epsilon;
-			atom.next2 = (quantifier.atmost - quantifier.atleast) * branchsize;
+			qstate.type = st_epsilon;
+			qstate.next2 = (quantifier.atmost - quantifier.atleast) * branchsize;
 			if (!quantifier.is_greedy)
 			{
-				atom.next1 = atom.next2;
-				atom.next2 = 1;
+				qstate.next1 = qstate.next2;
+				qstate.next2 = 1;
 			}
-			for (uint_l32 i = quantifier.atleast; i < quantifier.atmost; ++i)
+			for (ui_l32 i = quantifier.atleast; i < quantifier.atmost; ++i)
 			{
-				piece_with_quantifier.push_back(atom);
+				piece_with_quantifier.push_back(qstate);
 				piece_with_quantifier += piece;
-				quantifier.is_greedy ? (atom.next2 -= branchsize) : (atom.next1 -= branchsize);
+				quantifier.is_greedy ? (qstate.next2 -= branchsize) : (qstate.next1 -= branchsize);
 			}
 			return;
 		}
 #endif	//  !defined(SRELLDBG_NO_SIMPLEEQUIV)
 
-		atom.type = st_epsilon;
+		qstate.type = st_epsilon;
+
+		if (firststate.is_noncapturinggroup() && piecesize.atleast == 0)
+			goto USE_COUNTER;
+
 		if (quantifier.is_asterisk())	//  {0,}
 		{
 			//  greedy:  1.epsilon(2|4), 2.piece, 3.LAorC0WR(1|0), 4.OutOfLoop.
 			//  !greedy: 1.epsilon(4|2), 2.piece, 3.LAorC0WR(1|0), 4.OutOfLoop.
 			//  LAorC0WR: LastAtomOfPiece or Check0WidthRepeat.
-			//  atom.type points to 1.
+			//  qstate.type points to 1.
 		}
 		else if (quantifier.is_plus())	//  {1,}
 		{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 
-			if (firstatom.is_character_or_class())
+			if (firststate.is_character_or_class())
 			{
 				piece_with_quantifier += piece;
-				--atom.quantifier.atleast;	//  /.+/ -> /..*/.
+				--qstate.quantifier.atleast;	//  /.+/ -> /..*/.
 			}
 			else
 #endif
 			{
-				atom.next1 = 2;
-				atom.next2 = 0;
-				piece_with_quantifier.push_back(atom);
+				const ui_l32 backup = qstate.char_num;
+
+				qstate.next1 = 2;
+				qstate.next2 = 0;
+				qstate.char_num = epsilon_type::et_jmpinlp;
+				piece_with_quantifier.push_back(qstate);
+				qstate.char_num = backup;
 				//  greedy:  1.epsilon(3), 2.epsilon(3|5), 3.piece, 4.LAorC0WR(2|0), 5.OutOfLoop.
 				//  !greedy: 1.epsilon(3), 2.epsilon(5|3), 3.piece, 4.LAorC0WR(2|0), 5.OutOfLoop.
-				//  atom.type points to 2.
+				//  qstate.type points to 2.
 			}
 		}
 		else
 		{
-			atom.number = this->number_of_counters;
+			USE_COUNTER:
+
+			qstate.char_num = this->number_of_counters;
 			++this->number_of_counters;
 
-			atom.type = st_save_and_reset_counter;
-			atom.next1 = 2;
-			atom.next2 = 1;
-			piece_with_quantifier.push_back(atom);
+			qstate.type = st_save_and_reset_counter;
+			qstate.next1 = 2;
+			qstate.next2 = 1;
+			piece_with_quantifier.push_back(qstate);
 
-			atom.type  = st_restore_counter;
-			atom.next1 = 0;
-			atom.next2 = 0;
-			piece_with_quantifier.push_back(atom);
+			qstate.type  = st_restore_counter;
+			qstate.next1 = 0;
+			qstate.next2 = 0;
+			piece_with_quantifier.push_back(qstate);
 			//  1.save_and_reset_counter(3|2), 2.restore_counter(0|0),
 
-			atom.next1 = 0;
-			atom.next2 = 0;
-			atom.type = st_decrement_counter;
-			piece.insert(0, atom);
+			qstate.next1 = 0;
+			qstate.next2 = 0;
+			qstate.type = st_decrement_counter;
+			piece.insert(0, qstate);
 
-			atom.next1 = 2;
-//			atom.next2 = piece[1].is_character_or_class() ? 0 : 1;
-//			atom.next2 = 0;
-			for (state_size_type i = 1; i < piece.size(); ++i)
-			{
-				const state_type &state = piece[i];
+			qstate.next1 = 2;
+			qstate.next2 = piece[1].is_character_or_class() ? 0 : 1;
+			qstate.type = st_epsilon;	//  st_increment_counter;
+			piece.insert(0, qstate);
+			piece[0].char_num = epsilon_type::et_default;
 
-				if (state.is_character_or_class() || (state.type == st_epsilon && state.next2 == 0))
-					;
-				else
-				{
-					atom.next2 = 1;
-					break;
-				}
-			}
-			atom.type = st_epsilon;	//  st_increment_counter;
-			piece.insert(0, atom);
-			piece[0].character = char_ctrl::cc_nul;
-
-			atom.type = st_check_counter;
+			qstate.type = st_check_counter;
 			//  greedy:  3.check_counter(4|6), 4.piece, 5.LAorC0WR(3|0), 6.OutOfLoop.
 			//  !greedy: 3.check_counter(6|4), 4.piece, 5.LAorC0WR(3|0), 6.OutOfLoop.
 			//  4.piece = { 4a.increment_counter(4c|4b), 4b.decrement_counter(0|0), 4c.OriginalPiece }.
 		}
 
-		//  atom.type is epsilon or check_counter.
+		//  qstate.type is epsilon or check_counter.
 		//  Its "next"s point to piece and OutOfLoop.
 
-		if (!piece_is_noncapturinggroup_contaning_capturinggroup && (piecesize.atleast || piece_has_0widthchecker))
+		if (!piece_is_noncapturinggroup_containing_capturinggroup && (piecesize.atleast || piece_has_0widthchecker))
 		{
-			const typename state_array::size_type piece_size = piece.size();
-			state_type &lastatom = piece[piece_size - 1];
+			const state_size_type piece_size = piece.size();
+			state_type &laststate = piece[piece_size - 1];
 
-			lastatom.next1 = 0 - static_cast<std::ptrdiff_t>(piece_size);
+			laststate.quantifier = qstate.quantifier;
+			laststate.next1 = 0 - static_cast<std::ptrdiff_t>(piece_size);
 				//  Points to the one immediately before piece, which will be pushed last in this block.
 
-			//  atom.type has already been set. epsilon or check_counter.
-			atom.next1 = 1;
-			atom.next2 = static_cast<std::ptrdiff_t>(piece_size) + 1;
+			//  qstate.type has already been set. epsilon or check_counter.
+			qstate.next1 = 1;
+			qstate.next2 = static_cast<std::ptrdiff_t>(piece_size) + 1;
 			if (!quantifier.is_greedy)
 			{
-				atom.next1 = atom.next2;
-				atom.next2 = 1;
+				qstate.next1 = qstate.next2;
+				qstate.next2 = 1;
 			}
-			piece_with_quantifier.push_back(atom);
+			piece_with_quantifier.push_back(qstate);
 		}
 		else
 		{
-			//  atom.type has already been set. epsilon or check_counter.
-			atom.next1 = 1;
-			atom.next2 = static_cast<std::ptrdiff_t>(piece.size()) + 4;	//  To OutOfLoop.
+			//  qstate.type has already been set. epsilon or check_counter.
+			qstate.next1 = 1;
+			qstate.next2 = static_cast<std::ptrdiff_t>(piece.size() + 4);	//  To OutOfLoop.
 				//  The reason for +3 than above is that push, pop, and check_0_width are added below.
 			if (!quantifier.is_greedy)
 			{
-				atom.next1 = atom.next2;
-				atom.next2 = 1;
+				qstate.next1 = qstate.next2;
+				qstate.next2 = 1;
 			}
-			piece_with_quantifier.push_back(atom);	//  *1
+			piece_with_quantifier.push_back(qstate);	//  *1
 
-			atom.number = this->number_of_repeats;
+			qstate.char_num = this->number_of_repeats;
 			++this->number_of_repeats;
 
-			const state_size_type org1stpos = (atom.type == st_check_counter) ? 2 : 0;
+			const state_size_type org1stpos = (qstate.type == st_check_counter) ? 2 : 0;
 
-			if (piece_is_noncapturinggroup_contaning_capturinggroup)
-				atom.quantifier = piece[org1stpos].quantifier;
+			qstate.type  = st_check_0_width_repeat;
+			qstate.next1 = 0 - static_cast<std::ptrdiff_t>(piece.size()) - 3;	//  3 for push, pop, and this. Points to *1.
+			qstate.next2 = 1;
+			piece.push_back(qstate);
+
+			if (piece_is_noncapturinggroup_containing_capturinggroup)
+				qstate.quantifier = piece[org1stpos].quantifier;
 			else
-				atom.quantifier.set(1, 0);
+				qstate.quantifier.set(1, 0);
 
-			atom.type = st_repeat_in_pop;
-			atom.next1 = 0;
-			atom.next2 = 0;
-			piece.insert(org1stpos, atom);
+			qstate.type = st_repeat_in_pop;
+			qstate.next1 = 0;
+			qstate.next2 = 0;
+			piece.insert(org1stpos, qstate);
 
-			atom.type = st_repeat_in_push;
-			atom.next1 = 2;
-			atom.next2 = 1;
-			piece.insert(org1stpos, atom);
+			qstate.type = st_repeat_in_push;
+			qstate.next1 = 2;
+			qstate.next2 = 1;
+			piece.insert(org1stpos, qstate);
 
-			atom.type  = st_check_0_width_repeat;
-			atom.next1 = 0 - static_cast<std::ptrdiff_t>(piece.size()) - 1;	//  Points to *1.
-			atom.next2 = 1;
-			piece.push_back(atom);
 				//  greedy:  1.epsilon(2|6),
 				//  !greedy: 1.epsilon(6|2),
 				//    2.repeat_in_push(4|3), 3.repeat_in_pop(0|0), 4.piece,
@@ -17260,9 +17734,9 @@ private:
 	}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool parse_groupname(const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool parse_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
-		const gname_string groupname = get_groupname(curpos, end, cstate);
+		const gname_string groupname = get_groupname(curpos, end, cvars);
 
 		if (!this->namedcaptures.push_back(groupname, this->number_of_brackets))
 			this->throw_error(regex_constants::error_backref);
@@ -17273,21 +17747,21 @@ private:
 
 	//  '['.
 
-	bool register_character_class(state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const cstate_type & /* cstate */)
+	bool register_character_class(state_type &castate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type & /* cvars */)
 	{
 		range_pairs ranges;
 		range_pair code_range;
-		state_type classatom;
+		state_type rstate;
 		range_pairs curranges;
 
 		if (curpos == end)
 			this->throw_error(regex_constants::error_brack);
 
-		atom.type = st_character_class;
+		castate.type = st_character_class;
 
 		if (*curpos == meta_char::mc_caret)	//  '^'
 		{
-			atom.is_not = true;
+			castate.is_not = 1u;
 			++curpos;
 		}
 
@@ -17299,12 +17773,12 @@ private:
 			if (*curpos == meta_char::mc_sbracl)	//   ']'
 				break;
 
-			classatom.reset();
+			rstate.reset();
 
-			if (!get_character_in_class(curranges, classatom, curpos, end))
+			if (!get_character_in_class(curranges, rstate, curpos, end))
 				return false;
 
-			if (classatom.type == st_character_class)
+			if (rstate.type == st_character_class)
 			{
 				ranges.merge(curranges);
 
@@ -17321,7 +17795,7 @@ private:
 				continue;
 			}
 
-			code_range.first = code_range.second = classatom.character;
+			code_range.first = code_range.second = rstate.char_num;
 
 			if (curpos == end)
 				this->throw_error(regex_constants::error_brack);
@@ -17341,16 +17815,16 @@ private:
 				}
 				else
 				{
-					if (!get_character_in_class(curranges, classatom, curpos, end))
+					if (!get_character_in_class(curranges, rstate, curpos, end))
 						return false;
 
-					if (classatom.type == st_character_class)
+					if (rstate.type == st_character_class)
 					{
 						ranges.merge(curranges);
 						goto PUSH_SEPARATELY;
 					}
 
-					code_range.second = classatom.character;
+					code_range.second = rstate.char_num;
 
 					if (!code_range.is_range_valid())
 						this->throw_error(regex_constants::error_range);
@@ -17364,42 +17838,42 @@ private:
 		if (this->is_icase())
 			ranges.make_caseunfoldedcharset();
 
-		if (atom.is_not)
+		if (castate.is_not)
 		{
 			ranges.negation();
-			atom.is_not = false;
+			castate.is_not = 0u;
 		}
 
-//		atom.character = this->is_icase() ? ranges.template consists_of_one_character<unicode_case_folding>() : ranges.template consists_of_one_character<nocase_faketraits>();
-		atom.character = ranges.consists_of_one_character(this->is_icase());
+//		castate.char_num = this->is_icase() ? ranges.template consists_of_one_character<unicode_case_folding>() : ranges.template consists_of_one_character<nocase_faketraits>();
+		castate.char_num = ranges.consists_of_one_character(this->is_icase());
 
-		if (atom.character != constants::invalid_u32value)
+		if (castate.char_num != constants::invalid_u32value)
 		{
-			atom.type = st_character;
+			castate.type = st_character;
 			return true;
 		}
 
-		atom.number = this->character_class.register_newclass(ranges);
+		castate.char_num = this->character_class.register_newclass(ranges);
 
 		return true;
 	}
 
-	bool get_character_in_class(range_pairs &rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end /* , const re_compiler_state &cstate */)
+	bool get_character_in_class(range_pairs &rp, state_type &rstate, const ui_l32 *&curpos, const ui_l32 *const end /* , const re_compiler_state &cvars */)
 	{
-		atom.character = *curpos++;
+		rstate.char_num = *curpos++;
 
-		if (atom.character != meta_char::mc_escape)	//  '\\'
+		if (rstate.char_num != meta_char::mc_escape)	//  '\\'
 			return true;
 
 		rp.clear();
-		return translate_escseq(&rp, atom, curpos, end, true);
+		return translate_escseq(&rp, rstate, curpos, end, true);
 	}
 
-	void add_predefclass_to_charclass(range_pairs &cls, const state_type &classatom)
+	void add_predefclass_to_charclass(range_pairs &cls, const state_type &castate)
 	{
-		range_pairs predefclass = this->character_class[classatom.number];
+		range_pairs predefclass = this->character_class[castate.char_num];
 
-		if (classatom.is_not)
+		if (castate.is_not)
 			predefclass.negation();
 
 		cls.merge(predefclass);
@@ -17407,39 +17881,37 @@ private:
 
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool parse_charclass_v(state_array &piece, re_quantifier &piecesize, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool parse_charclass_v(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
 		posdata_holder pos;
 
-		parse_unicharset(pos, curpos, end, cstate);
+		parse_unicharset(pos, curpos, end, cvars);
 
 		if (!pos.may_contain_strings())
 		{
-			state_type atom;
+			state_type castate;
 
-			atom.reset();
-			atom.character = pos.ranges.consists_of_one_character(this->is_icase());
+			castate.reset(st_character, pos.ranges.consists_of_one_character(this->is_icase()));
 
-			if (atom.character == constants::invalid_u32value)
+			if (castate.char_num == constants::invalid_u32value)
 			{
-				atom.type = st_character_class;
-				atom.number = this->character_class.register_newclass(pos.ranges);
+				castate.type = st_character_class;
+				castate.char_num = this->character_class.register_newclass(pos.ranges);
 			}
 
-			piece.push_back(atom);
-			piecesize = atom.quantifier;
+			piece.push_back(castate);
 		}
 		else
 		{
 			transform_seqdata(piece, pos);
 
-			piecesize.atleast = static_cast<uint_l32>(pos.length.first);
-			piecesize.atmost = static_cast<uint_l32>(pos.length.second);
 		}
+		piecesize.atleast = pos.length.first;
+		piecesize.atmost = pos.length.second;
 		return true;
 	}
 
-	void parse_unicharset(posdata_holder &basepos, const uchar32 *&curpos, const uchar32 *const end, const cstate_type &cstate)
+	void parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
 		enum operation_type
 		{
@@ -17448,7 +17920,7 @@ private:
 		operation_type otype = op_init;
 		posdata_holder newpos;
 		range_pair code_range;
-		state_type ccatom;
+		state_type castate;
 		bool invert;
 
 		if (curpos == end)
@@ -17475,7 +17947,7 @@ private:
 			if (*curpos == meta_char::mc_sbracl)	//   ']'
 				break;
 
-			const uchar32 next2chars = check_doublepunctuators(curpos, end);
+			const ui_l32 next2chars = check_doublepunctuators(curpos, end);
 
 			switch (otype)
 			{
@@ -17516,15 +17988,15 @@ private:
 			if (curpos == end)
 				goto ERROR_NOT_CLOSED;
 
-			ccatom.reset();
+			castate.reset();
 
 			if (*curpos == meta_char::mc_sbraop)	//  '['
 			{
 				++curpos;
-				parse_unicharset(newpos, curpos, end, cstate);
+				parse_unicharset(newpos, curpos, end, cvars);
 			}
 			else
-				get_character_in_class_vmode(newpos, ccatom, curpos, end, cstate, false);
+				get_character_in_class_vmode(newpos, castate, curpos, end, cvars, false);
 
 			if (otype == op_init)
 				otype = op_firstcc;
@@ -17534,14 +18006,14 @@ private:
 			if (curpos == end)
 				goto ERROR_NOT_CLOSED;
 
-			if (ccatom.type == st_character_class)
+			if (castate.type == st_character_class)
 			{
 			}
-			else if (ccatom.type == st_character)
+			else if (castate.type == st_character)
 			{
 				if (!newpos.has_data())
 				{
-					code_range.set(ccatom.character);
+					code_range.set(castate.char_num);
 
 					if (otype <= op_union)
 					{
@@ -17560,10 +18032,10 @@ private:
 								goto AFTER_OPERATOR;
 							}
 
-							get_character_in_class_vmode(newpos, ccatom, curpos, end, cstate, true);
+							get_character_in_class_vmode(newpos, castate, curpos, end, cvars, true);
 
 							otype = op_union;
-							code_range.second = ccatom.character;
+							code_range.second = castate.char_num;
 							if (!code_range.is_range_valid())
 								goto ERROR_BROKEN_RANGE;
 						}
@@ -17624,9 +18096,9 @@ private:
 		this->throw_error(regex_constants::error_operator);
 	}
 
-	uchar32 check_doublepunctuators(const uchar32 *curpos, const uchar32 *const end) const
+	ui_l32 check_doublepunctuators(const ui_l32 *curpos, const ui_l32 *const end) const
 	{
-		const uchar32 firstchar = *curpos++;
+		const ui_l32 firstchar = *curpos++;
 
 		if (curpos == end || *curpos != firstchar)
 			return constants::invalid_u32value;
@@ -17664,18 +18136,18 @@ private:
 
 	bool get_character_in_class_vmode(
 		posdata_holder &pos,
-		state_type &ccatom,
-		const uchar32 *&curpos,
-		const uchar32 *const end,
-		const cstate_type &cstate,
+		state_type &castate,
+		const ui_l32 *&curpos,
+		const ui_l32 *const end,
+		const cvars_type &cvars,
 		const bool no_ccesc
 	)
 	{
 		pos.clear();
 
-		ccatom.character = *curpos++;
+		castate.char_num = *curpos++;
 
-		switch (ccatom.character)
+		switch (castate.char_num)
 		{
 		//  ClassSetSyntaxCharacter :: one of
 		//  ( ) [ ] { } / - \ |
@@ -17701,21 +18173,21 @@ private:
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
-		ccatom.character = *curpos++;
+		castate.char_num = *curpos++;
 
 		if (!no_ccesc)
 		{
-			if (((ccatom.character | constants::asc_icase) == char_alnum::ch_p))
+			if (((castate.char_num | constants::asc_icase) == char_alnum::ch_p))
 			{
-				return parse_escape_p_vmode(pos, ccatom, curpos, end, cstate);
+				return parse_escape_p_vmode(pos, castate, curpos, end, cvars);
 			}
-			else if (ccatom.character == char_alnum::ch_q)
+			else if (castate.char_num == char_alnum::ch_q)
 			{
-				return parse_escape_q_vmode(pos, curpos, end, cstate);
+				return parse_escape_q_vmode(pos, curpos, end, cvars);
 			}
 		}
 
-		switch (ccatom.character)
+		switch (castate.char_num)
 		{
 		//  ClassSetReservedPunctuator :: one of
 		//  & - ! # % , : ; < = > @ ` ~
@@ -17737,19 +18209,19 @@ private:
 		default:;
 		}
 
-		translate_escseq_nocheck(&pos.ranges, ccatom, curpos, end, true, no_ccesc);
+		translate_escseq_nocheck(&pos.ranges, castate, curpos, end, true, no_ccesc);
 		return false;
 	}
 
-	bool parse_escape_q_vmode(posdata_holder &pos, const uchar32 *&curpos, const uchar32 *const end, const cstate_type &cstate)
+	bool parse_escape_q_vmode(posdata_holder &pos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
 		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 			this->throw_error(regex_constants::error_escape);
 
-		simple_array<uchar32> seqs;
-		simple_array<uchar32> curseq;
+		simple_array<ui_l32> seqs;
+		simple_array<ui_l32> curseq;
 		posdata_holder dummypos;
-		state_type qatom;
+		state_type castate;
 
 		++curpos;
 
@@ -17760,7 +18232,7 @@ private:
 
 			if (*curpos == meta_char::mc_bar || *curpos == meta_char::mc_cbracl)	//  '|' or '}'.
 			{
-				const uint_l32 seqlen = static_cast<uint_l32>(curseq.size());
+				const ui_l32 seqlen = static_cast<ui_l32>(curseq.size());
 
 				if (seqlen <= 1)
 				{
@@ -17781,16 +18253,16 @@ private:
 			}
 			else
 			{
-				qatom.reset();
-				get_character_in_class_vmode(dummypos, qatom, curpos, end, cstate, true);
+				castate.reset();
+				get_character_in_class_vmode(dummypos, castate, curpos, end, cvars, true);
 
-				curseq.push_backncr(qatom.character);
+				curseq.push_backncr(castate.char_num);
 			}
 		}
 
 		++curpos;
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		pos.split_seqs_and_ranges(seqs, this->is_icase(), cstate.back);
+		pos.split_seqs_and_ranges(seqs, this->is_icase(), cvars.back);
 #else
 		pos.split_seqs_and_ranges(seqs, this->is_icase(), false);
 #endif
@@ -17800,65 +18272,65 @@ private:
 
 #endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool translate_escseq(range_pairs *const rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass)
+	bool translate_escseq(range_pairs *const rp, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool insidecharclass)
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
-		atom.character = *curpos++;
+		eastate.char_num = *curpos++;
 
-		return translate_escseq_nocheck(rp, atom, curpos, end, insidecharclass, false);
+		return translate_escseq_nocheck(rp, eastate, curpos, end, insidecharclass, false);
 	}
 
-	bool translate_character_class_escape(range_pairs *const rp, state_type &cceatom
+	bool translate_character_class_escape(range_pairs *const rp, state_type &cceastate
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-		, const uchar32 *&curpos
-		, const uchar32 *const end
+		, const ui_l32 *&curpos
+		, const ui_l32 *const end
 		, const bool insidecharclass
 #else
-		, const uchar32 *&
-		, const uchar32 *const
+		, const ui_l32 *&
+		, const ui_l32 *const
 		, const bool
 #endif
 		)
 	{
 		//  Predefined classes.
-		switch (cceatom.character)
+		switch (cceastate.char_num)
 		{
 		case char_alnum::ch_D:	//  'D':
-			cceatom.is_not = true;
+			cceastate.is_not = 1u;
 			//@fallthrough@
 
 		case char_alnum::ch_d:	//  'd':
-			cceatom.number = static_cast<uint_l32>(re_character_class::digit);	//  \d, \D.
+			cceastate.char_num = static_cast<ui_l32>(re_character_class::digit);	//  \d, \D.
 			break;
 
 		case char_alnum::ch_S:	//  'S':
-			cceatom.is_not = true;
+			cceastate.is_not = 1u;
 			//@fallthrough@
 
 		case char_alnum::ch_s:	//  's':
-			cceatom.number = static_cast<uint_l32>(re_character_class::space);	//  \s, \S.
+			cceastate.char_num = static_cast<ui_l32>(re_character_class::space);	//  \s, \S.
 			break;
 
 		case char_alnum::ch_W:	//  'W':
-			cceatom.is_not = true;
+			cceastate.is_not = 1u;
 			//@fallthrough@
 
 		case char_alnum::ch_w:	//  'w':
 			if (this->is_icase())
 			{
 				this->character_class.setup_icase_word();
-				cceatom.number = static_cast<uint_l32>(re_character_class::icase_word);
+				cceastate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
 			}
 			else
-				cceatom.number = static_cast<uint_l32>(re_character_class::word);	//  \w, \W.
+				cceastate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
 			break;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 		//  Prepared for Unicode properties and script names.
 		case char_alnum::ch_P:	//  \P{...}
-			cceatom.is_not = true;
+			cceastate.is_not = 1u;
 			//@fallthrough@
 
 		case char_alnum::ch_p:	//  \p{...}
@@ -17868,19 +18340,19 @@ private:
 
 				get_property_ranges(*pranges, curpos, end);
 
-				if (cceatom.is_not)
+				if (cceastate.is_not)
 				{
 					pranges->negation();
-					cceatom.is_not = false;
+					cceastate.is_not = 0u;
 				}
 
 				if (!insidecharclass && this->is_icase())
 					pranges->make_caseunfoldedcharset();
 
 				if (rp == NULL)
-					cceatom.number = this->character_class.register_newclass(*pranges);
+					cceastate.char_num = this->character_class.register_newclass(*pranges);
 			}
-			cceatom.type = st_character_class;
+			cceastate.type = st_character_class;
 			return true;
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
@@ -17889,80 +18361,79 @@ private:
 		}
 
 		if (rp != NULL)
-			add_predefclass_to_charclass(*rp, cceatom);
+			add_predefclass_to_charclass(*rp, cceastate);
 		else
 		{
-			if (cceatom.is_not)
+			if (cceastate.is_not)
 			{
 				range_pairs lranges;
 
-				add_predefclass_to_charclass(lranges, cceatom);
-				cceatom.number = this->character_class.register_newclass(lranges);
+				add_predefclass_to_charclass(lranges, cceastate);
+				cceastate.char_num = this->character_class.register_newclass(lranges);
 			}
 		}
 
-		cceatom.is_not = false;
-		cceatom.type = st_character_class;
+		cceastate.is_not = 0u;
+		cceastate.type = st_character_class;
 		return true;
 	}
 
-	bool translate_escseq_nocheck(range_pairs *const rp, state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const bool insidecharclass, const bool no_ccesc)
+	bool translate_escseq_nocheck(range_pairs *const rp, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool insidecharclass, const bool no_ccesc)
 	{
-		if (!no_ccesc && translate_character_class_escape(rp, atom, curpos, end, insidecharclass))
+		if (!no_ccesc && translate_character_class_escape(rp, eastate, curpos, end, insidecharclass))
 			return true;
 
-		switch (atom.character)
+		switch (eastate.char_num)
 		{
 		case char_alnum::ch_b:
-			atom.character = char_ctrl::cc_bs;	//  '\b' 0x08:BS
+			eastate.char_num = char_ctrl::cc_bs;	//  '\b' 0x08:BS
 			break;
 
 		case char_alnum::ch_t:
-			atom.character = char_ctrl::cc_htab;	//  '\t' 0x09:HT
+			eastate.char_num = char_ctrl::cc_htab;	//  '\t' 0x09:HT
 			break;
 
 		case char_alnum::ch_n:
-			atom.character = char_ctrl::cc_nl;	//  '\n' 0x0a:LF
+			eastate.char_num = char_ctrl::cc_nl;	//  '\n' 0x0a:LF
 			break;
 
 		case char_alnum::ch_v:
-			atom.character = char_ctrl::cc_vtab;	//  '\v' 0x0b:VT
+			eastate.char_num = char_ctrl::cc_vtab;	//  '\v' 0x0b:VT
 			break;
 
 		case char_alnum::ch_f:
-			atom.character = char_ctrl::cc_ff;	//  '\f' 0x0c:FF
+			eastate.char_num = char_ctrl::cc_ff;	//  '\f' 0x0c:FF
 			break;
 
 		case char_alnum::ch_r:
-			atom.character = char_ctrl::cc_cr;	//  '\r' 0x0d:CR
+			eastate.char_num = char_ctrl::cc_cr;	//  '\r' 0x0d:CR
 			break;
 
 		case char_alnum::ch_c:	//  \cX
 			if (curpos != end)
 			{
-//				atom.character = static_cast<uchar32>(utf_traits().codepoint_inc(curpos, end) & 0x1f);	//  *curpos++
-				atom.character = static_cast<uchar32>(*curpos | constants::asc_icase);
+				eastate.char_num = static_cast<ui_l32>(*curpos | constants::asc_icase);
 
-				if (atom.character >= char_alnum::ch_a && atom.character <= char_alnum::ch_z)
-					atom.character = static_cast<uchar32>(*curpos++ & 0x1f);
+				if (eastate.char_num >= char_alnum::ch_a && eastate.char_num <= char_alnum::ch_z)
+					eastate.char_num = static_cast<ui_l32>(*curpos++ & 0x1f);
 				else
 				{
 					this->throw_error(regex_constants::error_escape);	//  Strict.
-//					atom.character = char_alnum::ch_c;	//  Loose.
+//					eastate.char_num = char_alnum::ch_c;	//  Loose.
 				}
 			}
 			break;
 
 		case char_alnum::ch_0:
-			atom.character = char_ctrl::cc_nul;	//  '\0' 0x00:NUL
+			eastate.char_num = char_ctrl::cc_nul;	//  '\0' 0x00:NUL
 			break;
 
 		case char_alnum::ch_x:	//  \xhh
-			atom.character = translate_numbers(curpos, end, 16, 2, 2, 0xff);
+			eastate.char_num = translate_numbers(curpos, end, 16, 2, 2, 0xff);
 			break;
 
 		case char_alnum::ch_u:	//  \uhhhh, \u{h~hhhhhh}
-			atom.character = parse_escape_u(curpos, end);
+			eastate.char_num = parse_escape_u(curpos, end);
 			break;
 
 		//  SyntaxCharacter, '/', and '-'.
@@ -17989,18 +18460,18 @@ private:
 			//@fallthrough@
 
 		default:
-			atom.character = constants::invalid_u32value;
+			eastate.char_num = constants::invalid_u32value;
 		}
 
-		if (atom.character == constants::invalid_u32value)
+		if (eastate.char_num == constants::invalid_u32value)
 			this->throw_error(regex_constants::error_escape);
 
 		return true;
 	}
 
-	uchar32 parse_escape_u(const uchar32 *&curpos, const uchar32 *const end) const
+	ui_l32 parse_escape_u(const ui_l32 *&curpos, const ui_l32 *const end) const
 	{
-		uchar32 ucp;
+		ui_l32 ucp;
 
 		if (curpos == end)
 			return constants::invalid_u32value;
@@ -18021,13 +18492,13 @@ private:
 
 			if (ucp >= 0xd800 && ucp <= 0xdbff)
 			{
-				const uchar32 *prefetch = curpos;
+				const ui_l32 *prefetch = curpos;
 
 				if (prefetch != end && *prefetch == meta_char::mc_escape && ++prefetch != end && *prefetch == char_alnum::ch_u)
 				{
 					++prefetch;
 
-					const uchar32 nextucp = translate_numbers(prefetch, end, 16, 4, 4, 0xffff);
+					const ui_l32 nextucp = translate_numbers(prefetch, end, 16, 4, 4, 0xffff);
 
 					if (nextucp >= 0xdc00 && nextucp <= 0xdfff)
 					{
@@ -18042,9 +18513,9 @@ private:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	void get_property_ranges(range_pairs &pranges, const uchar32 *&curpos, const uchar32 *const end)
+	void get_property_ranges(range_pairs &pranges, const ui_l32 *&curpos, const ui_l32 *const end)
 	{
-		const uint_l32 pnumber = lookup_propertynumber(curpos, end);
+		const ui_l32 pnumber = lookup_propertynumber(curpos, end);
 
 		if (pnumber == up_constants::error_property || this->character_class.is_pos(pnumber))
 			this->throw_error(regex_constants::error_property);
@@ -18052,27 +18523,30 @@ private:
 		this->character_class.load_upranges(pranges, pnumber);
 	}
 
-	uint_l32 lookup_propertynumber(const uchar32 *&curpos, const uchar32 *const end)
+	ui_l32 lookup_propertynumber(const ui_l32 *&curpos, const ui_l32 *const end)
 	{
 		pstring pname;
 		pstring pvalue;
 
 		get_property_name_and_value(pname, pvalue, curpos, end);
 
+		pname.push_backncr(0);
+		pvalue.push_backncr(0);
+
 		return this->character_class.get_propertynumber(pname, pvalue);
 	}
 
-	void get_property_name_and_value(pstring &pname, pstring &pvalue, const uchar32 *&curpos, const uchar32 *const end)
+	void get_property_name_and_value(pstring &pname, pstring &pvalue, const ui_l32 *&curpos, const ui_l32 *const end)
 	{
 		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 			this->throw_error(regex_constants::error_escape);
 
-		get_property_name_or_value(pvalue, ++curpos, end);
+		const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
 
 		if (!pvalue.size())
 			this->throw_error(regex_constants::error_escape);
 
-		if (static_cast<uchar32>(pvalue[pvalue.size() - 1]) != char_other::co_sp)	//  ' ', not a value.
+		if (!digit_seen)
 		{
 			if (curpos == end)
 				this->throw_error(regex_constants::error_escape);
@@ -18089,13 +18563,10 @@ private:
 		if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
 			this->throw_error(regex_constants::error_escape);
 
-		if (static_cast<uchar32>(pvalue[pvalue.size() - 1]) == char_other::co_sp)	//  ' ', value.
-			pvalue.resize(pvalue.size() - 1);
-
 		++curpos;
 	}
 
-	void get_property_name_or_value(pstring &name_or_value, const uchar32 *&curpos, const uchar32 *const end) const
+	bool get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
 	{
 		bool number_found = false;
 
@@ -18106,7 +18577,7 @@ private:
 			if (curpos == end)
 				break;
 
-			const uchar32 curchar = *curpos;
+			const ui_l32 curchar = *curpos;
 
 			if (curchar >= char_alnum::ch_A && curchar <= char_alnum::ch_Z)
 				;
@@ -18121,14 +18592,14 @@ private:
 
 			name_or_value.append(1, static_cast<typename pstring::value_type>(curchar));
 		}
-		if (number_found)
-			name_or_value.append(1, char_other::co_sp);	//  ' '
 
+		//  A string containing a digit cannot be a property name.
+		return number_found;
 	}
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool translate_atom_escape(state_type &escatom
+	bool translate_atom_escape(state_type &eastate
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 		, state_array &piece
 		, re_quantifier &piecesize
@@ -18136,55 +18607,55 @@ private:
 		, state_array &
 		, re_quantifier &
 #endif
-		, const uchar32 *&curpos, const uchar32 *const end, /* const */ cstate_type &cstate)
+		, const ui_l32 *&curpos, const ui_l32 *const end, /* const */ cvars_type &cvars)
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
-		escatom.character = *curpos;
+		eastate.char_num = *curpos;
 
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-		if (this->is_vmode() && ((escatom.character | constants::asc_icase) == char_alnum::ch_p))
+		if (this->is_vmode() && ((eastate.char_num | constants::asc_icase) == char_alnum::ch_p))
 		{
 			posdata_holder pos;
 
-			parse_escape_p_vmode(pos, escatom, ++curpos, end, cstate);
+			parse_escape_p_vmode(pos, eastate, ++curpos, end, cvars);
 
-			if (escatom.type == st_character_class)
-				escatom.number = this->character_class.register_newclass(pos.ranges);
+			if (eastate.type == st_character_class)
+				eastate.char_num = this->character_class.register_newclass(pos.ranges);
 			else
 				transform_seqdata(piece, pos);
 
-			piecesize.set(escatom.quantifier.atleast, escatom.quantifier.atmost);
+			piecesize.set(eastate.quantifier.atleast, eastate.quantifier.atmost);
 			return true;
 		}
 #endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-		switch (escatom.character)
+		switch (eastate.char_num)
 		{
 		case char_alnum::ch_B:	//  'B':
-			escatom.is_not = true;
+			eastate.is_not = 1u;
 			//@fallthrough@
 
 		case char_alnum::ch_b:	//  'b':
-			escatom.type   = st_boundary;	//  \b, \B.
-			escatom.quantifier.reset(0);
-//			atom.number = 0;
+			eastate.type   = st_boundary;	//  \b, \B.
+			eastate.quantifier.reset(0);
+//			eastate.char_num = 0;
 			if (this->is_icase())
 			{
 				this->character_class.setup_icase_word();
-				escatom.number = static_cast<uint_l32>(re_character_class::icase_word);
+				eastate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
 			}
 			else
-				escatom.number = static_cast<uint_l32>(re_character_class::word);	//  \w, \W.
+				eastate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
 			break;
 
 //		case char_alnum::ch_A:	//  'A':
-//			atom.type   = st_bol;	//  '\A'
+//			eastate.type   = st_bol;	//  '\A'
 //		case char_alnum::ch_Z:	//  'Z':
-//			atom.type   = st_eol;	//  '\Z'
+//			eastate.type   = st_eol;	//  '\Z'
 //		case char_alnum::ch_z:	//  'z':
-//			atom.type   = st_eol;	//  '\z'
+//			eastate.type   = st_eol;	//  '\z'
 //		case char_alnum::ch_R:	//  'R':
 		//  (?>\r\n?|[\x0A-\x0C\x85\u{2028}\u{2029}])
 
@@ -18193,88 +18664,88 @@ private:
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		//  Prepared for named captures.
 		case char_alnum::ch_k:	//  'k':
-			return parse_backreference_name(escatom, curpos, end, cstate);	//  \k.
+			return parse_backreference_name(eastate, curpos, end, cvars);	//  \k.
 #endif
 
 		default:
 
-			if (escatom.character >= char_alnum::ch_1 && escatom.character <= char_alnum::ch_9)	//  \1, \9.
-				return parse_backreference_number(escatom, curpos, end, cstate);
+			if (eastate.char_num >= char_alnum::ch_1 && eastate.char_num <= char_alnum::ch_9)	//  \1, \9.
+				return parse_backreference_number(eastate, curpos, end, cvars);
 
-			return translate_escseq(NULL, escatom, curpos, end, false);
+			return translate_escseq(NULL, eastate, curpos, end, false);
 		}
 
 		++curpos;
 		return true;
 	}
 
-	bool parse_backreference_number(state_type &atom, const uchar32 *&curpos, const uchar32 *const end, const cstate_type &cstate)
+	bool parse_backreference_number(state_type &brastate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
-		const uchar32 backrefno = translate_numbers(curpos, end, 10, 0, 0, 0xfffffffe);
+		const ui_l32 backrefno = translate_numbers(curpos, end, 10, 0, 0, 0xfffffffe);
 			//  22.2.1.1 Static Semantics: Early Errors:
 			//  It is a Syntax Error if NcapturingParens >= 23^2 - 1.
 
 		if (backrefno == constants::invalid_u32value)
 			this->throw_error(regex_constants::error_escape);
 
-		atom.number = static_cast<uint_l32>(backrefno);
-		atom.quantifier.backrefno_resolved = true;
+		brastate.char_num = static_cast<ui_l32>(backrefno);
+		brastate.icase_backrefno_unresolved = 0u;
 
-		return backreference_postprocess(atom, cstate);
+		return backreference_postprocess(brastate, cvars);
 	}
 
-	bool backreference_postprocess(state_type &atom, const cstate_type & /* cstate */) const
+	bool backreference_postprocess(state_type &brastate, const cvars_type & /* cvars */) const
 	{
-		atom.next2 = 1;
-		atom.type = st_backreference;
-		atom.quantifier.atleast = 0;
+		brastate.next2 = 1;
+		brastate.type = st_backreference;
+		brastate.quantifier.atleast = 0;
 
 		if (this->is_icase())
-			atom.icase = true;
+			brastate.icase |= 1u;
 
 		return true;
 	}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool parse_backreference_name(state_type &atom, const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	bool parse_backreference_name(state_type &brastate, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
 		if (++curpos == end || *curpos != meta_char::mc_lt)
 			this->throw_error(regex_constants::error_escape);
 
-		const gname_string groupname = get_groupname(++curpos, end, cstate);
+		const gname_string groupname = get_groupname(++curpos, end, cvars);
 
-		atom.number = this->namedcaptures[groupname];
+		brastate.char_num = this->namedcaptures[groupname];
 
-		if (atom.number != groupname_mapper<charT>::notfound)
-			atom.quantifier.backrefno_resolved = true;
+		if (brastate.char_num != groupname_mapper<charT>::notfound)
+			brastate.icase_backrefno_unresolved = 0u;
 		else
 		{
-			atom.quantifier.backrefno_resolved = false;
-			atom.number = static_cast<uint_l32>(cstate.unresolved_gnames.size());
-			cstate.unresolved_gnames.push_back(groupname, atom.number);
+			brastate.icase_backrefno_unresolved = 2u;
+			brastate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size());
+			cvars.unresolved_gnames.push_back(groupname, brastate.char_num);
 		}
 
-		return backreference_postprocess(atom, cstate);
+		return backreference_postprocess(brastate, cvars);
 	}
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-	gname_string get_groupname(const uchar32 *&curpos, const uchar32 *const end, cstate_type &cstate)
+	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 #else
-	gname_string get_groupname(const uchar32 *&curpos, const uchar32 *const end, cstate_type &)
+	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &)
 #endif
 	{
 		charT mbstr[utf_traits::maxseqlen];
 		gname_string groupname;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-		cstate.idchecker.setup();
+		cvars.idchecker.setup();
 #endif
 		for (;;)
 		{
 			if (curpos == end)
 				this->throw_error(regex_constants::error_escape);
 
-			uchar32 curchar = *curpos++;
+			ui_l32 curchar = *curpos++;
 
 			if (curchar == meta_char::mc_gt)	//  '>'
 				break;
@@ -18285,7 +18756,7 @@ private:
 #if defined(SRELL_NO_UNICODE_PROPERTY)
 			if (curchar != meta_char::mc_escape)
 #else
-			if (cstate.idchecker.is_identifier(curchar, groupname.size() != 0))
+			if (cvars.idchecker.is_identifier(curchar, groupname.size() != 0))
 #endif
 				;	//  OK.
 			else
@@ -18294,9 +18765,9 @@ private:
 			if (curchar == constants::invalid_u32value)
 				this->throw_error(regex_constants::error_escape);
 
-			const uint_l32 seqlen = utf_traits::to_codeunits(mbstr, curchar);
+			const ui_l32 seqlen = utf_traits::to_codeunits(mbstr, curchar);
 
-			for (uint_l32 i = 0; i < seqlen; ++i)
+			for (ui_l32 i = 0; i < seqlen; ++i)
 				groupname.append(1, mbstr[i]);
 		}
 		if (!groupname.size())
@@ -18308,121 +18779,178 @@ private:
 
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool parse_escape_p_vmode(posdata_holder &pos, state_type &patom, const uchar32 *&curpos, const uchar32 *const end,
+	bool parse_escape_p_vmode(posdata_holder &pos, state_type &ccepastate, const ui_l32 *&curpos, const ui_l32 *const end,
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		const cstate_type &cstate)
+		const cvars_type &cvars)
 #else
-		const cstate_type &)
+		const cvars_type &)
 #endif
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
 
-//		patom.is_not = (patom.character & constants::asc_icase) ? false : true;
-		if (patom.character == char_alnum::ch_P)	//  \P{...}
-			patom.is_not = true;
+//		ccepastate.is_not = (ccepastate.char_num & constants::asc_icase) ? false : true;
+		if (ccepastate.char_num == char_alnum::ch_P)	//  \P{...}
+			ccepastate.is_not = 1u;
 
-		patom.number = lookup_propertynumber(curpos, end);
+		ccepastate.char_num = lookup_propertynumber(curpos, end);
 
-		if (patom.number == up_constants::error_property)
+		if (ccepastate.char_num == up_constants::error_property)
 			this->throw_error(regex_constants::error_property);
 
-		if (!this->character_class.is_pos(patom.number))
+		if (!this->character_class.is_pos(ccepastate.char_num))
 		{
 			pos.clear();
 
-			this->character_class.load_upranges(pos.ranges, patom.number);
+			this->character_class.load_upranges(pos.ranges, ccepastate.char_num);
 
-			if (this->is_icase() && patom.number >= static_cast<uint_l32>(re_character_class::number_of_predefcls))
+			if (this->is_icase() && ccepastate.char_num >= static_cast<ui_l32>(re_character_class::number_of_predefcls))
 				pos.ranges.make_caseunfoldedcharset();
 
-			if (patom.is_not)
+			if (ccepastate.is_not)
 			{
 				pos.ranges.negation();
-				patom.is_not = false;
+				ccepastate.is_not = 0u;
 			}
 
-			patom.type = st_character_class;
-			patom.quantifier.reset(1);
+			ccepastate.type = st_character_class;
+			ccepastate.quantifier.reset(1);
 		}
 		else
 		{
-			simple_array<uchar32> sequences;
+			simple_array<ui_l32> sequences;
 
-			this->character_class.get_prawdata(sequences, patom.number);
+			this->character_class.get_prawdata(sequences, ccepastate.char_num);
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-			pos.split_seqs_and_ranges(sequences, this->is_icase(), cstate.back);
+			pos.split_seqs_and_ranges(sequences, this->is_icase(), cvars.back);
 #else
 			pos.split_seqs_and_ranges(sequences, this->is_icase(), false);
 #endif
 
-			patom.quantifier.set(pos.length.first, pos.length.second);
+			ccepastate.quantifier.set(pos.length.first, pos.length.second);
 
-			if (patom.is_not)
+			if (ccepastate.is_not)
 				this->throw_error(regex_constants::error_complement);
 		}
 		return true;
 	}
 
-	uint_l32 transform_seqdata(state_array &piece, const posdata_holder &pos)
+	ui_l32 transform_seqdata(state_array &piece, const posdata_holder &pos)
 	{
-		uint_l32 seqlen = static_cast<uint_l32>(pos.indices.size());
-		state_type ccatom;
+		ui_l32 seqlen = static_cast<ui_l32>(pos.indices.size());
+		state_type castate;
 
-		ccatom.reset();
-		ccatom.type = st_character_class;
-		ccatom.number = this->character_class.register_newclass(pos.ranges);
+		castate.reset(st_character_class);
+		castate.char_num = this->character_class.register_newclass(pos.ranges);
 
 		if (seqlen > 0)
 		{
 			const bool has_empty = pos.has_empty();
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
 			state_size_type prevbranch_end = 0;
-			state_type branchatom;
-			state_type jumpatom;
+#else
+			state_size_type prevbranch_alt = 0;
+#endif
+			state_type branchstate;
+			state_type jumpstate;
 			state_array branch;
 
 			branch.resize(seqlen);
-			for (uint_l32 i = 0; i < seqlen; ++i)
+			for (ui_l32 i = 0; i < seqlen; ++i)
 				branch[i].reset();
 
-			branchatom.reset();
-			branchatom.type = st_epsilon;
-			branchatom.character = meta_char::mc_bar;	//  '|'
+			branchstate.reset(st_epsilon, epsilon_type::et_alt);
 
-			jumpatom.reset();
-			jumpatom.type = st_epsilon;
+			jumpstate.reset(st_epsilon, epsilon_type::et_brnchend);	//  '/'
 
 			--seqlen;
 
 			for (; seqlen >= 2; --seqlen)
 			{
-				uchar32 offset = pos.indices[seqlen];
-				const uchar32 seqend = pos.indices[seqlen - 1];
+				ui_l32 offset = pos.indices[seqlen];
+				const ui_l32 seqend = pos.indices[seqlen - 1];
 
 				if (offset != seqend)
 				{
 					branch.resize(seqlen + 1);
-					branch[seqlen] = jumpatom;
+					branch[seqlen] = jumpstate;
 
-					branchatom.quantifier.atleast = seqlen;
-
-					for (uint_l32 count = 0; offset < seqend; ++offset)
+					for (ui_l32 count = 0; offset < seqend; ++offset)
 					{
-						branch[count++].character = pos.seqs[offset];
+						branch[count++].char_num = pos.seqs[offset];
 
 						if (count == seqlen)
 						{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+							state_size_type bpos = 0;
+
+							for (state_size_type ppos = 0; ppos < piece.size();)
+							{
+								if (bpos + 1 == branch.size())
+								{
+									piece.push_backncr(piece[ppos]);
+
+									state_type &pst = piece[ppos];
+
+									pst.reset(st_epsilon, epsilon_type::et_hooked);
+									pst.next1 = static_cast<std::ptrdiff_t>(piece.size() - 1 - ppos);
+									pst.next2 = static_cast<std::ptrdiff_t>(prevbranch_end - ppos);
+
+									state_type &bst = piece[piece.size() - 1];
+
+									bst.next1 = static_cast<std::ptrdiff_t>(bst.next1 - pst.next1);
+									bst.next2 = bst.next2 ? static_cast<std::ptrdiff_t>(bst.next2 - pst.next1) : 0;
+									goto SKIP_APPEND;
+								}
+
+								state_type &pst = piece[ppos];
+
+#if 0
+								if (pst.type == st_epsilon)
+									ppos += pst.next1;
+								else
+#endif
+								if (pst.char_num == branch[bpos].char_num)
+								{
+									++bpos;
+									ppos += pst.next1;
+								}
+								else if (pst.next2)
+									ppos += pst.next2;
+								else
+								{
+									pst.next2 = static_cast<std::ptrdiff_t>(piece.size() - ppos);
+									break;
+								}
+							}
+
+							{
+								const state_size_type alen = branch.size() - bpos;
+
+								if (piece.size())
+									piece[prevbranch_end].next1 = piece.size() + alen - 1 - prevbranch_end;
+
+								piece.append(branch, bpos, alen);
+								prevbranch_end = piece.size() - 1;
+							}
+							SKIP_APPEND:
+							count = 0;
+
+#else	//  defined(SRELLDBG_NO_ASTERISK_OPT) || defined(SRELLDBG_NO_POS_OPT) || defined(SRELLDBG_NO_STATEHOOK)
+
 							if (piece.size())
 							{
-								state_type &lastatom = piece[piece.size() - 1];
+								state_type &laststate = piece[piece.size() - 1];
 
-								lastatom.next1 = seqlen + 2;
-								piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+								laststate.next1 = seqlen + 2;
+								piece[prevbranch_alt].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_alt);
 							}
-							prevbranch_end = piece.size();
-							piece.push_back(branchatom);
+							prevbranch_alt = piece.size();
+							piece.push_back(branchstate);
 							piece.append(branch);
 							count = 0;
+
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
 						}
 					}
 				}
@@ -18430,246 +18958,51 @@ private:
 
 			if (piece.size())
 			{
-				state_type &lastatom = piece[piece.size() - 1];
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+				state_type &laststate = piece[prevbranch_end];
 
-				lastatom.next1 = has_empty ? 3 : 2;
+				laststate.next1 = piece.size() + (has_empty ? 2 : 1) - prevbranch_end;
 
-				piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+				branchstate.next2 = static_cast<std::ptrdiff_t>(piece.size() + 1);
+				piece.insert(0, branchstate);
+#else
+				state_type &laststate = piece[piece.size() - 1];
+
+				laststate.next1 = has_empty ? 3 : 2;
+
+				piece[prevbranch_alt].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_alt);
+#endif
 			}
-
-			branchatom.quantifier.atleast = 1;
 
 			if (has_empty)
 			{
-				branchatom.next2 = 2;
-				piece.push_back(branchatom);
+				branchstate.next2 = 2;
+				piece.push_back(branchstate);
 			}
 
-			piece.push_back(ccatom);
+			piece.push_back(castate);
 
-			branchatom.character = meta_char::mc_colon;	//  ':'
-			branchatom.next1 = 1;
-			branchatom.next2 = 0;
-			branchatom.quantifier.set(1, 0);
-			piece.insert(0, branchatom);
-			++prevbranch_end;
+			branchstate.char_num = epsilon_type::et_ncgopen;
+			branchstate.next1 = 1;
+			branchstate.next2 = 0;
+			branchstate.quantifier.set(1, 0);
+			piece.insert(0, branchstate);
 
-			branchatom.character = char_other::co_smcln;	//  ';'
-			branchatom.quantifier.atmost = 1;
-			piece.push_back(branchatom);
+			branchstate.char_num = epsilon_type::et_ncgclose;
+			branchstate.quantifier.atmost = 1;
+			piece.push_back(branchstate);
 
-			optimise_pos(piece, branchatom, has_empty);
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+			reorder_piece(piece);
+#endif
 
 		}
-		return ccatom.number;
-	}
-
-	void optimise_pos(state_array &piece, state_type &branchatom, const bool has_empty) const
-	{
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
-
-		simple_array<uchar32> ins_bt;
-
-		branchatom.number = 0u;
-		branchatom.next1 = 0;
-
-		for (state_size_type srcbase = 1; srcbase < piece.size();)
-		{
-			state_type &srcbaseatom = piece[srcbase];
-
-			if (srcbaseatom.is_branch())
-			{
-				if (srcbaseatom.quantifier.atleast == 1)
-				{
-					break;
-				}
-
-				const state_size_type dstbaseinit = srcbase + srcbaseatom.next2;
-				const uint_l32 srcseqlen = srcbaseatom.quantifier.atleast;
-
-				for (uint_l32 complen = srcseqlen; complen;)
-				{
-					state_size_type dstbase = dstbaseinit;
-					bool modified = false;
-
-					--complen;
-
-					for (;;)
-					{
-						state_type &dstbaseatom = piece[dstbase];
-						const uint_l32 dstseqlen = dstbaseatom.quantifier.atleast;
-						state_size_type dstpos = dstbase + (dstbaseatom.type == st_epsilon ? 1 : 0);
-
-						if (piece[dstpos].type == st_character_class)
-						{
-							branchatom.next2 = static_cast<std::ptrdiff_t>(dstbase);
-							break;
-						}
-
-						if (dstseqlen >= complen)
-						{
-							state_size_type srcpos = srcbase + 1;
-
-							for (uint_l32 i = 0;; ++i)
-							{
-								state_type &srcref = piece[srcpos];
-								state_type &dstref = piece[dstpos];
-
-								if (i == complen)
-								{
-									if (dstref.type == st_epsilon)
-									{
-										if (complen)
-										{
-											uint_l32 inspos = static_cast<uint_l32>(ins_bt.size());
-
-											for (; !piece[srcpos].quantifier.is_greedy;)
-												srcpos = piece[srcpos].quantifier.atmost;
-
-											for (; inspos >= 2 && (ins_bt[inspos - 2] > srcpos);)
-											{
-												inspos -= 2;
-											}
-
-											ins_bt.insert(inspos, static_cast<uchar32>(dstpos));
-											ins_bt.insert(inspos, static_cast<uchar32>(srcpos));
-										}
-										break;
-									}
-									else if (dstref.type == st_character && srcref.character != dstref.character)
-									{
-										if (dstref.quantifier.is_greedy)
-										{
-											piece[srcpos].next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
-											dstref.quantifier.is_greedy = false;
-											dstref.quantifier.atmost = static_cast<uint_l32>(srcpos);
-										}
-										modified = true;
-									}
-
-									break;
-								}
-								else if (srcref.character == dstref.character && dstref.type == st_character)
-								{
-									++srcpos;
-									++dstpos;
-								}
-								else
-									break;
-							}
-
-							if (modified)
-								break;
-
-							if (dstbaseatom.type == st_epsilon && dstbaseatom.next2)
-							{
-								dstbase += dstbaseatom.next2;
-							}
-							else
-							{
-								break;
-							}
-						}
-						else
-							break;
-					}
-				}
-
-				if (branchatom.number == 0)
-				{
-					branchatom.next1 = static_cast<std::ptrdiff_t>(srcbase);
-				}
-				else
-				{
-					srcbaseatom.next2 = 0;
-					srcbaseatom.character = char_alnum::ch_s;
-				}
-
-				srcbase = dstbaseinit;
-
-				++branchatom.number;
-			}
-			else
-				break;
-//				++srcbase;
-		}
-
-		if (branchatom.next2 == 0)
-			++branchatom.next2;
-
-		if (branchatom.next1 != 0)
-			piece[branchatom.next1].next2 = static_cast<std::ptrdiff_t>(branchatom.next2 - branchatom.next1);
-
-		if (has_empty)
-		{
-			piece[branchatom.next2].next2 = 0;
-			piece[branchatom.next2 + 1].next2 = 1;
-		}
-
-#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
-	}
-
-	void insert_btbranch(state_array &piece, const simple_array<uchar32> &ins_bt) const
-	{
-		state_type insstate;
-		simple_array<uchar32> reordering1;
-		simple_array<uchar32> reordering2;
-		uchar32 offset = 0;
-		uint_l32 chainindex = 0;
-
-		insstate.reset();
-		insstate.type = st_epsilon;
-		insstate.character = meta_char::mc_bar;
-
-		reordering1.resize(piece.size() + 1);
-		reordering2.resize(piece.size() + 1);
-
-		for (uchar32 indx = 0; indx <= piece.size(); ++indx)
-		{
-			reordering1[indx] = indx + offset;
-
-			if (chainindex < static_cast<uint_l32>(ins_bt.size()))
-			{
-				if (indx == ins_bt[chainindex])
-				{
-					++offset;
-					chainindex += 2;
-				}
-			}
-			reordering2[indx] = indx + offset;
-		}
-
-		for (state_size_type indx = 0; indx < piece.size(); ++indx)
-		{
-			state_type &st = piece[indx];
-
-			if (st.next1 != 0)
-			{
-				const uchar32 newn1 = reordering1[indx + st.next1];
-				st.next1 = static_cast<std::ptrdiff_t>(newn1 - reordering2[indx]);
-			}
-
-			if (st.next2 != 0)
-			{
-				const uchar32 newn2 = reordering1[indx + st.next2];
-				st.next2 = static_cast<std::ptrdiff_t>(newn2 - reordering2[indx]);
-			}
-		}
-
-		for (uint_l32 indx = 0; indx < static_cast<uint_l32>(ins_bt.size());)
-		{
-			const uchar32 srcpos = reordering1[ins_bt[indx++]];
-			const uchar32 dstpos = reordering1[ins_bt[indx++]];
-
-			piece.insert(srcpos, insstate);
-			state_type &insst = piece[srcpos];
-			insst.next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
-		}
+		return castate.char_num;
 	}
 
 #endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool get_quantifier(re_quantifier &quantifier, const uchar32 *&curpos, const uchar32 *const end)
+	bool get_quantifier(re_quantifier &quantifier, const ui_l32 *&curpos, const ui_l32 *const end)
 	{
 		switch (*curpos)
 		{
@@ -18695,19 +19028,19 @@ private:
 
 		if (++curpos != end && *curpos == meta_char::mc_query)	//  '?'
 		{
-			quantifier.is_greedy = false;
+			quantifier.is_greedy = 0u;
 			++curpos;
 		}
 		return true;
 	}
 
-	void get_brace_with_quantifier(re_quantifier &quantifier, const uchar32 *&curpos, const uchar32 *const end)
+	void get_brace_with_quantifier(re_quantifier &quantifier, const ui_l32 *&curpos, const ui_l32 *const end)
 	{
 		++curpos;
 
-		quantifier.atleast = static_cast<uint_l32>(translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value));
+		quantifier.atleast = static_cast<ui_l32>(translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value));
 
-		if (quantifier.atleast == static_cast<uint_l32>(constants::invalid_u32value))
+		if (quantifier.atleast == static_cast<ui_l32>(constants::invalid_u32value))
 			goto THROW_ERROR_BRACE;
 
 		if (curpos == end)
@@ -18717,9 +19050,9 @@ private:
 		{
 			++curpos;
 
-			quantifier.atmost = static_cast<uint_l32>(translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value));
+			quantifier.atmost = static_cast<ui_l32>(translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value));
 
-			if (quantifier.atmost == static_cast<uint_l32>(constants::invalid_u32value))
+			if (quantifier.atmost == static_cast<ui_l32>(constants::invalid_u32value))
 				quantifier.set_infinity();
 
 			if (!quantifier.is_valid())
@@ -18736,10 +19069,10 @@ private:
 		//  *curpos == '}'
 	}
 
-	uchar32 translate_numbers(const uchar32 *&curpos, const uchar32 *const end, const int radix, const std::size_t minsize, const std::size_t maxsize, const uchar32 maxvalue) const
+	ui_l32 translate_numbers(const ui_l32 *&curpos, const ui_l32 *const end, const int radix, const std::size_t minsize, const std::size_t maxsize, const ui_l32 maxvalue) const
 	{
 		std::size_t count = 0;
-		uchar32 u32value = 0;
+		ui_l32 u32value = 0;
 		int num;
 
 		for (; maxsize == 0 || count < maxsize; ++curpos, ++count)
@@ -18748,7 +19081,7 @@ private:
 			if (curpos == end || (num = tonumber(*curpos, radix)) == -1)
 				break;
 
-			const uchar32 nextvalue = u32value * radix + num;
+			const ui_l32 nextvalue = u32value * radix + num;
 
 			if ((/* maxvalue != 0 && */ nextvalue > maxvalue) || nextvalue < u32value)
 				break;
@@ -18762,7 +19095,7 @@ private:
 		return constants::invalid_u32value;
 	}
 
-	int tonumber(const uchar32 ch, const int radix) const
+	int tonumber(const ui_l32 ch, const int radix) const
 	{
 		if ((ch >= char_alnum::ch_0 && ch <= char_alnum::ch_7) || (radix >= 10 && (ch == char_alnum::ch_8 || ch == char_alnum::ch_9)))
 			return static_cast<int>(ch - char_alnum::ch_0);
@@ -18778,7 +19111,7 @@ private:
 		return -1;
 	}
 
-	bool check_backreferences(cstate_type &cstate)
+	bool check_backreferences(cvars_type &cvars)
 	{
 		for (state_size_type backrefpos = 1; backrefpos < this->NFA_states.size(); ++backrefpos)
 		{
@@ -18786,30 +19119,30 @@ private:
 
 			if (brs.type == st_backreference)
 			{
-				const uint_l32 &backrefno = brs.number;
+				const ui_l32 &backrefno = brs.char_num;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-				if (!brs.quantifier.backrefno_resolved)
+				if (brs.icase_backrefno_unresolved & 2u)
 				{
-					if (backrefno >= cstate.unresolved_gnames.size())
+					if (backrefno >= cvars.unresolved_gnames.size())
 						return false;	//  Internal error.
 
-					brs.number = this->namedcaptures[cstate.unresolved_gnames[backrefno]];
+					brs.char_num = this->namedcaptures[cvars.unresolved_gnames[backrefno]];
 
 					if (backrefno == groupname_mapper<charT>::notfound)
 						return false;
 
-					brs.quantifier.backrefno_resolved = true;
+					brs.icase_backrefno_unresolved &= ~2u;
 				}
 #endif
 
-				for (typename state_array::size_type roundbracket_closepos = 0;; ++roundbracket_closepos)
+				for (state_size_type roundbracket_closepos = 0;; ++roundbracket_closepos)
 				{
 					if (roundbracket_closepos < this->NFA_states.size())
 					{
 						const state_type &rbcs = this->NFA_states[roundbracket_closepos];
 
-						if (rbcs.type == st_roundbracket_close && rbcs.number == backrefno)
+						if (rbcs.type == st_roundbracket_close && rbcs.char_num == backrefno)
 						{
 							if (roundbracket_closepos > backrefpos)
 							{
@@ -18826,7 +19159,7 @@ private:
 
 								brs.type = st_epsilon;
 								brs.next2 = 0;
-								brs.character = meta_char::mc_escape;
+								brs.char_num = epsilon_type::et_fmrbckrf;
 							}
 							break;
 						}
@@ -18849,7 +19182,7 @@ private:
 		range_pairs &fcc = this->firstchar_class;
 #endif
 
-		const bool canbe0length = gather_nextchars(fcc, static_cast<typename state_array::size_type>(this->NFA_states[0].next1), 0u, false);
+		const bool canbe0length = gather_nextchars(fcc, static_cast<state_size_type>(this->NFA_states[0].next1), 0u, false);
 
 		if (canbe0length)
 		{
@@ -18871,7 +19204,7 @@ private:
 	void set_bitset_table(const range_pairs &fcc)
 	{
 #if !defined(SRELLDBG_NO_SCFINDER)
-		uchar32 entrychar = constants::max_u32value;
+		ui_l32 entrychar = constants::max_u32value;
 #endif
 
 		for (typename range_pairs::size_type i = 0; i < fcc.size(); ++i)
@@ -18879,7 +19212,7 @@ private:
 			const range_pair &range = fcc[i];
 
 #if 0
-			uchar32 second = range.second <= constants::unicode_max_codepoint ? range.second : constants::unicode_max_codepoint;
+			ui_l32 second = range.second <= constants::unicode_max_codepoint ? range.second : constants::unicode_max_codepoint;
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400
 #pragma warning(push)
@@ -18899,9 +19232,9 @@ private:
 			this->firstchar_class_bs.set_range(utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask, utf_traits::firstcodeunit(second) & utf_traits::bitsetmask);
 
 #else
-			for (uchar32 ucp = range.first; ucp <= constants::unicode_max_codepoint; ++ucp)
+			for (ui_l32 ucp = range.first; ucp <= utf_traits::maxcpvalue; ++ucp)
 			{
-				const uchar32 firstcu = utf_traits::firstcodeunit(ucp) & utf_traits::bitsetmask;
+				const ui_l32 firstcu = utf_traits::firstcodeunit(ucp) & utf_traits::bitsetmask;
 
 #if !defined(SRELLDBG_NO_BITSET)
 				this->firstchar_class_bs.set(firstcu);
@@ -18925,13 +19258,13 @@ private:
 #endif
 		}
 #if !defined(SRELLDBG_NO_SCFINDER)
-		this->NFA_states[0].character = entrychar;
+		this->NFA_states[0].char_num = entrychar;
 #endif
 	}
 #endif	//  !defined(SRELLDBG_NO_BITSET) || !defined(SRELLDBG_NO_SCFINDER)
 #endif	//  !defined(SRELLDBG_NO_1STCHRCLS)
 
-	bool gather_nextchars(range_pairs &nextcharclass, typename state_array::size_type pos, simple_array<bool> &checked, const uint_l32 bracket_number, const bool subsequent) const
+	bool gather_nextchars(range_pairs &nextcharclass, state_size_type pos, simple_array<bool> &checked, const ui_l32 bracket_number, const bool subsequent) const
 	{
 		bool canbe0length = false;
 
@@ -18948,7 +19281,7 @@ private:
 					&& (state.type != st_check_counter || !state.quantifier.is_greedy || state.quantifier.atleast == 0)
 					&& (state.type != st_save_and_reset_counter)
 					&& (state.type != st_roundbracket_open)
-					&& (state.type != st_roundbracket_close || state.number != bracket_number)
+					&& (state.type != st_roundbracket_close || state.char_num != bracket_number)
 					&& (state.type != st_repeat_in_push)
 					&& (state.type != st_backreference || (state.next1 != state.next2))
 					&& (state.type != st_lookaround_open))
@@ -18960,27 +19293,27 @@ private:
 			case st_character:
 				if (!this->is_ricase())
 				{
-					nextcharclass.join(range_pair_helper(state.character));
+					nextcharclass.join(range_pair_helper(state.char_num));
 				}
 				else
 				{
-					uchar32 table[ucf_constants::rev_maxset] = {};
-					const uint_l32 setnum = unicode_case_folding::do_caseunfolding(table, state.character);
+					ui_l32 table[ucf_constants::rev_maxset] = {};
+					const ui_l32 setnum = unicode_case_folding::do_caseunfolding(table, state.char_num);
 
-					for (uint_l32 j = 0; j < setnum; ++j)
+					for (ui_l32 j = 0; j < setnum; ++j)
 						nextcharclass.join(range_pair_helper(table[j]));
 				}
 				return canbe0length;
 
 			case st_character_class:
-				nextcharclass.merge(this->character_class[state.number]);
+				nextcharclass.merge(this->character_class[state.char_num]);
 				return canbe0length;
 
 			case st_backreference:
 				{
-					const typename state_array::size_type nextpos = find_next1_of_bracketopen(state.number);
+					const state_size_type nextpos = find_next1_of_bracketopen(state.char_num);
 
-					gather_nextchars(nextcharclass, nextpos, state.number, subsequent);
+					gather_nextchars(nextcharclass, nextpos, state.char_num, subsequent);
 				}
 				break;
 
@@ -19009,7 +19342,7 @@ private:
 				break;
 
 			case st_roundbracket_close:
-				if (/* bracket_number == 0 || */ state.number != bracket_number)
+				if (/* bracket_number == 0 || */ state.char_num != bracket_number)
 					break;
 				//@fallthrough@
 
@@ -19032,7 +19365,7 @@ private:
 		return canbe0length;
 	}
 
-	bool gather_nextchars(range_pairs &nextcharclass, const typename state_array::size_type pos, const uint_l32 bracket_number, const bool subsequent) const
+	bool gather_nextchars(range_pairs &nextcharclass, const state_size_type pos, const ui_l32 bracket_number, const bool subsequent) const
 	{
 		simple_array<bool> checked;
 
@@ -19040,13 +19373,13 @@ private:
 		return gather_nextchars(nextcharclass, pos, checked, bracket_number, subsequent);
 	}
 
-	typename state_array::size_type find_next1_of_bracketopen(const uint_l32 bracketno) const
+	state_size_type find_next1_of_bracketopen(const ui_l32 bracketno) const
 	{
-		for (typename state_array::size_type no = 0; no < this->NFA_states.size(); ++no)
+		for (state_size_type no = 0; no < this->NFA_states.size(); ++no)
 		{
 			const state_type &state = this->NFA_states[no];
 
-			if (state.type == st_roundbracket_open && state.number == bracketno)
+			if (state.type == st_roundbracket_open && state.char_num == bracketno)
 				return no + state.next1;
 		}
 		return 0;
@@ -19054,7 +19387,7 @@ private:
 
 	void relativejump_to_absolutejump()
 	{
-		for (typename state_array::size_type pos = 0; pos < this->NFA_states.size(); ++pos)
+		for (state_size_type pos = 0; pos < this->NFA_states.size(); ++pos)
 		{
 			state_type &state = this->NFA_states[pos];
 
@@ -19076,12 +19409,12 @@ private:
 
 	void optimise()
 	{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-		find_entrypoint();
+#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
+		branch_optimisation2();
 #endif
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_ASTERISK_OPT)
-		branch_optimisation2();
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+		find_entrypoint();
 #endif
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
@@ -19109,7 +19442,7 @@ private:
 
 	void skip_epsilon()
 	{
-		for (typename state_array::size_type pos = 0; pos < this->NFA_states.size(); ++pos)
+		for (state_size_type pos = 0; pos < this->NFA_states.size(); ++pos)
 		{
 			state_type &state = this->NFA_states[pos];
 
@@ -19121,7 +19454,7 @@ private:
 		}
 	}
 
-	typename state_array::size_type skip_nonbranch_epsilon(typename state_array::size_type pos) const
+	state_size_type skip_nonbranch_epsilon(state_size_type pos) const
 	{
 		for (;;)
 		{
@@ -19151,7 +19484,7 @@ private:
 			{
 			case st_character:
 			case st_character_class:
-				if (this->NFA_states[pos - 1].is_question_or_asterisk())
+				if (this->NFA_states[pos - 1].is_question_or_asterisk_before_corcc())
 				{
 					state_type &estate = this->NFA_states[pos - 1];
 					const state_size_type nextno = pos + estate.farnext() - 1;
@@ -19159,20 +19492,16 @@ private:
 					if (is_exclusive_sequence(estate.quantifier, pos, nextno))
 					{
 						state_type &estate2 = this->NFA_states[pos - 1];
-						state_type &cstate2 = this->NFA_states[pos];
+						state_type &corccstate = this->NFA_states[pos];
 
 						estate2.next1 = 1;
 						estate2.next2 = 0;
-						estate2.character = char_ctrl::cc_nul;
-						if (estate2.quantifier.is_infinity())
-						{
-							cstate2.next1 = 0;
-							cstate2.next2 = nextno - pos;
-						}
-						else	//  ? or {0,1}
-						{
-							cstate2.next2 = nextno - pos;
-						}
+						estate2.char_num = char_ctrl::cc_nul;
+
+						if (corccstate.next1 < 0)
+							corccstate.next1 = 0;
+
+						corccstate.next2 = nextno - pos;
 					}
 				}
 				continue;
@@ -19190,11 +19519,11 @@ private:
 
 		if (curstate.type == st_character)
 		{
-			curchar_class.join(range_pair_helper(curstate.character));
+			curchar_class.join(range_pair_helper(curstate.char_num));
 		}
 		else if (curstate.type == st_character_class)
 		{
-			curchar_class = this->character_class[curstate.number];
+			curchar_class = this->character_class[curstate.char_num];
 			if (curchar_class.size() == 0)	//  Means [], which always makes matching fail.
 				return true;	//  For preventing the automaton from pushing bt data.
 		}
@@ -19224,11 +19553,11 @@ private:
 					{
 						state_type &curstate2 = this->NFA_states[curno];
 
-						curstate2.character = kept.consists_of_one_character(this->is_icase());
-						if (curstate2.character != constants::invalid_u32value)
+						curstate2.char_num = kept.consists_of_one_character(this->is_icase());
+						if (curstate2.char_num != constants::invalid_u32value)
 							curstate2.type = st_character;
 						else
-							curstate2.number = this->character_class.register_newclass(kept);
+							curstate2.char_num = this->character_class.register_newclass(kept);
 					}
 					const re_quantifier backupeq(eq);
 
@@ -19236,9 +19565,7 @@ private:
 					state_type &n0 = this->NFA_states[nextno];
 					state_type &n1 = this->NFA_states[nextno + 1];
 
-					n0.reset();
-					n0.type = st_epsilon;
-					n0.character = meta_char::mc_astrsk;
+					n0.reset(st_epsilon, epsilon_type::et_ccastrsk);
 					n0.quantifier = backupeq;
 //					n0.next2 = 1;
 					n0.next2 = 2;
@@ -19248,14 +19575,12 @@ private:
 						n0.next2 = 1;
 					}
 
-					n1.reset();
-					n1.type = st_character_class;
+					n1.reset(st_character_class, removed.consists_of_one_character(this->is_icase()));
 
-					n1.character = removed.consists_of_one_character(this->is_icase());
-					if (n1.character != constants::invalid_u32value)
+					if (n1.char_num != constants::invalid_u32value)
 						n1.type = st_character;
 					else
-						n1.number = this->character_class.register_newclass(removed);
+						n1.char_num = this->character_class.register_newclass(removed);
 
 					n1.next1 = -2;
 //					n1.next2 = 0;
@@ -19275,13 +19600,13 @@ private:
 		else if (/* nextchar_class.size() == 0 && */ (!canbe0length || only_success_left(nextno)))
 		{
 			//  (size() == 0 && !canbe0length) means [].
-			return eq.is_greedy;
+			return eq.is_greedy ? true : false;
 		}
 
 		return false;
 	}
 
-	bool only_success_left(typename state_array::size_type pos) const
+	bool only_success_left(state_size_type pos) const
 	{
 		for (;;)
 		{
@@ -19317,11 +19642,11 @@ private:
 	}
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 
-	void insert_at(const typename state_array::size_type pos, const std::ptrdiff_t len)
+	void insert_at(const state_size_type pos, const std::ptrdiff_t len)
 	{
 		state_type newstate;
 
-		for (typename state_array::size_type cur = 0; cur < pos; ++cur)
+		for (state_size_type cur = 0; cur < pos; ++cur)
 		{
 			state_type &state = this->NFA_states[cur];
 
@@ -19332,7 +19657,7 @@ private:
 				state.next2 += len;
 		}
 
-		for (typename state_array::size_type cur = pos; cur < this->NFA_states.size(); ++cur)
+		for (state_size_type cur = pos; cur < this->NFA_states.size(); ++cur)
 		{
 			state_type &state = this->NFA_states[cur];
 
@@ -19343,26 +19668,77 @@ private:
 				state.next2 -= len;
 		}
 
-		newstate.reset();
-		newstate.type = st_epsilon;
+		newstate.reset(st_epsilon);
 		for (std::ptrdiff_t count = 0; count < len; ++count)
 			this->NFA_states.insert(pos, newstate);
 	}
 
-	bool check_if_backref_used(state_size_type pos, const uint_l32 number) const
+#if !defined(SRELLDBG_NO_STATEHOOK)
+
+	void reorder_piece(state_array &piece) const
+	{
+		simple_array<ui_l32> newpos;
+		ui_l32 offset = 0;
+
+		newpos.resize(piece.size() + 1, 0);
+
+		for (ui_l32 indx = 0; indx <= piece.size(); ++indx)
+		{
+			if (newpos[indx] == 0)
+			{
+				newpos[indx] = indx + offset;
+
+				state_type &st = piece[indx];
+
+				if (st.type == st_epsilon && st.char_num == epsilon_type::et_hooked)
+				{
+					st.char_num = epsilon_type::et_alt;
+					++offset;
+					newpos[indx + st.next1] = indx + offset;
+				}
+			}
+			else
+				--offset;
+		}
+
+		for (state_size_type indx = 0; indx < piece.size(); ++indx)
+		{
+			state_type &st = piece[indx];
+
+			if (st.next1 != 0)
+			{
+				const ui_l32 newn1abs = newpos[indx + st.next1];
+				st.next1 = static_cast<std::ptrdiff_t>(newn1abs - newpos[indx]);
+			}
+
+			if (st.next2 != 0)
+			{
+				const ui_l32 newn2abs = newpos[indx + st.next2];
+				st.next2 = static_cast<std::ptrdiff_t>(newn2abs - newpos[indx]);
+			}
+		}
+
+		state_array newpiece(piece.size());
+
+		for (state_size_type indx = 0; indx < piece.size(); newpiece[newpos[indx]] = piece[indx], ++indx);
+
+		newpiece.swap(piece);
+
+	}
+
+#endif	//  !defined(SRELLDBG_NO_STATEHOOK)
+
+	bool check_if_backref_used(state_size_type pos, const ui_l32 number) const
 	{
 		for (; pos < this->NFA_states.size(); ++pos)
 		{
 			const state_type &state = this->NFA_states[pos];
 
-			if (state.type == st_backreference && state.number == number)
+			if (state.type == st_backreference && state.char_num == number)
 				return true;
 		}
 		return false;
 	}
-
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
-#endif	//  !defined(SRELLDBG_NO_NEXTPOS_OPT)
 
 #if !defined(SRELLDBG_NO_BRANCH_OPT) || !defined(SRELLDBG_NO_BRANCH_OPT2)
 
@@ -19374,12 +19750,12 @@ private:
 
 			if (curstate.type == st_character && curstate.next2 == 0)
 			{
-				charclass.set_solerange(range_pair_helper(curstate.character));
+				charclass.set_solerange(range_pair_helper(curstate.char_num));
 				return pos;
 			}
 			else if (curstate.type == st_character_class && curstate.next2 == 0)
 			{
-				charclass = this->character_class[curstate.number];
+				charclass = this->character_class[curstate.char_num];
 				return pos;
 			}
 			else if (curstate.type == st_epsilon && curstate.next2 == 0 && !strictly)
@@ -19405,7 +19781,7 @@ private:
 
 			if (state.is_branch())
 			{
-				const typename state_array::size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1, false);
+				const state_size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1, false);
 
 				if (nextcharpos)
 				{
@@ -19419,6 +19795,7 @@ private:
 
 						next1.next2 = pos + branch.next2 - nextcharpos;
 						branch.next2 = 0;
+						branch.char_num = epsilon_type::et_bo1fmrbr;
 					}
 				}
 			}
@@ -19427,33 +19804,33 @@ private:
 #endif	//  !defined(SRELLDBG_NO_BRANCH_OPT)
 
 #if !defined(SRELL_NO_ICASE)
-	bool check_if_really_needs_icase_search()
+	ui_l32 check_if_really_needs_icase_search()
 	{
-		for (typename state_array::size_type i = 0; i < this->NFA_states.size(); ++i)
+		for (state_size_type i = 0; i < this->NFA_states.size(); ++i)
 		{
 			const state_type &state = this->NFA_states[i];
 
 			if (state.type == st_character)
 			{
-				if (unicode_case_folding::count_caseunfolding(state.character) > 1)
-					return true;
+				if (unicode_case_folding::count_caseunfolding(state.char_num) > 1)
+					return 1u;
 			}
 		}
-		return false;
+		return 0u;
 	}
 #endif	//  !defined(SRELL_NO_ICASE)
 
 #if !defined(SRELLDBG_NO_BMH)
 	void setup_bmhdata()
 	{
-		simple_array<uchar32> u32s;
+		simple_array<ui_l32> u32s;
 
-		for (typename state_array::size_type i = 1; i < this->NFA_states.size(); ++i)
+		for (state_size_type i = 1; i < this->NFA_states.size(); ++i)
 		{
 			const state_type &state = this->NFA_states[i];
 
 			if (state.type == st_character)
-				u32s.push_backncr(state.character);
+				u32s.push_backncr(state.char_num);
 			else
 			{
 				u32s.clear();
@@ -19484,20 +19861,20 @@ private:
 	void set_charclass_posinfo()
 	{
 		this->character_class.finalise();
-		for (typename state_array::size_type i = 1; i < this->NFA_states.size(); ++i)
+		for (state_size_type i = 1; i < this->NFA_states.size(); ++i)
 		{
 			state_type &state = this->NFA_states[i];
 
 			if (state.type == st_character_class || state.type == st_bol || state.type == st_eol || state.type == st_boundary)
 			{
-				const range_pair &posinfo = this->character_class.charclasspos(state.number);
-				state.quantifier.setccpos(posinfo.first, posinfo.second);
+				const range_pair &posinfo = this->character_class.charclasspos(state.char_num);
+				state.quantifier.set(posinfo.first, posinfo.second);
 			}
 		}
 	}
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT2)
+#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
 
 	void branch_optimisation2()
 	{
@@ -19508,7 +19885,7 @@ private:
 		{
 			const state_type &curstate = this->NFA_states[pos];
 
-			if (curstate.is_branch())
+			if (curstate.type == st_epsilon && curstate.next2 != 0 && (curstate.char_num == epsilon_type::et_alt || curstate.char_num == epsilon_type::et_hooked))	//  '|' or 'h'
 			{
 				const state_size_type next1pos = pos + curstate.next1;
 				state_size_type precharchainpos = pos;
@@ -19524,9 +19901,13 @@ private:
 						state_type &nstate2 = this->NFA_states[next2pos];
 						state_size_type next2next2pos = 0;
 
-						if (nstate2.is_branch())
+						if (nstate2.type == st_epsilon)
 						{
-							next2next2pos = next2pos + nstate2.next2;
+							if (nstate2.next2 != 0)
+							{
+								if (nstate2.char_num == epsilon_type::et_alt || nstate2.char_num == epsilon_type::et_hooked)	//  '|', 'h'
+									next2next2pos = next2pos + nstate2.next2;
+							}
 							next2next1pos += nstate2.next1;
 						}
 
@@ -19538,49 +19919,33 @@ private:
 							{
 								if (next2next2pos)	//  if (nstate2.is_branch())
 								{
-									nstate2.reset();
-									nstate2.type = st_epsilon;
+									nstate2.next2 = 0;
+									nstate2.char_num = epsilon_type::et_bo2skpd;	//  '!'
 								}
 
-								if (postcharchainpos == 0)
-								{
-									postcharchainpos = next1pos + 1;
-									insert_at(postcharchainpos, 1);
-									this->NFA_states[next1pos].next1 = 1;
-								}
-								else
-								{
-									const state_size_type prevbranchpos = postcharchainpos;
+								const state_size_type next2next1next1pos = next2next1pos + this->NFA_states[next2next1pos].next1;
+								state_type &becomes_unused = this->NFA_states[next2next1pos];
 
-									postcharchainpos = prevbranchpos + this->NFA_states[prevbranchpos].next2;
-									insert_at(postcharchainpos, 1);
-									this->NFA_states[prevbranchpos].next2 = postcharchainpos - prevbranchpos;
-									//  Fix for bug210423. This line cannot be omitted, because
-									//  NFA_states[prevbranchpos].next2 has been incremented in insert_at().
-								}
+								postcharchainpos = postcharchainpos == 0
+									? next1pos + this->NFA_states[next1pos].next1
+									: postcharchainpos + this->NFA_states[postcharchainpos].next2;
 
-//								if (next2next1pos >= postcharchainpos)
-								++next2next1pos;
+								state_type &becomes_branch = this->NFA_states[postcharchainpos];
 
-								if (precharchainpos >= postcharchainpos)
-									++precharchainpos;
+								becomes_unused = becomes_branch;
+
+								becomes_unused.next1 = postcharchainpos + becomes_branch.next1 - next2next1pos;
+								becomes_unused.next2 = becomes_unused.next2 ? (postcharchainpos + becomes_branch.next2 - next2next1pos) : 0;
+
+								becomes_branch.reset(st_epsilon, epsilon_type::et_hooked);
+								becomes_branch.next1 = next2next1pos - postcharchainpos;
+								becomes_branch.next2 = next2next1next1pos - postcharchainpos;
 
 								state_type &prechainbranchpoint = this->NFA_states[precharchainpos];
-								if (next2next2pos)
-								{
-//									if (next2next2pos >= postcharchainpos)
-									++next2next2pos;
-									prechainbranchpoint.next2 = next2next2pos - precharchainpos;
-								}
-								else
-								{
-									prechainbranchpoint.next2 = 0;
-								}
 
-								state_type &newbranchpoint = this->NFA_states[postcharchainpos];
-								newbranchpoint.character = meta_char::mc_bar;
-//								newbranchpoint.next1 = 1;
-								newbranchpoint.next2 = next2next1pos + this->NFA_states[next2next1pos].next1 - postcharchainpos;
+								prechainbranchpoint.next2 = next2next2pos
+									? next2next2pos - precharchainpos
+									: (prechainbranchpoint.char_num = epsilon_type::et_bo2fmrbr, 0);	//  '2'
 							}
 							else if (relation == 1)
 							{
@@ -19606,22 +19971,28 @@ private:
 				}
 			}
 		}
+
+		reorder_piece(this->NFA_states);
 	}
-#endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2)
+#endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
 
 	void find_entrypoint()
 	{
-		if (find_singlechar_ep(1u, false))
+		if (find_singlechar_ep(1u))
 			return;
 
 		find_better_ep(1u);
 	}
 
-	bool find_singlechar_ep(state_size_type cur, const bool contiguous)
+	bool find_singlechar_ep(state_size_type cur)
 	{
-		bool firstchar = !contiguous ? true : false;
+		state_size_type curatompos = 0;
+		state_size_type singlecharpos = 0;
+		state_size_type seqpos = 0;
+		ui_l32 prevchar = constants::invalid_u32value;
+		ui_l32 charcount = 0;
 		bool needs_rerun = false;
 
 		for (; cur < this->NFA_states.size(); ++cur)
@@ -19631,180 +20002,213 @@ private:
 			switch (state.type)
 			{
 			case st_character:
-				if (firstchar)
-				{
-					return true;
-				}
+				curatompos = cur;
+				ST_CHARACTER:
+				if (prevchar != constants::invalid_u32value)
+					seqpos = curatompos;
 
-				if (cur + 1 < this->NFA_states.size())
-				{
-					const state_type &nextstate = this->NFA_states[cur + 1];
-
-					if (nextstate.type == st_character)
-						++cur;
-					else
-					{
-						if (find_singlechar_ep(cur + 1, true))
-							return true;
-						if (contiguous)
-							return false;
-					}
-				}
-				create_rewinder(cur, needs_rerun);
-				return true;
+				singlecharpos = curatompos;
+				++charcount;
+				prevchar = this->NFA_states[cur].char_num;
+				continue;
 
 			case st_character_class:
-				firstchar = false;
+				prevchar = constants::invalid_u32value;
 				continue;
 
 			case st_epsilon:
-				if (state.next2 != 0)
+				if (state.next2 == 0)
 				{
-					if (state.character == meta_char::mc_astrsk)
+					if (state.char_num == epsilon_type::et_jmpinlp)
 					{
-						needs_rerun = true;
-						cur += state.farnext() - 1;
-						firstchar = false;
-						continue;
-					}
-					else if (state.character == 0u)
-					{
-						++cur;
-						if (is_reversible_atom(cur))
+						const state_size_type rapos = cur + state.next1;
+						const state_type &repatom = this->NFA_states[rapos];
+
+						if (repatom.type == st_character)
 						{
-							firstchar = false;
+							curatompos = cur;
+							cur = rapos;
 							needs_rerun = true;
-							continue;
+							goto ST_CHARACTER;
 						}
+						prevchar = constants::invalid_u32value;
+						cur = rapos - 1;
 					}
-					return false;
+					continue;
 				}
-				continue;
 
-			case st_save_and_reset_counter:
-				cur += 5;
-				if (cur < this->NFA_states.size())
+				if ((state.char_num == epsilon_type::et_ccastrsk)
+					|| ((state.char_num == epsilon_type::et_default)
+						&& (is_reversible_atom(cur + state.nearnext(), true))))
 				{
-					const state_type &ccatom = this->NFA_states[cur];
-
-					if (ccatom.is_character_or_class())
-					{
-						if (!state.quantifier.is_same())
-							needs_rerun = true;
-
-						firstchar = false;
-						continue;;
-					}
-					if (is_reversible_atom(cur))
-					{
-						firstchar = false;
-						needs_rerun = true;
-						continue;
-					}
+					cur += state.farnext() - 1;
+					needs_rerun = true;
+					prevchar = constants::invalid_u32value;
+					continue;
 				}
-				return false;
-
-			case st_repeat_in_push:
-			case st_backreference:
-			case st_lookaround_open:
-				return false;
+				break;
 
 			case st_check_counter:
-			case st_decrement_counter:
-			case st_restore_counter:
-			case st_repeat_in_pop:
+				{
+					const state_size_type rapos = cur + 3;
+					const state_type &repatom = this->NFA_states[rapos];
+
+					if (repatom.type == st_character)
+					{
+						curatompos = cur;
+						cur = rapos;
+						needs_rerun = state.quantifier.is_same();
+						goto ST_CHARACTER;
+					}
+
+					if (is_reversible_atom(rapos, state.quantifier.atleast == 0))
+					{
+						cur = cur + state.farnext() - 1;
+						needs_rerun = true;
+						prevchar = constants::invalid_u32value;
+						continue;
+					}
+				}
+				break;
+
+			case st_save_and_reset_counter:
+			case st_repeat_in_push:
+				cur += state.next1 - 1;
+				continue;
+
 			case st_check_0_width_repeat:
-				return false;	//  NFA_states broken.
+				cur += state.next2 - 1;
+				continue;
+
+			case st_backreference:
+			case st_lookaround_open:
+				break;	//  Gives up.
+
+			case st_restore_counter:
+			case st_decrement_counter:
+			case st_repeat_in_pop:
+				break;	//  NFA_states broken.
 
 			case st_roundbracket_open:
-				if (check_if_backref_used(cur + 1, state.number))
-				{
-					return false;
-				}
-				needs_rerun = true;
-				//@fallthrough@
+				if (check_if_backref_used(cur + 1, state.char_num))
+					break;
 
-			default:;
+				needs_rerun = true;
+				continue;
+
+			default:
+				continue;
 			}
+			break;
 		}
-		return false;
+
+		return seqpos != 0
+			? (create_rewinder(seqpos, needs_rerun), true)
+			: (charcount > 1 ? (create_rewinder(singlecharpos, needs_rerun), true) : false);
 	}
 
-	bool is_reversible_atom(state_size_type &pos) const
+	bool is_reversible_atom(const state_size_type pos, const bool check_optseq) const
 	{
 		const state_type &s = this->NFA_states[pos];
 		state_size_type end = 0u;
 
-		switch (s.type)
-		{
-		case st_character:
-		case st_character_class:
+		if (s.type == st_character || s.type == st_character_class)
 			return true;
 
+		if (check_optseq)
+			return false;	//  Optional sequence (?, *, {0,m}) found.
+			//  Not only at the beginning but also at any position does
+			//  an optional sequence need measures to be taken:
+			//  "2000-1-1" =~ /\d(\d+-)?\d{1,2}-\d{1,2}/
+
+		switch (s.type)
+		{
 		case st_epsilon:
-			if (s.next2 == 0 && s.character == meta_char::mc_colon)
+			if (s.next2 == 0 && s.char_num == epsilon_type::et_ncgopen)
 				end = skip_group(this->NFA_states, pos);
 			break;
 
 		case st_roundbracket_open:
-			if (check_if_backref_used(pos + 1, s.number))
-			{
+			if (check_if_backref_used(pos + 1, s.char_num))
 				return false;
-			}
-			end = skip_bracket(s.number, this->NFA_states, pos);
+
+			end = skip_bracket(s.char_num, this->NFA_states, pos);
 			break;
 
 		case st_repeat_in_push:
-			end = skip_0width_checker(s.number, this->NFA_states, pos);
+			end = skip_0width_checker(s.char_num, this->NFA_states, pos);
 			//@fallthrough@
 
 		default:;
 		}
 
-		if (end != 0u && !has_obstacle_to_reverse(pos, end))
-		{
-			pos = end;
-			return true;
-		}
-		return false;
+		return end != 0u && !has_obstacle_to_reverse(pos, end, false);
 	}
 
-	bool has_obstacle_to_reverse(state_size_type pos, const state_size_type end) const
+	bool has_obstacle_to_reverse(state_size_type pos, const state_size_type end, const bool check_optseq) const
 	{
-		for (; pos < end; ++pos)
+		for (; pos < end;)
 		{
 			const state_type &s = this->NFA_states[pos];
 
 			if (s.type == st_epsilon)
 			{
-				if (s.character == meta_char::mc_bar || s.character == char_alnum::ch_s)
+				if (s.char_num == epsilon_type::et_alt)
 					return true;
+					//  The rewinder cannot support Disjunction because forward matching
+					//  and backward matching can go through different routes:
+					//  * In a forward search /(?:.|ab)c/ against "abc" matches "abc",
+					//    while in a backward search from 'c' it matches "bc".
+
+				//  Because of the same reason, the rewinder cannot support an optional
+				//  group either. Semantically, /(\d+-)?\d{1,2}-\d{1,2}/ is equivalent to
+				//  /(\d+-|)\d{1,2}-\d{1,2}/.
+				if (check_optseq)
+				{
+					if (s.char_num == epsilon_type::et_jmpinlp)
+					{
+						pos += s.next1;
+						continue;
+					}
+
+					if (s.char_num == epsilon_type::et_default && s.next2 != 0 && !this->NFA_states[pos + s.nearnext()].is_character_or_class())
+						return true;
+				}
+
 			}
 			else if (s.type == st_backreference)
 				return true;
 			else if (s.type == st_lookaround_open)
 				return true;
+			else if (check_optseq && s.type == st_check_counter)
+			{
+				if (s.quantifier.atleast == 0 && !this->NFA_states[pos + 3].is_character_or_class())
+					return true;
+				pos += 3;
+				continue;
+			}
+			++pos;
 		}
 		return false;
 	}
 
-	state_size_type skip_bracket(const uint_l32 no, const state_array &NFAs, state_size_type pos) const
+	state_size_type skip_bracket(const ui_l32 no, const state_array &NFAs, state_size_type pos) const
 	{
 		return find_pair(st_roundbracket_close, NFAs, no, pos);
 	}
 
-	state_size_type skip_0width_checker(const uint_l32 no, const state_array &NFAs, state_size_type pos) const
+	state_size_type skip_0width_checker(const ui_l32 no, const state_array &NFAs, state_size_type pos) const
 	{
 		return find_pair(st_check_0_width_repeat, NFAs, no, pos);
 	}
 
-	state_size_type find_pair(const re_state_type type, const state_array &NFAs, const uint_l32 no, state_size_type pos) const
+	state_size_type find_pair(const re_state_type type, const state_array &NFAs, const ui_l32 no, state_size_type pos) const
 	{
 		for (++pos; pos < NFAs.size(); ++pos)
 		{
 			const state_type &s = NFAs[pos];
 
-			if (s.type == type && s.number == no)
+			if (s.type == type && s.char_num == no)
 				return pos;
 		}
 		return 0u;
@@ -19812,7 +20216,7 @@ private:
 
 	state_size_type skip_group(const state_array &NFAs, state_size_type pos) const
 	{
-		uint_l32 depth = 1u;
+		ui_l32 depth = 1u;
 
 		for (++pos; pos < NFAs.size(); ++pos)
 		{
@@ -19820,9 +20224,9 @@ private:
 
 			if (s.type == st_epsilon)
 			{
-				if (s.character == meta_char::mc_colon)
+				if (s.char_num == epsilon_type::et_ncgopen)
 					++depth;
-				else if (s.character == char_other::co_smcln)
+				else if (s.char_num == epsilon_type::et_ncgclose)
 				{
 					if (--depth == 0u)
 						return pos;
@@ -19835,18 +20239,16 @@ private:
 	void create_rewinder(const state_size_type end, const bool needs_rerun)
 	{
 		state_array newNFAs;
-		state_type natom;
+		state_type rwstate;
 
 		newNFAs.append(this->NFA_states, 1u, end - 1u);
 		if (!reverse_atoms(newNFAs) || newNFAs.size() == 0u)
 			return;
 
-		natom.reset();
-		natom.character = meta_char::mc_eq;	//  '='
-		natom.type = st_lookaround_open;
-		natom.next1 = static_cast<std::ptrdiff_t>(end - 1 + newNFAs.size()) + 2;
-		natom.next2 = 1;
-		natom.quantifier.atleast = needs_rerun ? 3 : 2; //  Match point rewinder.
+		rwstate.reset(st_lookaround_open, meta_char::mc_eq);
+		rwstate.next1 = static_cast<std::ptrdiff_t>(end - 1 + newNFAs.size() + 2);
+		rwstate.next2 = 1;
+		rwstate.quantifier.atleast = needs_rerun ? 3 : 2; //  Match point rewinder.
 			//  "singing" problem: /\w+ing/ against "singing" matches the
 			//  entire "singing". However, if modified like /(?<=\K\w+)ing/
 			//  it matches "sing" only, which is not correct (but correct if
@@ -19856,12 +20258,12 @@ private:
 			//  length (non fixed length) atom.
 			//  TODO: This rerunning can be avoided if the reversed atoms
 			//  are an exclusive sequence, like /\d+[:,]+\d+abcd/.
-		newNFAs.insert(0, natom);
+		newNFAs.insert(0, rwstate);
 
-		natom.type = st_lookaround_close;
-		natom.next1 = 0;
-		natom.next2 = 0;
-		newNFAs.append(1, natom);
+		rwstate.type = st_lookaround_close;
+		rwstate.next1 = 0;
+		rwstate.next2 = 0;
+		newNFAs.append(1, rwstate);
 
 		this->NFA_states.insert(1, newNFAs);
 		this->NFA_states[0].next2 = static_cast<std::ptrdiff_t>(newNFAs.size() + 1);
@@ -19908,15 +20310,8 @@ private:
 
 			const state_size_type boundary = find_atom_boundary(NFAs, cur, NFAs.size());
 
-			if (boundary == 0u)
-			{
+			if (boundary == 0u || cur == boundary)
 				return false;
-			}
-
-			if (cur == boundary)
-			{
-				return false;
-			}
 
 			atomseq.clear();
 			atomseq.append(NFAs, cur, boundary - cur);
@@ -19942,9 +20337,9 @@ private:
 			switch (s.type)
 			{
 			case st_roundbracket_open:
-				if (!check_if_backref_used(pos + 1, s.number))
+				if (!check_if_backref_used(pos + 1, s.char_num))
 				{
-					const state_size_type end = skip_bracket(s.number, atoms, pos);
+					const state_size_type end = skip_bracket(s.char_num, atoms, pos);
 
 					if (end != 0u)
 					{
@@ -19958,7 +20353,7 @@ private:
 								atoms[pos - 2].reset(st_epsilon);
 								atoms[pos - 1].reset(st_epsilon);
 								atoms[end].type = st_epsilon;
-								atoms[end].character = char_ctrl::cc_nul;
+								atoms[end].char_num = char_ctrl::cc_nul;
 								atoms[end].next2 = 0;
 							}
 							else
@@ -19971,9 +20366,9 @@ private:
 								brp.type = st_repeat_in_pop;
 								brc.type = st_check_0_width_repeat;
 
-								bro.number = this->number_of_repeats;
-								brp.number = this->number_of_repeats;
-								brc.number = this->number_of_repeats;
+								bro.char_num = this->number_of_repeats;
+								brp.char_num = this->number_of_repeats;
+								brc.char_num = this->number_of_repeats;
 								++this->number_of_repeats;
 							}
 							atoms.replace(pos, end - pos, rev);
@@ -19985,7 +20380,7 @@ private:
 				return false;
 
 			case st_epsilon:
-				if (s.character == meta_char::mc_colon)
+				if (s.char_num == epsilon_type::et_ncgopen)
 				{
 					state_size_type end = skip_group(atoms, pos);
 
@@ -20003,14 +20398,12 @@ private:
 					}
 					return false;
 				}
-				else if (s.character == meta_char::mc_astrsk && s.next2 != 0)
+				else if ((s.char_num == epsilon_type::et_ccastrsk || s.char_num == epsilon_type::et_default)
+					&& s.next2 != 0 && !s.quantifier.is_greedy)
 				{
-					if (!s.quantifier.is_greedy)
-					{
-						s.next2 = s.next1;
-						s.next1 = 1;
-						s.quantifier.is_greedy = true;
-					}
+					s.next2 = s.next1;
+					s.next1 = 1;
+					s.quantifier.is_greedy = 1u;
 				}
 				continue;
 
@@ -20021,12 +20414,12 @@ private:
 
 					if (!ccstate.quantifier.is_greedy)
 					{
-//						for (uint_l32 j = 0; j < 5; ++j)
+//						for (ui_l32 j = 0; j < 5; ++j)
 //							atoms[pos + j].quantifier.is_greedy = true;
 
 						ccstate.next2 = ccstate.next1;
 						ccstate.next1 = 1;
-						ccstate.quantifier.is_greedy = true;
+						ccstate.quantifier.is_greedy = 1u;
 					}
 					continue;
 				}
@@ -20041,8 +20434,8 @@ private:
 	state_size_type find_atom_boundary(const state_array &NFAs, state_size_type cur, const state_size_type end) const
 	{
 		const state_size_type begin = cur;
-		state_size_type endpos = cur;
-		const state_type *bstate = NULL;
+		state_size_type charatomseq_endpos = cur;
+		const state_type *charatomseq_begin = NULL;
 
 		for (; cur < end; ++cur)
 		{
@@ -20052,133 +20445,99 @@ private:
 			{
 			case st_character:
 			case st_character_class:
-				if (bstate == NULL)
-					bstate = &state;
-				else if (!bstate->is_same_character_or_charclass(state))
-					return endpos;
+				if (charatomseq_begin == NULL)
+					charatomseq_begin = &state;
+				else if (!charatomseq_begin->is_same_character_or_charclass(state))
+					return charatomseq_endpos;
 
-				endpos = cur + 1;
+				charatomseq_endpos = cur + 1;
 				continue;
 
 			case st_epsilon:
 				if (state.next2 == 0)
 				{
-					if (bstate)
-						return endpos;
+					if (charatomseq_begin)
+						return charatomseq_endpos;
 
-					if (state.next1 > 1)
+					if (state.char_num == epsilon_type::et_jmpinlp)
 						continue;
-
-					if (state.character == meta_char::mc_escape)
-						return cur + 1;
-
-					if (state.character == meta_char::mc_colon)	//  (?:...)
+					else if (state.char_num == epsilon_type::et_ncgopen)
 					{
 						const state_size_type gend = skip_group(NFAs, cur);
 
-						if (gend != 0u)
-							return gend + 1;
-
-						return 0u;
+						return gend != 0u ? gend + 1 : 0u;
 					}
-
-					if (state.character == char_other::co_smcln)
+					else if (state.char_num != epsilon_type::et_brnchend)
 						return cur + 1;
 
 					return 0u;
 				}
 
-				if (state.character == meta_char::mc_astrsk)
+				if (state.char_num == epsilon_type::et_ccastrsk)
 				{
 					if (cur + 1 < end)
 					{
-						const state_type &nextstate = NFAs[cur + 1];
+						const state_type &repatom = NFAs[cur + 1];
 
-						if (bstate == NULL)
-						{
-							if (nextstate.is_character_or_class())
-							{
-								bstate = &nextstate;
-								++cur;
-								endpos = cur + 1;
-								continue;
-							}
-						}
-						else if (bstate->is_same_character_or_charclass(nextstate))
-						{
-							++cur;
-							endpos = cur + 1;
-							continue;
-						}
-						else
-							return endpos;
+						if (charatomseq_begin == NULL)
+							charatomseq_begin = &repatom;
+						else if (!charatomseq_begin->is_same_character_or_charclass(repatom))
+							return charatomseq_endpos;
+
+						return cur + state.farnext();
 					}
 					return 0u;
 				}
-
-				if (state.character == 0u)
+				else if (state.char_num == epsilon_type::et_alt)	//  '|'
 				{
-					if (bstate)
-						return endpos;
+					if (charatomseq_begin)
+						return charatomseq_endpos;
 
-					return cur + state.farnext();
+					state_size_type altend = cur + state.next2 - 1;
+
+					for (; this->NFA_states[altend].type == st_epsilon && this->NFA_states[altend].char_num == epsilon_type::et_brnchend; altend += this->NFA_states[altend].next1);
+
+					return altend;
 				}
+
+				if (state.char_num == epsilon_type::et_default)
+					return charatomseq_begin ? charatomseq_endpos : cur + state.farnext();
+
 				return 0u;
 
 			case st_save_and_reset_counter:
-				if (cur + 5 < end)
-				{
-					const state_type &corcstate = NFAs[cur + 5];
+				if (charatomseq_begin)
+					return charatomseq_endpos;
 
-					if (bstate == NULL)
-					{
-						if (corcstate.is_character_or_class())
-						{
-							bstate = &corcstate;
-							cur += 5;
-							endpos = cur + 1;
-							continue;
-						}
-						if (bstate)
-							return endpos;
-					}
-
-					if (bstate && !bstate->is_same_character_or_charclass(corcstate))
-						return endpos;
-
-					const state_type &ccstate = NFAs[cur + 2];
-					return cur + 2 + ccstate.farnext();
-				}
-				return 0u;
+				cur += 2;
+				return cur + NFAs[cur].farnext();
 
 			case st_bol:
 			case st_eol:
 			case st_boundary:
 			case st_backreference:
-				if (bstate)
-					return endpos;
+				if (charatomseq_begin)
+					return charatomseq_endpos;
 				return cur + 1;
 
 			case st_roundbracket_open:
-				if (bstate)
-					return endpos;
+				if (charatomseq_begin)
+					return charatomseq_endpos;
 				else
 				{
-					const state_size_type rbend = skip_bracket(state.number, NFAs, cur);
+					const state_size_type rbend = skip_bracket(state.char_num, NFAs, cur);
 
 					if (rbend != 0u)
-					{
 						return rbend + 1;
-					}
 				}
 				return 0u;
 
 			case st_repeat_in_push:
-				if (bstate)
-					return endpos;
+				if (charatomseq_begin)
+					return charatomseq_endpos;
 				else
 				{
-					const state_size_type rpend = skip_0width_checker(state.number, NFAs, cur);
+					const state_size_type rpend = skip_0width_checker(state.char_num, NFAs, cur);
 
 					if (rpend != 0u)
 						return rpend + 1;
@@ -20186,14 +20545,14 @@ private:
 				return 0u;
 
 			case st_lookaround_open:
-				if (bstate)
-					return endpos;
+				if (charatomseq_begin)
+					return charatomseq_endpos;
 				return cur + state.next1;
 
 			case st_roundbracket_close:
 			case st_check_0_width_repeat:
 			case st_lookaround_close:
-				return endpos;
+				return charatomseq_endpos;
 
 			case st_roundbracket_pop:
 			case st_check_counter:
@@ -20206,66 +20565,83 @@ private:
 				return 0u;
 			}
 		}
-		return begin != endpos ? endpos : 0u;
+		return begin != charatomseq_endpos ? charatomseq_endpos : 0u;
 	}
 
 	bool find_better_ep(state_size_type cur)
 	{
 		state_size_type betterpos = 0u;
-		uint_l32 bp_cpnum = 0u;
+		ui_l32 bp_cpnum = 0u;
+		ui_l32 charcount = 0u;
 		range_pairs nextcc;
 
 		for (; cur < this->NFA_states.size();)
 		{
+			const state_type &state = this->NFA_states[cur];
+
+			if (state.type == st_epsilon)
+			{
+				if (state.char_num == epsilon_type::et_ncgopen || (state.next2 == 0 && state.char_num != epsilon_type::et_jmpinlp))
+				{
+					++cur;
+					continue;
+				}
+			}
+			else if (state.type == st_roundbracket_open)
+			{
+				cur += state.next1;
+				continue;
+			}
+			else if (state.type == st_bol || state.type == st_eol || state.type == st_boundary)
+			{
+				cur += state.next1;
+				continue;
+			}
+			else if (state.type == st_roundbracket_close)
+			{
+				cur += state.next2;
+				continue;
+			}
+			else if (state.type == st_backreference || state.type == st_lookaround_open)
+				break;
+
 			const state_size_type boundary = find_atom_boundary(this->NFA_states, cur, this->NFA_states.size());
 
-			if (boundary == 0u)
-			{
+			if (boundary == 0u || cur == boundary)
 				break;
-			}
-
-			if (cur == boundary)
-			{
-				break;
-			}
 
 			nextcc.clear();
 			const bool canbe0length = gather_nextchars(nextcc, cur, 0u, false);
 
 			if (canbe0length)
-			{
 				break;
-			}
 
-			const uint_l32 cpnum = nextcc.total_codepoints();
+			const ui_l32 cpnum = nextcc.total_codepoints();
+			const bool has_obstacle = has_obstacle_to_reverse(cur, boundary, true);
 
 			if (betterpos != 0u)
 			{
-				if (bp_cpnum >= cpnum)
+				if (bp_cpnum > cpnum || (bp_cpnum == cpnum && charcount == 1u))
 				{
 					betterpos = cur;
 					bp_cpnum = cpnum;
+					++charcount;
 				}
 			}
 			else
 			{
 				betterpos = cur;
 				bp_cpnum = cpnum;
+				++charcount;
 			}
 
-			if (has_obstacle_to_reverse(cur, boundary))
-			{
+			if (has_obstacle)
 				break;
-			}
+
 			cur = boundary;
 		}
 
-		if (betterpos > 1u)
-		{
-			create_rewinder(betterpos, true);
-			return true;
-		}
-		return false;
+		return (charcount > 1u) ? (create_rewinder(betterpos, true), true) : false;
 	}
 
 #endif	//  !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
@@ -20353,6 +20729,13 @@ public:
 	}
 
 #endif	//  !defined(SRELL_NO_APIEXT)
+
+	void set_(const typename regex_internal::re_submatch_type<BidirectionalIterator> &br)
+	{
+		this->first = br.core.open_at;
+		this->second = br.core.close_at;
+		this->matched = br.counter != 0;
+	}
 };
 
 //  28.9.2, sub_match non-member operators:
@@ -21071,7 +21454,7 @@ public:
 							{
 								if (*fmt_first == static_cast<char_type>(regex_internal::meta_char::mc_gt))
 								{
-									const regex_internal::uint_l32 backref_number = lookup_backref_number(name_begin, fmt_first);
+									const regex_internal::ui_l32 backref_number = lookup_backref_number(name_begin, fmt_first);
 
 									if (backref_number != regex_internal::groupname_mapper<char_type>::notfound)
 									{
@@ -21213,20 +21596,13 @@ public:	//  For internal.
 
 		sub_matches_[0].matched = true;
 
-		for (regex_internal::uint_l32 i = 1; i < static_cast<regex_internal::uint_l32>(sstate_.bracket.size()); ++i)
-		{
-			const typename search_state_type::submatch_type &br = sstate_.bracket[i];
-			value_type &sm = sub_matches_[i];
-
-			sm.first = br.core.open_at;
-			sm.second = br.core.close_at;
-			sm.matched = br.counter != 0;
-		}
+		for (regex_internal::ui_l32 i = 1; i < static_cast<regex_internal::ui_l32>(sstate_.bracket.size()); ++i)
+			sub_matches_[i].set_(sstate_.bracket[i]);
 
 		base_ = sstate_.lblim;
 		prefix_.first = sstate_.srchbegin;
 		prefix_.second = sub_matches_[0].first = sstate_.bracket[0].core.open_at;
-		suffix_.first = sub_matches_[0].second = sstate_.nth.in_string;
+		suffix_.first = sub_matches_[0].second = sstate_.ssc.iter;
 		suffix_.second = sstate_.srchend;
 
 		prefix_.matched = prefix_.first != prefix_.second;
@@ -21248,7 +21624,7 @@ public:	//  For internal.
 
 		base_ = sstate_.lblim;
 		prefix_.first = sstate_.srchbegin;
-		prefix_.second = sub_matches_[0].first = sstate_.nth.in_string;
+		prefix_.second = sub_matches_[0].first = sstate_.ssc.iter;
 		suffix_.first = sub_matches_[0].second = sstate_.nextpos;
 		suffix_.second = sstate_.srchend;
 
@@ -21297,7 +21673,7 @@ private:
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
-	regex_internal::uint_l32 lookup_backref_number(const char_type *begin, const char_type *const end) const
+	regex_internal::ui_l32 lookup_backref_number(const char_type *begin, const char_type *const end) const
 	{
 		typename regex_internal::groupname_mapper<char_type>::gname_string key(end - begin);
 
@@ -21307,9 +21683,9 @@ private:
 		return gnames_[key];
 	}
 
-	regex_internal::uint_l32 lookup_and_check_backref_number(const char_type *begin, const char_type *const end) const
+	regex_internal::ui_l32 lookup_and_check_backref_number(const char_type *begin, const char_type *const end) const
 	{
-		const regex_internal::uint_l32 backrefno = lookup_backref_number(begin, end);
+		const regex_internal::ui_l32 backrefno = lookup_backref_number(begin, end);
 
 		if (backrefno == regex_internal::groupname_mapper<char_type>::notfound)
 			throw regex_error(regex_constants::error_backref);
@@ -21522,14 +21898,14 @@ public:
 
 				if (results.sstate_.match_continuous_flag())
 				{
-					results.sstate_.set_entrypoint(this->NFA_states[0].next_state2);
+					results.sstate_.entry_state = this->NFA_states[0].next_state2;
 				}
 				else
 				{
-					results.sstate_.set_entrypoint(this->NFA_states[0].next_state1);
+					results.sstate_.entry_state = this->NFA_states[0].next_state1;
 
 #if !defined(SRELLDBG_NO_SCFINDER)
-					if (this->NFA_states[0].character != constants::invalid_u32value)
+					if (this->NFA_states[0].char_num != constants::invalid_u32value)
 					{
 						if (!this->is_ricase() ? do_search_sc<false>(results, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : do_search_sc<true>(results, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
 							goto FOUND;
@@ -21573,13 +21949,13 @@ private:
 	) const
 	{
 		re_search_state</*charT, */BidirectionalIterator> &sstate = results.sstate_;
-		const BidirectionalIterator searchend = sstate.nth.in_string;
+		const BidirectionalIterator searchend = sstate.ssc.iter;
 
 		for (;;)
 		{
 			const bool final = sstate.nextpos == searchend;
 
-			sstate.nth.in_string = sstate.nextpos;
+			sstate.ssc.iter = sstate.nextpos;
 
 			if (!final)
 			{
@@ -21591,7 +21967,7 @@ private:
 	#if !defined(SRELLDBG_NO_BITSET)
 					if (!this->firstchar_class_bs.test((*sstate.nextpos++) & utf_traits::bitsetmask))
 	#else
-					const uchar32 firstchar = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+					const ui_l32 firstchar = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 
 					if (!this->firstchar_class.is_included(firstchar))
 	#endif
@@ -21625,24 +22001,24 @@ private:
 		{
 			typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type;
 			re_search_state<ContiguousIterator> &sstate = results.sstate_;
-			const ContiguousIterator searchend = sstate.nth.in_string;
-			const char_type ec = static_cast<char_type>(this->NFA_states[0].character);
+			const ContiguousIterator searchend = sstate.ssc.iter;
+			const char_type ec = static_cast<char_type>(this->NFA_states[0].char_num);
 
 			for (;;)
 			{
 				if (sstate.nextpos >= searchend)
 					break;
 
-				sstate.nth.in_string = sstate.nextpos;
+				sstate.ssc.iter = sstate.nextpos;
 
 				const char_type *const bgnpos = std::char_traits<char_type>::find(&*sstate.nextpos, sstate.srchend - sstate.nextpos, ec);
 
 				if (bgnpos)
 				{
-//					sstate.nth.in_string = bgnpos;
-					sstate.nth.in_string += bgnpos - &*sstate.nextpos;
+//					sstate.ssc.iter = bgnpos;
+					sstate.ssc.iter += bgnpos - &*sstate.nextpos;
 //					sstate.nextpos = bgnpos + 1;
-					sstate.nextpos = sstate.nth.in_string + 1;
+					sstate.nextpos = sstate.ssc.iter + 1;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
 					sstate.reset();
@@ -21667,16 +22043,16 @@ private:
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 		re_search_state<BidirectionalIterator> &sstate = results.sstate_;
-		const BidirectionalIterator searchend = sstate.nth.in_string;
-		const char_type ec = static_cast<char_type>(this->NFA_states[0].character);
+		const BidirectionalIterator searchend = sstate.ssc.iter;
+		const char_type ec = static_cast<char_type>(this->NFA_states[0].char_num);
 
 		for (; sstate.nextpos != searchend;)
 		{
-			sstate.nth.in_string = find(sstate.nextpos, sstate.srchend, ec);
+			sstate.ssc.iter = find(sstate.nextpos, sstate.srchend, ec);
 
-			if (sstate.nth.in_string != sstate.srchend)
+			if (sstate.ssc.iter != sstate.srchend)
 			{
-				sstate.nextpos = sstate.nth.in_string;
+				sstate.nextpos = sstate.ssc.iter;
 				++sstate.nextpos;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
@@ -21747,15 +22123,15 @@ private:
 		re_search_state</*charT, */BidirectionalIterator> &sstate
 	) const
 	{
-		typedef casehelper<uchar32, icase> casehelper_type;
+		typedef casehelper<ui_l32, icase> casehelper_type;
 		typedef typename re_object_core<charT, traits>::state_type state_type;
 		typedef re_search_state</*charT, */BidirectionalIterator> ss_type;
-//		typedef typename ss_type::search_core_state scstate_type;
+//		typedef typename ss_type::search_state_core ssc_type;
 		typedef typename ss_type::submatch_type submatch_type;
 		typedef typename ss_type::submatchcore_type submatchcore_type;
 		typedef typename ss_type::counter_type counter_type;
 		typedef typename ss_type::position_type position_type;
-		bool is_matched;
+		ui_l32 is_matched;
 
 		goto START;
 
@@ -21763,7 +22139,7 @@ private:
 		if (is_matched)
 		{
 			MATCHED:
-			sstate.nth.in_NFA_states = sstate.nth.in_NFA_states->next_state1;
+			sstate.ssc.state = sstate.ssc.state->next_state1;
 		}
 		else
 		{
@@ -21775,16 +22151,14 @@ private:
 #endif
 				if (sstate.bt_stack.size() > sstate.btstack_size)
 				{
-					sstate.nth = sstate.bt_stack.back();
+					sstate.ssc = sstate.bt_stack.back();
 					sstate.bt_stack.pop_back();
 
-					sstate.nth.in_NFA_states = sstate.nth.in_NFA_states->next_state2;
-//					continue;
+					sstate.ssc.state = sstate.ssc.state->next_state2;
 				}
 				else
-				{
 					return false;
-				}
+
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 			}
 			else
@@ -21796,9 +22170,8 @@ private:
 		for (;;)
 		{
 			START:
-			const state_type &current_NFA = *sstate.nth.in_NFA_states;
 
-			switch (current_NFA.type)
+			switch (sstate.ssc.state->type)
 			{
 			case st_character:
 
@@ -21814,32 +22187,31 @@ private:
 					if (!sstate.is_at_srchend())
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						const BidirectionalIterator prevpos = sstate.nth.in_string;
+						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
-						const uchar32 uchar = casehelper_type::canonicalise(utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend));
+						const ui_l32 uchar = casehelper_type::canonicalise(utf_traits::codepoint_inc(sstate.ssc.iter, sstate.srchend));
 						RETRY_CF:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
 
-						if (current_NFA2.character == uchar)
+						if (sstate.ssc.state->char_num == uchar)
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (sstate.ssc.state->next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.ssc.state = sstate.ssc.state->next_state2;
 
-							if (sstate.nth.in_NFA_states->type == st_character)
+							if (sstate.ssc.state->type == st_character)
 								goto RETRY_CF;
 
-							sstate.nth.in_string = prevpos;
+							sstate.ssc.iter = prevpos;
 							continue;
 						}
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (sstate.ssc.state->next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.ssc.state = sstate.ssc.state->next_state2;
 						continue;
 					}
 #endif
@@ -21849,32 +22221,31 @@ private:
 					if (!sstate.is_at_lookbehindlimit())
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						const BidirectionalIterator prevpos = sstate.nth.in_string;
+						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
-						const uchar32 uchar = casehelper_type::canonicalise(utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim));
+						const ui_l32 uchar = casehelper_type::canonicalise(utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim));
 						RETRY_CB:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
 
-						if (current_NFA2.character == uchar)
+						if (sstate.ssc.state->char_num == uchar)
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (sstate.ssc.state->next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.ssc.state = sstate.ssc.state->next_state2;
 
-							if (sstate.nth.in_NFA_states->type == st_character)
+							if (sstate.ssc.state->type == st_character)
 								goto RETRY_CB;
 
-							sstate.nth.in_string = prevpos;
+							sstate.ssc.iter = prevpos;
 							continue;
 						}
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (sstate.ssc.state->next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.ssc.state = sstate.ssc.state->next_state2;
 						continue;
 					}
 #endif
@@ -21895,36 +22266,35 @@ private:
 					if (!sstate.is_at_srchend())
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						const BidirectionalIterator prevpos = sstate.nth.in_string;
+						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
-						const uchar32 uchar = utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend);
+						const ui_l32 uchar = utf_traits::codepoint_inc(sstate.ssc.iter, sstate.srchend);
 //						RETRY_CCF:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
 
 #if !defined(SRELLDBG_NO_CCPOS)
-						if (this->character_class.is_included(current_NFA2.quantifier.offset, current_NFA2.quantifier.length, uchar))
+						if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, uchar))
 #else
-						if (this->character_class.is_included(current_NFA2.number, uchar))
+						if (this->character_class.is_included(sstate.ssc.state->char_num, uchar))
 #endif
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (sstate.ssc.state->next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.ssc.state = sstate.ssc.state->next_state2;
 
-//							if (sstate.nth.in_NFA_states->type == st_character_class)
+//							if (sstate.ssc.state->type == st_character_class)
 //								goto RETRY_CCF;
 
-							sstate.nth.in_string = prevpos;
+							sstate.ssc.iter = prevpos;
 							continue;
 						}
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (sstate.ssc.state->next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.ssc.state = sstate.ssc.state->next_state2;
 						continue;
 					}
 #endif
@@ -21934,36 +22304,35 @@ private:
 					if (!sstate.is_at_lookbehindlimit())
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						const BidirectionalIterator prevpos = sstate.nth.in_string;
+						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
-						const uchar32 uchar = utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
+						const ui_l32 uchar = utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
 //						RETRY_CCB:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
 
 #if !defined(SRELLDBG_NO_CCPOS)
-						if (this->character_class.is_included(current_NFA2.quantifier.offset, current_NFA2.quantifier.length, uchar))
+						if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, uchar))
 #else
-						if (this->character_class.is_included(current_NFA2.number, uchar))
+						if (this->character_class.is_included(sstate.ssc.state->char_num, uchar))
 #endif
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (sstate.ssc.state->next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.ssc.state = sstate.ssc.state->next_state2;
 
-//							if (sstate.nth.in_NFA_states->type == st_character_class)
+//							if (sstate.ssc.state->type == st_character_class)
 //								goto RETRY_CCB;
 
-							sstate.nth.in_string = prevpos;
+							sstate.ssc.iter = prevpos;
 							continue;
 						}
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (sstate.ssc.state->next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.ssc.state = sstate.ssc.state->next_state2;
 						continue;
 					}
 #endif
@@ -21973,78 +22342,81 @@ private:
 			case st_epsilon:
 
 #if defined(SRELLDBG_NO_SKIP_EPSILON)
-				if (current_NFA.next_state2)
+				if (sstate.ssc.state->next_state2)
 #endif
 				{
-					sstate.bt_stack.push_back(sstate.nth);	//	sstate.push();
+					sstate.bt_stack.push_back(sstate.ssc);	//	sstate.push();
 				}
 
-				sstate.nth.in_NFA_states = current_NFA.next_state1;
+				sstate.ssc.state = sstate.ssc.state->next_state1;
 				continue;
 
 			default:
-				switch (current_NFA.type)
+				switch (sstate.ssc.state->type)
 				{
 
 			case st_check_counter:
 				{
-					const uint_l32 counter = sstate.counter[current_NFA.number];
+					ST_CHECK_COUNTER:
+					ui_l32 &counter = sstate.counter[sstate.ssc.state->char_num];
 
-					if (counter < current_NFA.quantifier.atmost)
+					if (counter < sstate.ssc.state->quantifier.atmost)
 					{
-						++sstate.counter[current_NFA.number];
+						++counter;
 
-						LOOP_WITHOUT_INCREMENT:
-
-						if (counter >= current_NFA.quantifier.atleast)
+						if (counter > sstate.ssc.state->quantifier.atleast)
 						{
-							sstate.bt_stack.push_back(sstate.nth);
-							sstate.nth.in_NFA_states = current_NFA.next_state1;
+							LOOP_WITHOUT_INCREMENT:	//  counter >= atmost && atmost == infinity.
+
+							sstate.bt_stack.push_back(sstate.ssc);
+							sstate.ssc.state = sstate.ssc.state->next_state1;
 						}
 						else
 						{
-							sstate.nth.in_NFA_states
-								= current_NFA.quantifier.is_greedy
-								? current_NFA.next_state1
-								: current_NFA.next_state2;
+							sstate.ssc.state
+								= sstate.ssc.state->quantifier.is_greedy
+								? sstate.ssc.state->next_state1
+								: sstate.ssc.state->next_state2;
 						}
 					}
 					else
 					{
-						if (current_NFA.quantifier.is_infinity())
+						if (sstate.ssc.state->quantifier.is_infinity())
 							goto LOOP_WITHOUT_INCREMENT;
 
-						sstate.nth.in_NFA_states
-							= current_NFA.quantifier.is_greedy
-							? current_NFA.next_state2
-							: current_NFA.next_state1;
+						sstate.ssc.state
+							= sstate.ssc.state->quantifier.is_greedy
+							? sstate.ssc.state->next_state2
+							: sstate.ssc.state->next_state1;
 					}
 				}
 				continue;
 
 			case st_decrement_counter:
-				--sstate.counter[current_NFA.number];
+				--sstate.counter[sstate.ssc.state->char_num];
 				goto NOT_MATCHED;
 
 			case st_save_and_reset_counter:
 				{
-					counter_type &c = sstate.counter[current_NFA.number];
+					counter_type &c = sstate.counter[sstate.ssc.state->char_num];
 
 					sstate.counter_stack.push_back(c);
-					sstate.bt_stack.push_back(sstate.nth);
+					sstate.bt_stack.push_back(sstate.ssc);
 					c = 0;
 				}
-				goto MATCHED;
+				sstate.ssc.state = sstate.ssc.state->next_state1;
+				goto ST_CHECK_COUNTER;
 
 			case st_restore_counter:
-				sstate.counter[current_NFA.number] = sstate.counter_stack.back();
+				sstate.counter[sstate.ssc.state->char_num] = sstate.counter_stack.back();
 				sstate.counter_stack.pop_back();
 				goto NOT_MATCHED;
 
 			case st_roundbracket_open:	//  '(':
 				{
-					submatch_type &bracket = sstate.bracket[current_NFA.number];
+					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 
+					++bracket.counter;
 					sstate.capture_stack.push_back(bracket.core);
 
 #if defined(_MSC_VER) && _MSC_VER >= 1400
@@ -22056,14 +22428,12 @@ private:
 #pragma warning(pop)
 #endif
 					{
-						bracket.core.open_at = sstate.nth.in_string;
+						bracket.core.open_at = sstate.ssc.iter;
 					}
 					else
-						bracket.core.close_at = sstate.nth.in_string;
+						bracket.core.close_at = sstate.ssc.iter;
 
-					++bracket.counter;
-
-					for (uint_l32 brno = current_NFA.quantifier.atleast; brno <= current_NFA.quantifier.atmost; ++brno)
+					for (ui_l32 brno = sstate.ssc.state->quantifier.atleast; brno <= sstate.ssc.state->quantifier.atmost; ++brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -22075,13 +22445,13 @@ private:
 						//  ECMAScript 2018 (ES9) 21.2.2.5.1, Note 3.
 					}
 
-					sstate.bt_stack.push_back(sstate.nth);
+					sstate.bt_stack.push_back(sstate.ssc);
 				}
 				goto MATCHED;
 
 			case st_roundbracket_pop:	//  '/':
 				{
-					for (uint_l32 brno = current_NFA.quantifier.atmost; brno >= current_NFA.quantifier.atleast; --brno)
+					for (ui_l32 brno = sstate.ssc.state->quantifier.atmost; brno >= sstate.ssc.state->quantifier.atleast; --brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -22091,7 +22461,7 @@ private:
 						sstate.capture_stack.pop_back();
 					}
 
-					submatch_type &bracket = sstate.bracket[current_NFA.number];
+					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 
 					bracket.core = sstate.capture_stack.back();
 					sstate.capture_stack.pop_back();
@@ -22101,32 +22471,32 @@ private:
 
 			case st_roundbracket_close:	//  ')':
 				{
-					submatch_type &bracket = sstate.bracket[current_NFA.number];
+					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 					submatchcore_type &brc = bracket.core;
 
-					if ((!reverse ? brc.open_at : brc.close_at) != sstate.nth.in_string)
+					if ((!reverse ? brc.open_at : brc.close_at) != sstate.ssc.iter)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state1;
+						sstate.ssc.state = sstate.ssc.state->next_state1;
 					}
 					else	//  0 width match, breaks from the loop.
 					{
-						if (current_NFA.next_state1->type != st_check_counter)
+						if (sstate.ssc.state->next_state1->type != st_check_counter)
 						{
 							if (bracket.counter > 1)
 								goto NOT_MATCHED;	//  ECMAScript spec 15.10.2.5, note 4.
 
-							sstate.nth.in_NFA_states = current_NFA.next_state2;
+							sstate.ssc.state = sstate.ssc.state->next_state2;
 								//  Accepts 0 width match and exits.
 						}
 						else
 						{
 							//  A pair with check_counter.
-							const counter_type counter = sstate.counter[current_NFA.next_state1->number];
+							const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
 
-							if (counter > current_NFA.next_state1->quantifier.atleast)
+							if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
 								goto NOT_MATCHED;	//  Takes a captured string in the previous loop.
 
-							sstate.nth.in_NFA_states = current_NFA.next_state1;
+							sstate.ssc.state = sstate.ssc.state->next_state1;
 								//  Accepts 0 width match and continues.
 						}
 					}
@@ -22139,23 +22509,23 @@ private:
 #pragma warning(pop)
 #endif
 					{
-						brc.close_at = sstate.nth.in_string;
+						brc.close_at = sstate.ssc.iter;
 					}
 					else	//  reverse == true.
 					{
-						brc.open_at  = sstate.nth.in_string;
+						brc.open_at  = sstate.ssc.iter;
 					}
 				}
 				continue;
 
 			case st_repeat_in_push:
 				{
-					position_type &r = sstate.repeat[current_NFA.number];
+					position_type &r = sstate.repeat[sstate.ssc.state->char_num];
 
 					sstate.repeat_stack.push_back(r);
-					r = sstate.nth.in_string;
+					r = sstate.ssc.iter;
 
-					for (uint_l32 brno = current_NFA.quantifier.atleast; brno <= current_NFA.quantifier.atmost; ++brno)
+					for (ui_l32 brno = sstate.ssc.state->quantifier.atleast; brno <= sstate.ssc.state->quantifier.atmost; ++brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -22165,12 +22535,12 @@ private:
 						inner_bracket.counter = 0;
 						//  ECMAScript 2019 (ES10) 21.2.2.5.1, Note 3.
 					}
-					sstate.bt_stack.push_back(sstate.nth);
+					sstate.bt_stack.push_back(sstate.ssc);
 				}
 				goto MATCHED;
 
 			case st_repeat_in_pop:
-				for (uint_l32 brno = current_NFA.quantifier.atmost; brno >= current_NFA.quantifier.atleast; --brno)
+				for (ui_l32 brno = sstate.ssc.state->quantifier.atmost; brno >= sstate.ssc.state->quantifier.atleast; --brno)
 				{
 					submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -22180,99 +22550,104 @@ private:
 					sstate.capture_stack.pop_back();
 				}
 
-				sstate.repeat[current_NFA.number] = sstate.repeat_stack.back();
+				sstate.repeat[sstate.ssc.state->char_num] = sstate.repeat_stack.back();
 				sstate.repeat_stack.pop_back();
 				goto NOT_MATCHED;
 
 			case st_check_0_width_repeat:
-				if (sstate.nth.in_string != sstate.repeat[current_NFA.number])
+				if (sstate.ssc.iter != sstate.repeat[sstate.ssc.state->char_num])
 					goto MATCHED;
 
-				sstate.nth.in_NFA_states = current_NFA.next_state2;
+				if (sstate.ssc.state->next_state1->type == st_check_counter)
+				{
+					const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
+
+					if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
+						goto NOT_MATCHED;
+
+					sstate.ssc.state = sstate.ssc.state->next_state1;
+				}
+				else
+					sstate.ssc.state = sstate.ssc.state->next_state2;
+
 				continue;
 
 			case st_backreference:	//  '\\':
 				{
-					const submatch_type &bracket = sstate.bracket[current_NFA.number];
+					const submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 
 					if (bracket.counter == 0)	//  Undefined.
 					{
 						ESCAPE_FROM_ZERO_WIDTH_MATCH:
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.ssc.state = sstate.ssc.state->next_state2;
 						continue;
 					}
-					else
-					{
-						const submatchcore_type &brc = bracket.core;
 
-						if (brc.open_at == brc.close_at)
-						{
-							goto ESCAPE_FROM_ZERO_WIDTH_MATCH;
-						}
-						else
-						{
+					const submatchcore_type &brc = bracket.core;
+
+					if (brc.open_at == brc.close_at)
+						goto ESCAPE_FROM_ZERO_WIDTH_MATCH;
+
 #if defined(_MSC_VER) && _MSC_VER >= 1400
 #pragma warning(push)
 #pragma warning(disable:4127)
 #endif
-							if (!reverse)
+					if (!reverse)
 #if defined(_MSC_VER) && _MSC_VER >= 1400
 #pragma warning(pop)
 #endif
+					{
+						BidirectionalIterator backrefpos = brc.open_at;
+
+						if (!sstate.ssc.state->icase_backrefno_unresolved)	//  !icase.
+						{
+							for (; backrefpos != brc.close_at;)
 							{
-								BidirectionalIterator backrefpos = brc.open_at;
-
-								if (!current_NFA.icase)
-								{
-									for (; backrefpos != brc.close_at;)
-									{
-										if (sstate.is_at_srchend() || *sstate.nth.in_string++ != *backrefpos++)
-											goto NOT_MATCHED;
-									}
-								}
-								else
-								{
-									for (; backrefpos != brc.close_at;)
-									{
-										if (!sstate.is_at_srchend())
-										{
-											const uchar32 uchartxt = utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend);
-											const uchar32 ucharref = utf_traits::codepoint_inc(backrefpos, brc.close_at);
-
-											if (unicode_case_folding::do_casefolding(uchartxt) == unicode_case_folding::do_casefolding(ucharref))
-												continue;
-										}
-										goto NOT_MATCHED;
-									}
-								}
+								if (sstate.is_at_srchend() || *sstate.ssc.iter++ != *backrefpos++)
+									goto NOT_MATCHED;
 							}
-							else	//  reverse == true.
+						}
+						else	//  icase.
+						{
+							for (; backrefpos != brc.close_at;)
 							{
-								BidirectionalIterator backrefpos = brc.close_at;
-
-								if (!current_NFA.icase)
+								if (!sstate.is_at_srchend())
 								{
-									for (; backrefpos != brc.open_at;)
-									{
-										if (sstate.is_at_lookbehindlimit() || *--sstate.nth.in_string != *--backrefpos)
-											goto NOT_MATCHED;
-									}
-								}
-								else
-								{
-									for (; backrefpos != brc.open_at;)
-									{
-										if (!sstate.is_at_lookbehindlimit())
-										{
-											const uchar32 uchartxt = utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
-											const uchar32 ucharref = utf_traits::dec_codepoint(backrefpos, brc.open_at);
+									const ui_l32 uchartxt = utf_traits::codepoint_inc(sstate.ssc.iter, sstate.srchend);
+									const ui_l32 ucharref = utf_traits::codepoint_inc(backrefpos, brc.close_at);
 
-											if (unicode_case_folding::do_casefolding(uchartxt) == unicode_case_folding::do_casefolding(ucharref))
-												continue;
-										}
-										goto NOT_MATCHED;
-									}
+									if (unicode_case_folding::do_casefolding(uchartxt) == unicode_case_folding::do_casefolding(ucharref))
+										continue;
 								}
+								goto NOT_MATCHED;
+							}
+						}
+					}
+					else	//  reverse == true.
+					{
+						BidirectionalIterator backrefpos = brc.close_at;
+
+						if (!sstate.ssc.state->icase_backrefno_unresolved)	//  !icase.
+						{
+							for (; backrefpos != brc.open_at;)
+							{
+								if (sstate.is_at_lookbehindlimit() || *--sstate.ssc.iter != *--backrefpos)
+									goto NOT_MATCHED;
+							}
+						}
+						else	//  icase.
+						{
+							for (; backrefpos != brc.open_at;)
+							{
+								if (!sstate.is_at_lookbehindlimit())
+								{
+									const ui_l32 uchartxt = utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
+									const ui_l32 ucharref = utf_traits::dec_codepoint(backrefpos, brc.open_at);
+
+									if (unicode_case_folding::do_casefolding(uchartxt) == unicode_case_folding::do_casefolding(ucharref))
+										continue;
+								}
+								goto NOT_MATCHED;
 							}
 						}
 					}
@@ -22281,26 +22656,28 @@ private:
 
 			case st_lookaround_open:
 				{
-					for (uint_l32 i = 1; i < this->number_of_brackets; ++i)
+					const state_type *const lostate = sstate.ssc.state;
+
+					for (ui_l32 i = 1; i < this->number_of_brackets; ++i)
 					{
 						const submatch_type &sm = sstate.bracket[i];
 						sstate.capture_stack.push_back(sm.core);
 						sstate.counter_stack.push_back(sm.counter);
 					}
 
-					for (uint_l32 i = 0; i < this->number_of_counters; ++i)
+					for (ui_l32 i = 0; i < this->number_of_counters; ++i)
 						sstate.counter_stack.push_back(sstate.counter[i]);
 
-					for (uint_l32 i = 0; i < this->number_of_repeats; ++i)
+					for (ui_l32 i = 0; i < this->number_of_repeats; ++i)
 						sstate.repeat_stack.push_back(sstate.repeat[i]);
 
 					const typename ss_type::bottom_state backup_bottom(sstate.btstack_size, sstate.capture_stack.size(), sstate.counter_stack.size(), sstate.repeat_stack.size());
-					const BidirectionalIterator orgpos = sstate.nth.in_string;
+					const BidirectionalIterator orgpos = sstate.ssc.iter;
 
 					sstate.btstack_size = sstate.bt_stack.size();
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (current_NFA.quantifier.atleast >= 2)
+					if (lostate->quantifier.atleast >= 2)
 					{
 						sstate.repeat_stack.push_back(sstate.lblim);
 						sstate.lblim = sstate.srchbegin;
@@ -22309,13 +22686,13 @@ private:
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 
-//					if (current_NFA.reverse)
+//					if (lostate->reverse)
 					{
-						for (uint_l32 i = 0; i < current_NFA.quantifier.atleast; ++i)
+						for (ui_l32 i = 0; i < lostate->quantifier.atleast; ++i)
 						{
 							if (!sstate.is_at_lookbehindlimit())
 							{
-								utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
+								utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
 								continue;
 							}
 							is_matched = false;
@@ -22323,72 +22700,73 @@ private:
 						}
 					}
 #endif
-					sstate.nth.in_NFA_states = current_NFA.next_state2;
+					sstate.ssc.state = lostate->next_state2;
+
+					//  sstate.ssc.state is no longer pointing to lookaround_open!
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-					is_matched = current_NFA.quantifier.atleast == 0 ? run_automaton<icase, false>(sstate /* , true */) : run_automaton<icase, true>(sstate /* , true */);
+					is_matched = (lostate->quantifier.atleast == 0 ? run_automaton<icase, false>(sstate /* , true */) : run_automaton<icase, true>(sstate /* , true */)) ? 1u : 0u;
 #else
-					is_matched = run_automaton<icase, false>(sstate /* , true */);
+					is_matched = run_automaton<icase, false>(sstate /* , true */) ? 1u : 0u;
 #endif
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 					AFTER_LOOKAROUND:
 #endif
-					{
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-						if (current_NFA.quantifier.atleast >= 2)
-						{
-							sstate.lblim = sstate.repeat_stack[backup_bottom.repeatstack_size];
-							if (is_matched)
-								sstate.bracket[0].core.open_at = sstate.nth.in_string;
-						}
+					if (lostate->quantifier.atleast >= 2)
+					{
+						sstate.lblim = sstate.repeat_stack[backup_bottom.repeatstack_size];
+						if (is_matched)
+							sstate.bracket[0].core.open_at = sstate.ssc.iter;
+					}
 #endif
 
 #if defined(SRELL_ENABLE_GT)
-						if (current_NFA.character != meta_char::mc_gt)	//  '>'
+					if (lostate->char_num != meta_char::mc_gt)	//  '>'
 #endif
-						{
+					{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-							if (current_NFA.quantifier.atleast < 3)
+						if (lostate->quantifier.atleast < 3)
 #endif
-								sstate.nth.in_string = orgpos;
-						}
-						sstate.bt_stack.resize(sstate.btstack_size);
-
-						sstate.btstack_size = backup_bottom.btstack_size;
-						sstate.capture_stack.resize(backup_bottom.capturestack_size);
-						sstate.counter_stack.resize(backup_bottom.counterstack_size);
-						sstate.repeat_stack.resize(backup_bottom.repeatstack_size);
-
-						is_matched ^= current_NFA.is_not;
+							sstate.ssc.iter = orgpos;
 					}
-				}
-				if (is_matched)
-				{
+					sstate.bt_stack.resize(sstate.btstack_size);
+
+					sstate.btstack_size = backup_bottom.btstack_size;
+					sstate.capture_stack.resize(backup_bottom.capturestack_size);
+					sstate.counter_stack.resize(backup_bottom.counterstack_size);
+					sstate.repeat_stack.resize(backup_bottom.repeatstack_size);
+
+					is_matched ^= lostate->is_not;
+
+					if (is_matched)
+					{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (current_NFA.quantifier.atleast == 3)
-						sstate.nth.in_NFA_states = this->NFA_states[0].next_state2;
-					else
+						if (lostate->quantifier.atleast == 3)
+							sstate.ssc.state = this->NFA_states[0].next_state2;
+						else
 #endif
-						sstate.nth.in_NFA_states = current_NFA.next_state1;
-					continue;
+							sstate.ssc.state = lostate->next_state1;
+						continue;
+					}
 				}
 
 //			case st_lookaround_pop:
-				for (uint_l32 i = this->number_of_repeats; i;)
+				for (ui_l32 i = this->number_of_repeats; i;)
 				{
 					sstate.repeat[--i] = sstate.repeat_stack.back();
 					sstate.repeat_stack.pop_back();
 				}
 
-				for (uint_l32 i = this->number_of_counters; i;)
+				for (ui_l32 i = this->number_of_counters; i;)
 				{
 					sstate.counter[--i] = sstate.counter_stack.back();
 					sstate.counter_stack.pop_back();
 				}
 
-				for (uint_l32 i = this->number_of_brackets; i > 1;)
+				for (ui_l32 i = this->number_of_brackets; i > 1;)
 				{
 					submatch_type &sm = sstate.bracket[--i];
 
@@ -22400,18 +22778,18 @@ private:
 				goto NOT_MATCHED;
 
 			case st_bol:	//  '^':
-				if (sstate.is_at_lookbehindlimit() && !sstate.match_prev_avail_flag())
+				if (sstate.is_at_lookbehindlimit() && !sstate.is_prev_avail())
 				{
 					if (!sstate.match_not_bol_flag())
 						goto MATCHED;
 				}
 					//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
-				else if (current_NFA.multiline)
+				else if (sstate.ssc.state->multiline)
 				{
-					const uchar32 prevchar = utf_traits::prevcodepoint(sstate.nth.in_string, sstate.lblim);
+					const ui_l32 prevchar = utf_traits::prevcodepoint(sstate.ssc.iter, sstate.reallblim);
 
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.offset, current_NFA.quantifier.length, prevchar))
+					if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, prevchar))
 #else
 					if (this->character_class.is_included(re_character_class::newline, prevchar))
 #endif
@@ -22425,12 +22803,12 @@ private:
 					if (!sstate.match_not_eol_flag())
 						goto MATCHED;
 				}
-				else if (current_NFA.multiline)
+				else if (sstate.ssc.state->multiline)
 				{
-					const uchar32 nextchar = utf_traits::codepoint(sstate.nth.in_string, sstate.srchend);
+					const ui_l32 nextchar = utf_traits::codepoint(sstate.ssc.iter, sstate.srchend);
 
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.offset, current_NFA.quantifier.length, nextchar))
+					if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, nextchar))
 #else
 					if (this->character_class.is_included(re_character_class::newline, nextchar))
 #endif
@@ -22439,25 +22817,25 @@ private:
 				goto NOT_MATCHED;
 
 			case st_boundary:	//  '\b' '\B'
-				is_matched = current_NFA.is_not;
-//				is_matched = current_NFA.character == char_alnum::ch_B;
+				is_matched = sstate.ssc.state->is_not;
+//				is_matched = sstate.ssc.state->char_num == char_alnum::ch_B;
 
 				//  First, suppose the previous character is not \w but \W.
 
 				if (sstate.is_at_srchend())
 				{
 					if (sstate.match_not_eow_flag())
-						is_matched = !is_matched;
+						is_matched = is_matched ? 0u : 1u;
 				}
 				else
 				{
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.offset, current_NFA.quantifier.length, utf_traits::codepoint(sstate.nth.in_string, sstate.srchend)))
+					if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, utf_traits::codepoint(sstate.ssc.iter, sstate.srchend)))
 #else
-					if (this->character_class.is_included(current_NFA.number, utf_traits::codepoint(sstate.nth.in_string, sstate.srchend)))
+					if (this->character_class.is_included(sstate.ssc.state->char_num, utf_traits::codepoint(sstate.ssc.iter, sstate.srchend)))
 #endif
 					{
-						is_matched = !is_matched;
+						is_matched = is_matched ? 0u : 1u;
 					}
 				}
 				//      \W/last     \w
@@ -22466,21 +22844,21 @@ private:
 
 				//  Second, if the actual previous character is \w, flip is_matched.
 
-				if (sstate.is_at_lookbehindlimit() && !sstate.match_prev_avail_flag())
+				if (sstate.is_at_lookbehindlimit() && !sstate.is_prev_avail())
 				{
 					if (sstate.match_not_bow_flag())
-						is_matched = !is_matched;
+						is_matched = is_matched ? 0u : 1u;
 				}
 				else
 				{
 					//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.offset, current_NFA.quantifier.length, utf_traits::prevcodepoint(sstate.nth.in_string, sstate.lblim)))
+					if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, utf_traits::prevcodepoint(sstate.ssc.iter, sstate.reallblim)))
 #else
-					if (this->character_class.is_included(current_NFA.number, utf_traits::prevcodepoint(sstate.nth.in_string, sstate.lblim)))
+					if (this->character_class.is_included(sstate.ssc.state->char_num, utf_traits::prevcodepoint(sstate.ssc.iter, sstate.reallblim)))
 #endif
 					{
-						is_matched = !is_matched;
+						is_matched = is_matched ? 0u : 1u;
 					}
 				}
 				//  \b                          \B
@@ -22505,16 +22883,16 @@ private:
 
 				goto NOT_MATCHED;
 
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
+#if defined(SRELLTEST_NEXTPOS_OPT)
 			case st_move_nextpos:
 #if !defined(SRELLDBG_NO_1STCHRCLS) && !defined(SRELLDBG_NO_BITSET)
-				sstate.nextpos = sstate.nth.in_string;
+				sstate.nextpos = sstate.ssc.iter;
 				if (!sstate.is_at_srchend())
 					++sstate.nextpos;
 #else	//  defined(SRELLDBG_NO_1STCHRCLS) || defined(SRELLDBG_NO_BITSET)
-				if (sstate.nth.in_string != sstate.bracket[0].core.open_at)
+				if (sstate.ssc.iter != sstate.bracket[0].core.open_at)
 				{
-					sstate.nextpos = sstate.nth.in_string;
+					sstate.nextpos = sstate.ssc.iter;
 					if (!sstate.is_at_srchend())
 						utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 				}
@@ -23428,6 +23806,8 @@ typedef regex_iterator<std::string::const_iterator, typename std::iterator_trait
 	#endif
 #endif
 
+#if !defined(SRELL_NO_APIEXT)
+
 template <typename BidirectionalIterator, typename BasicRegex = basic_regex<typename std::iterator_traits<BidirectionalIterator>::value_type, regex_traits<typename std::iterator_traits<BidirectionalIterator>::value_type> >, typename MatchResults = match_results<BidirectionalIterator> >
 class regex_iterator2
 {
@@ -23534,6 +23914,17 @@ public:
 	{
 		begin_ = b;
 		end_ = e;
+		pregex_ = &re;
+		rewind(m);
+	}
+	template <typename ST, typename SA>
+	void assign(
+		const std::basic_string<char_type, ST, SA> &s,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		begin_ = regex_internal::pos0_<char_type>(s, BidirectionalIterator());
+		end_ = regex_internal::pos1_<char_type>(s, BidirectionalIterator());
 		pregex_ = &re;
 		rewind(m);
 	}
@@ -23649,15 +24040,14 @@ public:
 
 	//  Returns if this->prefix() holds a range that is worthy of being
 	//  treated as a split substring.
-//	bool splittable() const
 	bool split_ready()	//const
 	{
 		if (match_.size())
 		{
 			if (match_[0].first != end_)
-			{
 				return match_.prefix().first != match_[0].second;
-			}
+
+			//  [end_, end_) is not appropriate as a split range. Invalidates the current match.
 			match_.clear_();
 		}
 		return false;	//  Iterating complete.
@@ -23699,7 +24089,6 @@ public:
 		if (split_ready())
 			return true;
 
-//		submatch_ = 0u;
 		operator++();
 		return split_ready();
 	}
@@ -23793,6 +24182,8 @@ typedef regex_iterator2<std::string::const_iterator, u8cregex> u8csregex_iterato
 		typedef u16wsregex_iterator2 u1632wsregex_iterator2;
 	#endif
 #endif
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 
 //  ... "regex_iterator.hpp"]
 //  ["regex_algorithm.hpp" ...
@@ -24415,25 +24806,4 @@ typedef regex_token_iterator<std::string::const_iterator, typename std::iterator
 //  ... "regex_token_iterator.hpp"]
 
 }		//  namespace srell
-
-#ifdef SRELL_NOEXCEPT
-#undef SRELL_NOEXCEPT
-#endif
-
-#ifdef SRELL_CPP20_CHAR8_ENABLED
-#undef SRELL_CPP20_CHAR8_ENABLED
-#endif
-
-#ifdef SRELL_CPP11_CHAR1632_ENABLED
-#undef SRELL_CPP11_CHAR1632_ENABLED
-#endif
-
-#ifdef SRELL_CPP11_INITIALIZER_LIST_ENABLED
-#undef SRELL_CPP11_INITIALIZER_LIST_ENABLED
-#endif
-
-#ifdef SRELL_CPP11_MOVE_ENABLED
-#undef SRELL_CPP11_MOVE_ENABLED
-#endif
-
 #endif	//  SRELL_REGEX_TEMPLATE_LIBRARY

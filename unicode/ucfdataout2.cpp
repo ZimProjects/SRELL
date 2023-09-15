@@ -1,7 +1,7 @@
 //
-//  ucfdataout.cpp: version 2.102 (2022/10/30).
+//  ucfdataout.cpp: version 2.103 (2023/09/09).
 //
-//  This is a program that generates srell_ucfdata.hpp from CaseFolding.txt
+//  This is a program that generates srell_ucfdata2.h from CaseFolding.txt
 //  provided by the Unicode Consortium. The latese version is available at:
 //  http://www.unicode.org/Public/UNIDATA/CaseFolding.txt
 //
@@ -10,6 +10,8 @@
 #include <cstdlib>
 #include <string>
 #include <map>
+#include <algorithm>	//  For std::swap in C++98/03
+#include <utility>	//  For std::swap in C++11-
 #define SRELL_NO_UNICODE_DATA
 #include "../srell.hpp"
 
@@ -19,12 +21,31 @@
 
 namespace unishared
 {
-template <const std::size_t BufSize, typename Type>
-std::string stringify(const Type value, const char *const fmt)
+template <typename T>
+std::string to_string(T value, int radix = 10, const int precision = 1)
 {
-	char buffer[BufSize];
-	std::sprintf(buffer, fmt, value);
-	return std::string(buffer);
+	std::string num;
+
+	if (radix >= 2 && radix <= 16)
+	{
+		typedef typename std::string::size_type size_type;
+		const bool minus = value < 0 ? (value = 0 - value, true) : false;
+
+		for (; value; value /= radix)
+			num.push_back("0123456789ABCDEF"[value % radix]);
+
+		if (precision > 0 && num.size() < static_cast<size_type>(precision))
+			num.append(static_cast<size_type>(precision) - num.size(), static_cast<char>('0'));
+
+		if (minus)
+			num.push_back(static_cast<char>('-'));
+
+		const size_type mid = num.size() / 2;
+
+		for (size_type i = 0; i < mid; ++i)
+			std::swap(num[i], num[num.size() - i - 1]);
+	}
+	return num;
 }
 
 bool read_file(std::string &str, const char *const filename, const char *const dir)
@@ -92,7 +113,7 @@ struct ucf_options
 
 	ucf_options(const int argc, const char *const *const argv)
 		: infilename("CaseFolding.txt")
-		, outfilename("srell_ucfdata2.hpp")
+		, outfilename("srell_ucfdata2.h")
 		, indir("")
 		, version(201)
 		, errorno(0)
@@ -137,6 +158,16 @@ struct ucf_options
 					if (index >= argc)
 						goto NO_ARGUMENT;
 					indir = argv[index];
+				}
+				else if (std::strcmp(option, "?") == 0 || std::strcmp(option, "h") == 0)
+				{
+					std::fputs("Usage: ucfdataout2 [options]\nOptions:\n", stdout);
+					std::fputs("  -i <FILE>\t\tRead data from <FILE>.\n", stdout);
+					std::fputs("  -id <DIRECTORY>\tAssume that input file exist in <DIRECTORY>.\n\t\t\t<DIRECTORY> must ends with '/' or '\\'.\n", stdout);
+					std::fputs("  -o <FILE>\t\tOutput to <FILE>.\n", stdout);
+//					std::fputs("  -v <VERNO>\t\tOutput in the version VERNO format.\n", stdout);
+					errorno = 1;
+					return;
 				}
 				else
 				{
@@ -184,18 +215,18 @@ public:
 		if (unishared::read_file(buf, opts.infilename, opts.indir))
 		{
 			static const srell::regex re_line("^.*$", srell::regex::multiline);
-			const srell::cregex_iterator eos;
-			srell::cregex_iterator iter(buf.c_str(), buf.c_str() + buf.size(), re_line);
+			static const srell::regex re_license("^# (.*)$");
+			static const srell::regex re_cfdata("^\\s*([0-9A-Fa-f]+); ([CS]); ([0-9A-Fa-f]+);\\s*#\\s*(.*)$");
+			static const srell::regex re_comment_or_emptyline("^#.*|^$");
+			srell::cregex_iterator2 iter(buf.c_str(), buf.c_str() + buf.size(), re_line);
 			srell::cmatch match;
 			int colcount = 0;
 
-			for (; iter != eos; ++iter)
+			for (; !iter.done(); ++iter)
 			{
 				if (iter->length(0))
 				{
-					static const srell::regex re_datainfo("^# (.*)$");
-
-					if (!srell::regex_match((*iter)[0].first, (*iter)[0].second, match, re_datainfo))
+					if (!srell::regex_match((*iter)[0].first, (*iter)[0].second, match, re_license))
 					{
 						outdata.append(1, '\n');
 						break;
@@ -209,17 +240,14 @@ public:
 			else
 				outdata += "template <typename T2, typename T3>\nstruct unicode_casefolding\n{\n";
 
-			for (; iter != eos; ++iter)
+			for (; !iter.done(); ++iter)
 			{
-				static const srell::regex re_cfdata("^\\s*([0-9A-Fa-f]+); ([CS]); ([0-9A-Fa-f]+);\\s*#\\s*(.*)$");
-				const srell::cmatch &line = *iter;
-
-				if (srell::regex_match(line[0].first, line[0].second, match, re_cfdata))
+				if (srell::regex_match((*iter)[0].first, (*iter)[0].second, match, re_cfdata))
 				{
-					const std::string from(match[1]);
-					const std::string to(match[3]);
-					const std::string type(match[2]);
-					const std::string name(match[4]);
+					const std::string from(match[1].str());
+					const std::string to(match[3].str());
+					const std::string type(match[2].str());
+					const std::string name(match[4].str());
 
 					update(from, to);
 
@@ -229,6 +257,7 @@ public:
 					{
 						if (colcount == 0)
 							outdata += indent;
+
 						outdata += "{ 0x" + from + ", 0x" + to + " },";
 						if (++colcount == 4)
 						{
@@ -239,24 +268,23 @@ public:
 				}
 				else if (opts.version == 100)
 				{
-					static const srell::regex re_comment_or_emptyline("^#.*|^$");
-
-					if (!srell::regex_match(line[0].first, line[0].second, re_comment_or_emptyline))
-						outdata += indent + "//  " + line.str(0) + "\n";
+					if (!srell::regex_match((*iter)[0].first, (*iter)[0].second, re_comment_or_emptyline))
+						outdata += indent + "//  " + iter->str(0) + "\n";
 				}
 			}
+
 			if (colcount > 0)
 				outdata.append(1, '\n');
 			if (opts.version <= 100)
 				outdata += indent + "{ 0, 0 }\n\t\t};\n\t\treturn ucftable;\n\t}\n";
 
-			outdata += "\tstatic const T2 ucf_maxcodepoint = 0x" + unishared::stringify<16>(ucf_maxcodepoint_, "%.4lX") + ";\n";
-			outdata += "\tstatic const T3 ucf_deltatablesize = 0x" + unishared::stringify<16>(ucf_numofsegs_ << 8, "%X") + ";\n";
+			outdata += "\tstatic const T2 ucf_maxcodepoint = 0x" + unishared::to_string(ucf_maxcodepoint_, 16, 4) + ";\n";
+			outdata += "\tstatic const T3 ucf_deltatablesize = 0x" + unishared::to_string(ucf_numofsegs_ << 8, 16) + ";\n";
 
-			outdata += "\tstatic const T2 rev_maxcodepoint = 0x" + unishared::stringify<16>(rev_maxcodepoint_, "%.4lX") + ";\n";
-			outdata += "\tstatic const T3 rev_indextablesize = 0x" + unishared::stringify<16>(rev_numofsegs_ << 8, "%X") + ";\n";
-			outdata += "\tstatic const T3 rev_charsettablesize = " + unishared::stringify<16>(numofcps_to_ * 2 + numofcps_from_ + 1, "%u") + ";\t//  1 + " + unishared::stringify<16>(numofcps_to_, "%u") + " * 2 + " + unishared::stringify<16>(numofcps_from_, "%u") + "\n";
-			outdata += "\tstatic const T3 rev_maxset = " + unishared::stringify<16>(maxset(), "%u") + ";\n";
+			outdata += "\tstatic const T2 rev_maxcodepoint = 0x" + unishared::to_string(rev_maxcodepoint_, 16, 4) + ";\n";
+			outdata += "\tstatic const T3 rev_indextablesize = 0x" + unishared::to_string(rev_numofsegs_ << 8, 16) + ";\n";
+			outdata += "\tstatic const T3 rev_charsettablesize = " + unishared::to_string(numofcps_to_ * 2 + numofcps_from_ + 1) + ";\t//  1 + " + unishared::to_string(numofcps_to_) + " * 2 + " + unishared::to_string(numofcps_from_) + "\n";
+			outdata += "\tstatic const T3 rev_maxset = " + unishared::to_string(maxset()) + ";\n";
 			outdata += "\tstatic const T2 eos = 0;\n";
 
 			if (opts.version >= 200)
@@ -268,7 +296,7 @@ public:
 
 				outdata += "};\ntemplate <typename T2, typename T3>\n\tconst T2 unicode_casefolding<T2, T3>::ucf_maxcodepoint;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::ucf_deltatablesize;\ntemplate <typename T2, typename T3>\n\tconst T2 unicode_casefolding<T2, T3>::rev_maxcodepoint;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::rev_indextablesize;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::rev_charsettablesize;\ntemplate <typename T2, typename T3>\n\tconst T3 unicode_casefolding<T2, T3>::rev_maxset;\ntemplate <typename T2, typename T3>\n\tconst T2 unicode_casefolding<T2, T3>::eos;\n\n";
 				out_v2tables(outdata);
-				outdata += "#define SRELL_UCFDATA_VERSION " + unishared::stringify<16>(static_cast<unsigned int>(opts.version), "%u") + "\n";
+				outdata += "#define SRELL_UCFDATA_VERSION " + unishared::to_string(static_cast<unsigned int>(opts.version)) + "\n";
 			}
 			else
 				outdata += "};\n#define SRELL_UCFDATA_VER 201909L\n";
@@ -433,7 +461,7 @@ private:
 
 	void out_lowertable(std::string &outdata, const char *const headers[], const char *const type, const char *const funcname, const std::basic_string<long> &table, const std::basic_string<long> &segtable) const
 	{
-		int end = static_cast<int>(table.size());
+		const long end = static_cast<long>(table.size());
 
 		outdata += headers[0];
 		outdata += type;
@@ -441,19 +469,19 @@ private:
 		outdata += funcname;
 		outdata += headers[2];
 
-		for (int i = 0; i < end;)
+		for (long i = 0L; i < end;)
 		{
-			const int col = i & 15;
+			const long col = i & 15L;
 
-			if ((i & 255) == 0)
+			if ((i & 255L) == 0)
 			{
-				if (i)
+				if (i != 0L)
 				{
-					for (int j = 0; j < static_cast<int>(segtable.size()); ++j)
+					for (long j = 0L; j < static_cast<long>(segtable.size()); ++j)
 					{
 						if (segtable[j] == i)
 						{
-							outdata += "\n\t//  For u+" + unishared::stringify<16>(j, "%.2X") + "xx (" + unishared::stringify<16>(i, "%d") + ")\n";
+							outdata += "\n\t//  For u+" + unishared::to_string(j, 16, 2) + "xx (" + unishared::to_string(i) + ")\n";
 							break;
 						}
 					}
@@ -464,13 +492,13 @@ private:
 
 			outdata += col == 0 ? "\t" : (col & 3) == 0 ? "  " : " ";
 			if (table[i] >= 0L)
-				outdata += unishared::stringify<16>(table[i], "%ld");
+				outdata += unishared::to_string(table[i]);
 			else
-				outdata += "static_cast<", outdata += type, outdata += ">(", outdata += unishared::stringify<16>(table[i], "%ld") + ")";
+				outdata += "static_cast<", outdata += type, outdata += ">(", outdata += unishared::to_string(table[i]) + ")";
 
 			if (++i == end)
 				outdata.append(1, '\n');
-			else if (col == 15)
+			else if (col == 15L)
 				outdata += ",\n";
 			else
 				outdata.append(1, ',');
@@ -494,9 +522,9 @@ private:
 
 			outdata += col == 0 ? "\t" : (col & 3) == 0 ? "  " : " ";
 			if (table[i] >= 0)
-				outdata += unishared::stringify<16>(table[i], "%ld");
+				outdata += unishared::to_string(table[i]);
 			else
-				outdata += "static_cast<", outdata += type, outdata += ">(", outdata += unishared::stringify<16>(table[i], "%ld") + ")";
+				outdata += "static_cast<", outdata += type, outdata += ">(", outdata += unishared::to_string(table[i]) + ")";
 
 			if (++i == end)
 				outdata.append(1, '\n');
@@ -531,7 +559,7 @@ private:
 			if (val == -1L)
 				outdata += "eos";
 			else
-				outdata += "0x", outdata += unishared::stringify<16>(val, "%.4lX");
+				outdata += "0x", outdata += unishared::to_string(val, 16, 4);
 
 			if (++i != end)
 				outdata.append(1, ',');
@@ -541,7 +569,7 @@ private:
 				if (prevprintedbos != bos / 10 || i == end)
 				{
 					outdata += "\t//  ";
-					outdata += unishared::stringify<16>(bos, "%d");
+					outdata += unishared::to_string(bos);
 					prevprintedbos = bos / 10;
 				}
 				outdata.append(1, '\n');

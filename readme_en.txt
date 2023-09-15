@@ -2,8 +2,8 @@ How to Use
 
   Put the following three files in one directory, and include srell.hpp.
   1. srell.hpp
-  2. srell_ucfdata2.hpp (data for case folding)
-  3. srell_updata2.hpp (data for Unicode properties)
+  2. srell_ucfdata2.h (data for case folding)
+  3. srell_updata3.h (data for Unicode properties)
 
 The files in the following directories are supplements. As SRELL does not use
 them, it is safe to remove them.
