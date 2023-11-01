@@ -1,7 +1,17 @@
+20230926; version 4.033:
+  * Fixed a bug that could cause a crash on 64-bit systems since version
+    4.020 (Thanks for the bug report).
+  * Removed an unused member function from utf_traits.
+  * Some clean-ups.
+
+20230916; version 4.032:
+  * Added directives for decoders of UTF-8/UTF-16 to be always inlined.
+  * Improved several internal functions that call the automaton.
+
 20230913; version 4.031:
   * Updated ucfdata2.h and updata3.h to support Unicode 15.1.0.
   * Updated updataout3.cpp so that the "Unknown" value can be used as a
-    value for Scripts/Script_Extensions of Unicode property escapes.
+    value for Script/Script_Extensions of Unicode property escapes.
     Although this value is mentioned in Scripts.txt, SRELL did not
     support it because it was not included in the table in the
     ECMAScript specification which shows what script names must be

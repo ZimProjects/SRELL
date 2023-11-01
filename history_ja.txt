@@ -1,6 +1,16 @@
+20230926; version 4.033:
+  ・Version 4.020以降、64ビット環境でアクセス違反を起こすことがあった問
+    題を修正（バグのご報告に感謝します）。
+  ・utf_traits中の使用されていないメンバ函数を削除。
+  ・その他コードの整理など。
+
+20230916; version 4.032:
+  ・UTF-8/UTF-16のデコーダが常にinline展開されるようdirectiveを追加。
+  ・オートマトンの呼び出し部を整理。
+
 20230913; version 4.031:
   ・ucfdata2.h, updata3.hをUnicode 15.1.0対応に更新。
-  ・updataout3.cppを更新。Unicode property escapeのScriptsまたは
+  ・updataout3.cppを更新。Unicode property escapeのScriptまたは
     Script_Extensionsで指定できる値に"Unknown"を追加。
     この値はScripts.txt内で言及されているものの、ECMAScript仕様書の「対
     応すべきscript名一覧」になかったのでこれまで対応していませんでした。
