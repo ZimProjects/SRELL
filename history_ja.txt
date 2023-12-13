@@ -1,6 +1,24 @@
+20231209; version 4.034:
+  ・アルゴリズム函数に渡されたiteratorがcontiguous_iteratorかどうかを調
+    べる時、std::contiguous_iteratorが使えるならそれを使うように。
+  ・正規表現中に存在しないグループ名が、match_results型のoperator[]()メ
+    ンバ函数に引数として渡された場合、error_backrefをthrowするのをやめ、
+    「何にもマッチしていない」ことを表すsub_match型インスタンスへの参照
+    を返すように変更。
+    この変更に併せて、match_results::operator[](size_type n)が
+    n >= size()の時も同様の参照を返すように変更（std::regex準拠の挙動。
+    従来はSRELL_STRICT_IMPLが定義されていた時のみ準拠）。
+  ・例外をthrowしないモードを実装。
+  ・例外を投げないモード用に、直前のコンパイル時にthrowされるはずであっ
+    たerror_typeを返す basic_regex::ecode() を追加。
+  ・例外を投げないモード用に、直前の検索時にthrowされるはずであった
+    error_typeを返す match_results::ecode() を追加。
+
 20230926; version 4.033:
   ・Version 4.020以降、64ビット環境でアクセス違反を起こすことがあった問
-    題を修正（バグのご報告に感謝します）。
+    題を修正（報告してくださったYuriy Skvortsov氏に感謝します）。
+    発生条件：/ab|ac|ad/のように、3つ以上のAlternativesが同じ文字から始
+    まる。
   ・utf_traits中の使用されていないメンバ函数を削除。
   ・その他コードの整理など。
 
@@ -337,12 +355,12 @@
 20200630; version 2.700:
   ・最適化処理の調整。
 
-20200620: version 2.651:
+20200620; version 2.651:
   ・グループ名のチェックを行う位置を\uエスケープの解釈後に移動。
   ・misc/sample01.cppをversion 1.103に更新。参照しているECMAScript仕様書
     の版を2020(ES11)に変更。
 
-20200618: version 2.650:
+20200618; version 2.650:
   ・名前付き括弧に捕獲された文字列へのアクセス用函数に、グループ名をポイ
     ンタで指定するoverloadをmatch_resultsに追加。
   ・3イテレータ版のregex_search()使用時には、検索の開始位置ではなく戻り
@@ -350,27 +368,27 @@
     match_results::prefix::firstにセットするよう変更。
   ・不要と思われる処理をいくつか削除。
 
-20200601: version 2.643:
+20200601; version 2.643:
   ・syntax_option_typeおよびmatch_flag_typeのoperator函数にinline指定を
     追加（これがないとリンク時に多重定義エラーが出ることがあるとのご指摘
     がありました）。
   ・その他細かな改良など。
 
-20200530: version 2.642:
+20200530; version 2.642:
   ・basic_regex型インスタンスが確保するメモリのサイズを削減。
 
-20200528: version 2.641:
+20200528; version 2.641:
   ・2.640での修正1が不完全であったため再修正。
   ・最適化処理の調整。
 
-20200516: version 2.640:
+20200516; version 2.640:
   ・最適化バグの修正1: regex_matchが入力文字列の終端を通り過ぎてしまうこ
     とがあった問題を修正。
   ・最適化バグの修正2: multilineフラグ指定時に ^ や $ が適切な位置でのマ
     ッチングをさせてもらえなくなってしまっていた問題を修正。
   ・srell_ucfdata2.hppとsrell_updata.hppとを更新。
 
-20200509: version 2.630:
+20200509; version 2.630:
   ・正規表現中に不正なUTF-8のシークウェンスがあった場合、パターンコンパ
     イラがregex_utf8をthrowするように仕様変更（検索対象文字列中に不正な
     UTF-8の並びがあってもエラー扱いされません）。
@@ -382,17 +400,17 @@
     match_results.format()に渡す書式文字列の中で$<NAME>のようにして指定
     すると、その部分が空文字に置換されずそのまま残ってしまう問題を修正。
 
-20200502: version 2.620:
+20200502; version 2.620:
   ・Boyer-Moore-Horspoolアルゴリズム用クラスからmatch_continuous指定時用
     およびregex_match用の函数を削除。これらの処理時は以前のようにオート
     マトンを使うように変更。
   ・その他クリーンナップ。
 
-20200428: version 2.611:
+20200428; version 2.611:
   ・/\d*/ が "abc" の冒頭にマッチせず末尾にマッチする問題を修正（Version
     2.210で混入したバグ）。
 
-20200426: version 2.610:
+20200426; version 2.610:
   ・Case-insensitive (icase) なBMH検索が行われる際、探している文字列が検
     索対象テキスト全体の先頭にあった場合に読み飛ばされてしまうことがある
     バグを修正（UTF-8またはUTF-16で、検索文字列の末尾が複数のコードユニ
@@ -401,7 +419,7 @@
     に変更。これにより、前の版までは受理されていた /(?<,>...)/ のような
     グループ名はregex_errorがthrowされるように。
 
-20200418: version 2.600:
+20200418; version 2.600:
   ・戻り読み (lookbehind) の逆行限界を直接regex_search()に渡せるように
     3イテレータ版のregex_search()を追加。
   ・[非互換変更] 2.300で導入したmatch_flag_typeのmatch_lblim_availフラグ
@@ -410,7 +428,7 @@
   ・unicode/updataout.cppをUnicode 13対応に更新（ECMAScript 2020で対応さ
     れる見込みのスクリプト名の先行対応）。
 
-20191118: version 2.500:
+20191118; version 2.500:
   ・初めてbasic_regex型インスタンスが作られた時にcase foldingデータから
     icaseマッチング用テーブルを展開するのに代えて、最初から計算済みテー
     ブルを保持しているように仕様変更。
@@ -428,12 +446,12 @@
   ・updataout.cppを1.101にヴァージョンアップ。
   ・単体版のsrellを追加（single-headerディレクトリ内）。
 
-20190914: version 2.401:
+20190914; version 2.401:
   ・basic_regex型インスタンスのサイズを削減（Unicode property escapes対
     応時にうっかり膨張させてしまっていました）。
   ・basic_regex::swap()の改良。
 
-20190907: version 2.400:
+20190907; version 2.400:
   ・文字クラスの照合速度を改善。
   ・パターンコンパイル時にグループ名中の\uエスケープを解釈するように変更
     （ECMAScriptの仕様に準拠）。
@@ -446,14 +464,14 @@
     srell_ucfdata.hppを使うことは可）。
   ・その他コードの整理や改良など。
 
-20190902: version 2.304:
+20190902; version 2.304:
   ・Version 2.303のコード整理で壊れてしまっていたregex_iteratorを修復。
 
-20190810: version 2.303:
+20190810; version 2.303:
   ・2.302の修正が不完全であったため再修正。
   ・その他コードの整理。
 
-20190809: version 2.302:
+20190809; version 2.302:
   ・(?...) に繰り返し指定がついている時、内側の括弧によって捕獲された文
     字列がループごとにクリアされず持ち越されていたバグを修正。
     例：/(?:(ab)|(cd))+/.exec("abcd") → 1番括弧はundefinedになるはずが
@@ -461,12 +479,12 @@
   ・misc/sample01.cppをversion 1.102に更新。テスト名中の章番号を
     ECMAScript 2019 (ES10) 準拠に変更
 
-20190724: version 2.301:
+20190724; version 2.301:
   ・ECMAScriptの仕様に準じて、\でエスケープ可能な文字の種類を次の15字に
     限定。^$\.*+?()[]{}|/
     文字クラス内（[]内）ではこの15字に加えて '-' も対象に。
 
-20190717: version 2.300:
+20190717; version 2.300:
   ・検索対象範囲とは別に、戻り読み (lookbehind) の逆行限界を指定できる機
     能を追加（match_flag_typeへのmatch_lblim_availフラグの追加と
     match_resultsへのlookbehind_limitメンバの追加）。
@@ -479,11 +497,11 @@
   ・misc/sample01.cppをversion 1.101に更新。misc.jsより準拠テストを1つ追
     加。
 
-20190714: version 2.230:
+20190714; version 2.230:
   ・正規表現が '*' か '+' かを伴う文字または文字クラスで始まる場合の検索
     速度を改善（例：/[A-Za-z]+ing/）。
 
-20190707: version 2.221:
+20190707; version 2.221:
   ・std::u8stringの利用可否は__cpp_char8_tではなく__cpp_lib_char8_tを用
     いて判断するように変更。
   ・icase指定時にcase-folding処理をした結果、文字クラス内の文字がすべて
@@ -491,7 +509,7 @@
     するように変更。例：/r[Ss\u017F]t/i → /rst/i。
   ・その他問題を修正。
 
-20190617: version 2.220:
+20190617; version 2.220:
   ・カウンタを使わぬほうが内部表現がコンパクトになる繰り返しはカウンタを
     使わぬように変更。
   ・最適化バグにより、/a{1,2}?b/.exec("aab") が "aab" ではなく "ab" を返
@@ -499,15 +517,15 @@
     たは文字クラスの後ろに、その文字集合と排他的な文字または文字クラスが
     続いている場合）。
 
-20190613: version 2.210:
+20190613; version 2.210:
   ・/ab|cd|ef/ のような表現（'|' で区切られている文字列の先頭文字が互い
     に排他的な場合）の照合方法を改良。
 
-20190603: version 2.202:
+20190603; version 2.202:
   ・BMHアルゴリズムが使われる状況で、regex_matchがregex_search相当の処理
     をしてしまうバグを修正。
 
-20190531: version 2.200:
+20190531; version 2.200:
   ・通常の（正規表現ではない）テキスト検索用に、Boyer-Moore-Horspoolアル
     ゴリズムに基づく実装を追加。
   ・UTF-8用iteratorの改良。
@@ -515,7 +533,7 @@
     うに。
   ・その他問題を修正。
 
-20190508: version 2.100:
+20190508; version 2.100:
   ・Lookbehind中に文字列のキャプチャがあり、かつその中および左方に可変長
     の正規表現があった場合、文字列の捕獲に失敗することがあったのを修正。
     例："1053" =~ /(?<=(\d+)(\d+))$/ で$2に適切な文字列がセットされず。
@@ -543,14 +561,14 @@
       u8ccregex_iterator, u8csregex_iterator; u8ccregex_token_iterator,
       u8csregex_token_iterator.
 
-20180717: version 2.002:
+20180717; version 2.002:
   ・ECMAScriptの仕様に合わせて \u{h...} の h... 部分の最大桁数を6から無
     制限に変更（変更前の1～6桁というのは提案書に基づく実装でした）。
   ・updataout.cppを1.001に更新。新規に追加されたスクリプト名をエラー扱い
     せぬように修整。
   ・srell_ucfdata.hppとsrell_updata.hppとをUnicode 11.0.0対応に更新。
 
-20180204: version 2.001:
+20180204; version 2.001:
   ・icase指定時に、[\W]（\Wを含む文字class）が [KkSs\u017F\u212A] のいず
     れにもマッチせぬよう変更（関連：ecma262 issue #512）。
 

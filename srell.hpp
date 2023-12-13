@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.033
+**  SRELL (std::regex-like library) version 4.034
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -310,7 +310,7 @@ private:
 //  ... "regex_error.hpp"]
 //  ["rei_type.h" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if defined(SRELL_CPP11_CHAR1632_ENABLED)
@@ -328,12 +328,12 @@ private:
 #else
 #error could not find a suitable type for 32-bit Unicode integer values.
 #endif	//  defined(SRELL_CPP11_CHAR1632_ENABLED)
-	}	//  regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_type.h"]
 //  ["rei_constants.h" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 		enum re_state_type
 		{
@@ -496,12 +496,12 @@ private:
 		}
 		//  epsilon_type
 	}
-	//  namespace regex_internal
+	//  namespace re_detail
 
 //  ... "rei_constants.h"]
 //  ["rei_utf_traits.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if defined(_MSC_VER)
@@ -644,7 +644,7 @@ public:
 		}
 //		else	//  80-bf, f8-ff: invalid.
 
-		return regex_internal::constants::invalid_u32value;
+		return re_detail::constants::invalid_u32value;
 	}
 
 	template <typename ForwardIterator>
@@ -696,7 +696,7 @@ public:
 		}
 //		else	//  80-bf, f8-ff: invalid.
 
-		return regex_internal::constants::invalid_u32value;
+		return re_detail::constants::invalid_u32value;
 	}
 
 	template <typename BidirectionalIterator>
@@ -728,7 +728,7 @@ public:
 				}
 			}
 		}
-		return regex_internal::constants::invalid_u32value;
+		return re_detail::constants::invalid_u32value;
 	}
 
 	template <typename BidirectionalIterator>
@@ -765,7 +765,7 @@ public:
 				}
 			}
 		}
-		return regex_internal::constants::invalid_u32value;
+		return re_detail::constants::invalid_u32value;
 	}
 
 #if !defined(SRELLDBG_NO_BMH)
@@ -1001,7 +1001,7 @@ struct utf_traits<char8_t> : public utf8_traits<char8_t>
 };
 #endif
 
-	}	//  regex_internal
+	}	//  re_detail
 
 //  ... "rei_utf_traits.hpp"]
 //  ["regex_traits.hpp" ...
@@ -1018,7 +1018,7 @@ public:
 //	typedef bitmask_type char_class_type;
 	typedef int char_class_type;
 
-	typedef regex_internal::utf_traits<charT> utf_traits;
+	typedef re_detail::utf_traits<charT> utf_traits;
 
 public:
 
@@ -1087,19 +1087,19 @@ public:
 template <class charT>
 struct u8regex_traits : public regex_traits<charT>
 {
-	typedef regex_internal::utf8_traits<charT> utf_traits;
+	typedef re_detail::utf8_traits<charT> utf_traits;
 };
 
 template <class charT>
 struct u16regex_traits : public regex_traits<charT>
 {
-	typedef regex_internal::utf16_traits<charT> utf_traits;
+	typedef re_detail::utf16_traits<charT> utf_traits;
 };
 
 //  ... "regex_traits.hpp"]
 //  ["rei_memory.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 /*
  *  Similar to std::basic_string, except for:
@@ -1502,12 +1502,12 @@ template <typename ElemT>
 const typename simple_array<ElemT>::size_type simple_array<ElemT>::npos;
 //  simple_array
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_memory.hpp"]
 //  ["rei_bitset.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 //  Always uses a heap instead of the stack.
@@ -1669,12 +1669,12 @@ private:
 	array_type *buffer_;
 };
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_bitset.hpp"]
 //  ["rei_ucf.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if !defined(SRELL_NO_UNICODE_ICASE)
@@ -1802,12 +1802,12 @@ public:	//  For debug.
 };
 //  unicode_case_folding
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_ucf.hpp"]
 //  ["rei_up.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -1973,12 +1973,12 @@ private:
 //  unicode_property
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_up.hpp"]
 //  ["rei_range_pair.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 struct range_pair	//  , public std::pair<charT, charT>
@@ -2582,12 +2582,12 @@ public:	//  For debug.
 };
 //  range_pairs
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_range_pair.hpp"]
 //  ["rei_char_class.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -3011,12 +3011,12 @@ public:	//  For debug.
 };
 //  re_character_class
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_char_class.hpp"]
 //  ["rei_groupname_mapper.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
@@ -3154,12 +3154,12 @@ const ui_l32 groupname_mapper<charT>::notfound;
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_groupname_mapper.hpp"]
 //  ["rei_state.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 struct re_quantifier
@@ -3478,12 +3478,12 @@ struct re_compiler_state : public re_flags
 };
 //  re_compiler_state
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_state.hpp"]
 //  ["rei_search_state.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 //template <typename charT>
@@ -3798,12 +3798,12 @@ public:
 };
 //  re_search_state
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_search_state.hpp"]
 //  ["rei_bmh.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if !defined(SRELLDBG_NO_BMH)
@@ -4104,12 +4104,12 @@ private:
 //  re_bmh
 
 #endif	//  !defined(SRELLDBG_NO_BMH)
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_bmh.hpp"]
 //  ["rei_upos.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 struct posdata_holder
@@ -4451,12 +4451,12 @@ private:
 };
 //  posdata_holder
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_upos.hpp"]
 //  ["rei_compiler.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 template <typename charT, typename traits>
@@ -4511,14 +4511,13 @@ private:
 
 protected:
 
-	re_object_core()
+	re_object_core() :
 #if !defined(SRELL_NO_LIMIT_COUNTER)
-		: limit_counter(lcounter_defnum_)
-	#if !defined(SRELLDBG_NO_BMH)
+		limit_counter(lcounter_defnum_),
+#endif
+		number_of_repeats(0u)
+#if !defined(SRELLDBG_NO_BMH)
 		, bmdata(NULL)
-	#endif
-#elif !defined(SRELLDBG_NO_BMH)
-		: bmdata(NULL)
 #endif
 	{
 	}
@@ -4576,7 +4575,6 @@ protected:
 #endif
 
 #if !defined(SRELLDBG_NO_BMH)
-//		bmdata->clear();
 		if (bmdata)
 			delete bmdata;
 		bmdata = NULL;
@@ -4601,8 +4599,6 @@ protected:
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 			this->limit_counter = that.limit_counter;
 #endif
-
-//			this->utf_traits_inst = that.utf_traits_inst;
 
 			this->number_of_brackets = that.number_of_brackets;
 			this->number_of_counters = that.number_of_counters;
@@ -4696,7 +4692,6 @@ protected:
 				right.limit_counter = tmp_limit_counter;
 			}
 #endif
-//			this->utf_traits_inst.swap(right.utf_traits_inst);
 
 			{
 				const ui_l32 tmp_numof_brackets = this->number_of_brackets;
@@ -4733,16 +4728,17 @@ protected:
 		}
 	}
 
-	void throw_error(const regex_constants::error_type &e)
+	bool set_error(const regex_constants::error_type e)
 	{
 //		reset();
 		NFA_states.clear();
-#if !defined(SRELLDBG_NO_BMH)
-		if (bmdata)
-			delete bmdata;
-		bmdata = NULL;
-#endif
-		throw regex_error(e);
+		number_of_repeats = static_cast<ui_l32>(e);
+		return false;
+	}
+
+	regex_constants::error_type ecode() const
+	{
+		return NFA_states.size() ? 0 : static_cast<regex_constants::error_type>(number_of_repeats);
 	}
 
 private:
@@ -4780,11 +4776,28 @@ protected:
 			const ui_l32 u32c = utf_traits::codepoint_inc(begin, end);
 
 			if (u32c > constants::unicode_max_codepoint)
-				this->throw_error(regex_constants::error_utf8);
+			{
+				this->set_error(regex_constants::error_utf8);
+				goto COMPILING_FAILURE;
+			}
 			u32.push_backncr(u32c);
 		}
 
-		return compile_core(u32.data(), u32.data() + u32.size(), flags);
+		if (!compile_core(u32.data(), u32.data() + u32.size(), flags))
+		{
+			COMPILING_FAILURE:
+#if !defined(SRELLDBG_NO_BMH)
+			if (this->bmdata)
+				delete this->bmdata;
+			this->bmdata = NULL;
+#endif
+#if !defined(SRELL_NO_THROW)
+			throw regex_error(this->number_of_repeats);
+#else
+			return false;
+#endif
+		}
+		return true;
 	}
 
 	bool is_icase() const
@@ -4870,10 +4883,10 @@ private:
 		}
 
 		if (begin != end)
-			this->throw_error(regex_constants::error_paren);	//  ')'s are too many.
+			return this->set_error(regex_constants::error_paren);	//  ')'s are too many.
 
 		if (!check_backreferences(cvars))
-			this->throw_error(regex_constants::error_backref);
+			return this->set_error(regex_constants::error_backref);
 
 #if !defined(SRELL_NO_ICASE)
 		if (this->is_icase())
@@ -4954,12 +4967,13 @@ private:
 		state_array piece;
 		state_array piece_with_quantifier;
 		re_quantifier quantifier;
+		re_quantifier piecesize;
+		state_type astate;
 
 		branchsize.reset(0);
 
 		for (;;)
 		{
-			re_quantifier piecesize;
 
 			if (curpos == end || *curpos == meta_char::mc_bar || *curpos == meta_char::mc_rbracl /* || *curpos == char_ctrl::cc_nul */)	//  '|', ')', '\0'.
 				return true;
@@ -4967,8 +4981,202 @@ private:
 			piece.clear();
 			piece_with_quantifier.clear();
 
-			if (!get_atom(piece, piecesize, curpos, end, cvars))
-				return false;
+			astate.reset(st_character, *curpos++);
+
+			switch (astate.char_num)
+			{
+			case meta_char::mc_rbraop:	//  '(':
+				if (!parse_group(piece, piecesize, curpos, end, cvars))
+					return false;
+				goto AFTER_PIECE_SET;
+
+			case meta_char::mc_sbraop:	//  '[':
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+				if (this->is_vmode())	//  vmode.
+				{
+					if (!parse_charclass_v(piece, piecesize, curpos, end, cvars))
+						return false;
+					goto AFTER_PIECE_SET;
+				}
+#endif
+				if (!register_character_class(astate, curpos, end, cvars))
+					return false;
+
+				break;
+
+			case meta_char::mc_escape:	//  '\\':
+				if (curpos == end)
+					return this->set_error(regex_constants::error_escape);
+
+				astate.char_num = *curpos;
+
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+				if (this->is_vmode() && ((astate.char_num | constants::asc_icase) == char_alnum::ch_p))
+				{
+					posdata_holder pos;
+
+					if (!parse_escape_p_vmode(pos, astate, ++curpos, end, cvars))
+						return false;
+
+					if (astate.type == st_character_class)
+						astate.char_num = this->character_class.register_newclass(pos.ranges);
+					else
+						transform_seqdata(piece, pos);
+
+					piecesize.set(astate.quantifier.atleast, astate.quantifier.atmost);
+
+					if (piece.size())
+						goto AFTER_PIECE_SET;
+
+					break;
+				}
+#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
+				switch (astate.char_num)
+				{
+				case char_alnum::ch_B:	//  'B':
+					astate.is_not = 1u;
+					//@fallthrough@
+
+				case char_alnum::ch_b:	//  'b':
+					astate.type = st_boundary;	//  \b, \B.
+					astate.quantifier.reset(0);
+					if (this->is_icase())
+					{
+						this->character_class.setup_icase_word();
+						astate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
+					}
+					else
+						astate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
+					break;
+
+//				case char_alnum::ch_A:	//  'A':
+//					astate.type   = st_bol;	//  '\A'
+//				case char_alnum::ch_Z:	//  'Z':
+//					astate.type   = st_eol;	//  '\Z'
+//				case char_alnum::ch_z:	//  'z':
+//					astate.type   = st_eol;	//  '\z'
+//				case char_alnum::ch_R:	//  'R':
+				//  (?>\r\n?|[\x0A-\x0C\x85\u{2028}\u{2029}])
+
+				//  Backreferences.
+
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+				//  Prepared for named captures.
+				case char_alnum::ch_k:	//  'k':
+					if (++curpos == end || *curpos != meta_char::mc_lt)
+						return this->set_error(regex_constants::error_escape);
+					else
+					{
+						const gname_string groupname = get_groupname(++curpos, end, cvars);
+
+						if (groupname.size() == 0)
+							return this->set_error(regex_constants::error_escape);
+
+						astate.char_num = this->namedcaptures[groupname];
+
+						if (astate.char_num != groupname_mapper<charT>::notfound)
+							astate.icase_backrefno_unresolved = 0u;
+						else
+						{
+							astate.icase_backrefno_unresolved = 2u;
+							astate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size());
+							cvars.unresolved_gnames.push_back(groupname, astate.char_num);
+						}
+						goto BACKREF_POSTPROCESS;
+					}
+#endif
+				default:
+
+					if (astate.char_num >= char_alnum::ch_1 && astate.char_num <= char_alnum::ch_9)	//  \1, \9.
+					{
+						astate.char_num = translate_numbers(curpos, end, 10, 0, 0, 0xfffffffe);
+							//  22.2.1.1 Static Semantics: Early Errors:
+							//  It is a Syntax Error if NcapturingParens >= 23^2 - 1.
+
+						if (astate.char_num == constants::invalid_u32value)
+							return this->set_error(regex_constants::error_escape);
+
+						astate.icase_backrefno_unresolved = 0u;
+
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+						BACKREF_POSTPROCESS:
+#endif
+						astate.next2 = 1;
+						astate.type = st_backreference;
+						astate.quantifier.atleast = 0;
+
+						if (this->is_icase())
+							astate.icase |= 1u;
+
+						goto AFTER_INCREMENT;
+					}
+
+					++curpos;
+					if (!translate_escape(NULL, astate, curpos, end, false, false))
+						return false;
+					goto AFTER_INCREMENT;
+				}
+
+				++curpos;
+				AFTER_INCREMENT:
+
+				break;
+
+			case meta_char::mc_period:	//  '.':
+				astate.type = st_character_class;
+#if !defined(SRELL_NO_SINGLELINE)
+				if (this->is_dotall())
+				{
+					astate.char_num = static_cast<ui_l32>(re_character_class::dotall);
+				}
+				else
+#endif
+				{
+//					astate.char_num = static_cast<ui_l32>(re_character_class::newline);
+					range_pairs nlclass = this->character_class[static_cast<ui_l32>(re_character_class::newline)];
+
+					nlclass.negation();
+					astate.char_num = this->character_class.register_newclass(nlclass);
+				}
+				break;
+
+			case meta_char::mc_caret:	//  '^':
+				astate.type = st_bol;
+				astate.char_num = static_cast<ui_l32>(re_character_class::newline);
+				astate.quantifier.reset(0);
+//				if (current_flags.m)
+				if (is_multiline())
+					astate.multiline = 1u;
+				break;
+
+			case meta_char::mc_dollar:	//  '$':
+				astate.type = st_eol;
+				astate.char_num = static_cast<ui_l32>(re_character_class::newline);
+				astate.quantifier.reset(0);
+//				if (current_flags.m)
+				if (is_multiline())
+					astate.multiline = 1u;
+				break;
+
+			case meta_char::mc_astrsk:	//  '*':
+			case meta_char::mc_plus:	//  '+':
+			case meta_char::mc_query:	//  '?':
+			case meta_char::mc_cbraop:	//  '{'
+				return this->set_error(regex_constants::error_badrepeat);
+
+			default:;
+			}
+
+			if (astate.type == st_character)
+			{
+				if (this->is_icase())
+					astate.char_num = unicode_case_folding::do_casefolding(astate.char_num);
+			}
+
+			piece.push_back(astate);
+			piecesize = astate.quantifier;
+			AFTER_PIECE_SET:
 
 			if (piece.size())
 			{
@@ -4976,17 +5184,69 @@ private:
 
 				quantifier.reset();	//  quantifier.atleast = quantifier.atmost = 1;
 
-				if (firststate.has_quantifier())
+				if (firststate.has_quantifier() && curpos != end)
 				{
-					if (curpos != end && !get_quantifier(quantifier, curpos, end))
-						return false;
+					switch (*curpos)
+					{
+					case meta_char::mc_astrsk:	//  '*':
+						--quantifier.atleast;
+						//@fallthrough@
+
+					case meta_char::mc_plus:	//  '+':
+						quantifier.set_infinity();
+						break;
+
+					case meta_char::mc_query:	//  '?':
+						--quantifier.atleast;
+						break;
+
+					case meta_char::mc_cbraop:	//  '{':
+						++curpos;
+						quantifier.atleast = translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value);
+
+						if (quantifier.atleast == constants::invalid_u32value)
+							return this->set_error(regex_constants::error_brace);
+
+						if (curpos == end)
+							return this->set_error(regex_constants::error_brace);
+
+						if (*curpos == meta_char::mc_comma)	//  ','
+						{
+							++curpos;
+							quantifier.atmost = translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value);
+
+							if (quantifier.atmost == constants::invalid_u32value)
+								quantifier.set_infinity();
+
+							if (!quantifier.is_valid())
+								return this->set_error(regex_constants::error_badbrace);
+						}
+						else
+							quantifier.atmost = quantifier.atleast;
+
+						if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
+							return this->set_error(regex_constants::error_brace);
+
+						//  *curpos == '}'
+						break;
+
+					default:
+						goto AFTER_GREEDINESS_CHECK;
+					}
+
+					if (++curpos != end && *curpos == meta_char::mc_query)	//  '?'
+					{
+						quantifier.is_greedy = 0u;
+						++curpos;
+					}
+					AFTER_GREEDINESS_CHECK:;
 				}
 
 				if (piece.size() == 2 && firststate.is_noncapturinggroup())
 				{
 					//  (?:) alone or followed by a quantifier.
 //					piece_with_quantifier += piece;
-					;	//  Do nothing.
+					;	//  Does nothing.
 				}
 				else
 					combine_piece_with_quantifier(piece_with_quantifier, piece, quantifier, piecesize);
@@ -5007,130 +5267,213 @@ private:
 		}
 	}
 
-	bool get_atom(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
-		state_type astate;
-
-		astate.reset(st_character, *curpos++);
-
-		switch (astate.char_num)
-		{
-		case meta_char::mc_rbraop:	//  '(':
-			return get_piece_in_roundbrackets(piece, piecesize, curpos, end, cvars);
-
-		case meta_char::mc_sbraop:	//  '[':
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-			if (this->is_vmode())	//  vmode.
-				return parse_charclass_v(piece, piecesize, curpos, end, cvars);
-#endif
-			if (!register_character_class(astate, curpos, end, cvars))
-				return false;
-
-			break;
-
-		case meta_char::mc_escape:	//  '\\':
-			if (!translate_atom_escape(astate, piece, piecesize, curpos, end, cvars))
-				return false;
-
-			if (piece.size())
-				return true;
-			break;
-
-		case meta_char::mc_period:	//  '.':
-			astate.type = st_character_class;
-#if !defined(SRELL_NO_SINGLELINE)
-			if (this->is_dotall())
-			{
-				astate.char_num = static_cast<ui_l32>(re_character_class::dotall);
-			}
-			else
-#endif
-			{
-//				astate.char_num = static_cast<ui_l32>(re_character_class::newline);
-				range_pairs nlclass = this->character_class[static_cast<ui_l32>(re_character_class::newline)];
-
-				nlclass.negation();
-				astate.char_num = this->character_class.register_newclass(nlclass);
-			}
-			break;
-
-		case meta_char::mc_caret:	//  '^':
-			astate.type = st_bol;
-			astate.char_num = static_cast<ui_l32>(re_character_class::newline);
-			astate.quantifier.reset(0);
-//			if (current_flags.m)
-			if (is_multiline())
-				astate.multiline = 1u;
-			break;
-
-		case meta_char::mc_dollar:	//  '$':
-			astate.type = st_eol;
-			astate.char_num = static_cast<ui_l32>(re_character_class::newline);
-			astate.quantifier.reset(0);
-//			if (current_flags.m)
-			if (is_multiline())
-				astate.multiline = 1u;
-			break;
-
-		case meta_char::mc_astrsk:	//  '*':
-		case meta_char::mc_plus:	//  '+':
-		case meta_char::mc_query:	//  '?':
-		case meta_char::mc_cbraop:	//  '{'
-			this->throw_error(regex_constants::error_badrepeat);
-
-		default:;
-		}
-
-		if (astate.type == st_character)
-		{
-			if (this->is_icase())
-				astate.char_num = unicode_case_folding::do_casefolding(astate.char_num);
-		}
-
-		piece.push_back(astate);
-		piecesize = astate.quantifier;
-
-		return true;
-	}
-
 	//  '('.
 
-	bool get_piece_in_roundbrackets(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
+	bool parse_group(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
 		const re_flags originalflags(cvars);
 		state_type rbstate;
 
 		if (curpos == end)
-			this->throw_error(regex_constants::error_paren);
+			return this->set_error(regex_constants::error_paren);
 
 		rbstate.reset(st_roundbracket_open);
 
 		if (*curpos == meta_char::mc_query)	//  '?'
 		{
-			if (!extended_roundbrackets(piece, rbstate, ++curpos, end, cvars))
-				return false;
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+			bool lookbehind = false;
+#endif
 
-			if (rbstate.type == st_roundbracket_close)
+			if (++curpos == end)
+				return this->set_error(regex_constants::error_paren);
+
+			rbstate.char_num = *curpos;
+
+			if (rbstate.char_num == meta_char::mc_lt)	//  '<'
 			{
-				++curpos;
-				return true;
+				if (++curpos == end)
+					return this->set_error(regex_constants::error_paren);
+
+				rbstate.char_num = *curpos;
+
+				if (rbstate.char_num != meta_char::mc_eq && rbstate.char_num != meta_char::mc_exclam)
+				{
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+					const gname_string groupname = get_groupname(curpos, end, cvars);
+
+					if (groupname.size() == 0)
+						return this->set_error(regex_constants::error_escape);
+
+					if (!this->namedcaptures.push_back(groupname, this->number_of_brackets))
+						return this->set_error(regex_constants::error_backref);
+
+					goto AFTER_EXTRB;
+#else
+					return this->set_error(regex_constants::error_paren);
+#endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
+				}
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+				lookbehind = true;
+#endif
 			}
+			else
+				rbstate.quantifier.atleast = 0;
+				//  Sets .atleast to 0 for other assertions than lookbehinds. The automaton
+				//  checks .atleast to know whether lookbehinds or other assertions.
+
+			switch (rbstate.char_num)
+			{
+			case meta_char::mc_exclam:	//  '!':
+				rbstate.is_not = 1u;
+				//@fallthrough@
+
+			case meta_char::mc_eq:	//  '=':
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+				cvars.back = lookbehind;
+#else
+//				rbstate.reverse = lookbehind;
+#endif
+
+#if defined(SRELL_ENABLE_GT)
+				//@fallthrough@
+			case meta_char::mc_gt:
+#endif
+				rbstate.type = st_lookaround_open;
+				rbstate.next2 = 1;
+				break;
+
+			default:
+#if defined(SRELL_NO_UBMOD)
+				return this->set_error(regex_constants::error_paren);
+#else
+				{
+					const u32array_size_type boffset = curpos - cvars.begin;
+					regex_constants::syntax_option_type modified = regex_constants::ECMAScript;
+					regex_constants::syntax_option_type localflags = this->soflags;
+					bool negate = false;
+					bool flagerror = false;
+
+					for (;;)
+					{
+						switch (rbstate.char_num)
+						{
+#if 0
+						case meta_char::mc_colon:	//  ':':
+							//  (?ims-ims:...)
+							break;
+#endif
+						case meta_char::mc_rbracl:	//  ')':
+							if (boffset == 2 && modified != regex_constants::ECMAScript)
+							{
+								this->soflags = localflags;
+								rbstate.type = st_roundbracket_close;
+								++curpos;
+								return true;
+							}
+							flagerror = true;	//  "(?)" or "(?-)"
+							break;
+
+						case meta_char::mc_minus:	//  '-':
+							if (negate)
+								flagerror = true;
+							else
+								negate = true;
+							break;
+
+						case char_alnum::ch_i:	//  'i':
+							if (modified & regex_constants::icase)
+								flagerror = true;
+							modified |= regex_constants::icase;
+							if (!negate)
+								localflags |= regex_constants::icase;
+							else
+								localflags &= ~regex_constants::icase;
+							break;
+
+						case char_alnum::ch_m:	//  'm':
+							if (modified & regex_constants::multiline)
+								flagerror = true;
+							modified |= regex_constants::multiline;
+							if (!negate)
+								localflags |= regex_constants::multiline;
+							else
+								localflags &= ~regex_constants::multiline;
+							break;
+
+						case char_alnum::ch_s:	//  's':
+							if (modified & regex_constants::dotall)
+								flagerror = true;
+							modified |= regex_constants::dotall;
+							if (!negate)
+								localflags |= regex_constants::dotall;
+							else
+								localflags &= ~regex_constants::dotall;
+							break;
+
+#if 0
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+
+						case char_alnum::ch_v:	//  'v':
+							if (modified & regex_constants::unicodesets)
+								flagerror = true;
+							modified |= regex_constants::unicodesets;
+							if (!negate)
+								localflags |= regex_constants::unicodesets;
+							else
+								localflags &= ~regex_constants::unicodesets;
+							break;
+#endif
+#endif
+						default:
+							return this->set_error(regex_constants::error_paren);
+						}
+
+						if (flagerror)
+							return this->set_error(regex_constants::error_modifier);
+
+						if (++curpos == end)
+							return this->set_error(regex_constants::error_paren);
+
+						rbstate.char_num = *curpos;
+					}
+				}
+#endif	//  defined(SRELL_NO_UBMOD)
+				//@fallthrough@
+
+			case meta_char::mc_colon:
+				rbstate.type = st_epsilon;
+				rbstate.char_num = epsilon_type::et_ncgopen;
+				rbstate.quantifier.atleast = this->number_of_brackets;
+			}
+
+			++curpos;
+			piece.push_back(rbstate);
 		}
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+		AFTER_EXTRB:
+#endif
 
 		if (rbstate.type == st_roundbracket_open)
 		{
-			push_bracket_open(piece, rbstate);
-		}
+			rbstate.char_num = this->number_of_brackets;
+			rbstate.next1  = 2;
+			rbstate.next2  = 1;
+			piece.push_back(rbstate);
+			++this->number_of_brackets;
 
-//		if (curpos == end)
-//			this->throw_error(regex_constants::error_paren);
+			rbstate.type  = st_roundbracket_pop;
+			rbstate.next1 = 0;
+			rbstate.next2 = 0;
+			piece.push_back(rbstate);
+		}
 
 		if (!make_nfa_states(piece, piecesize, curpos, end, cvars))
 			return false;
 
 		//  end or ')'?
 		if (curpos == end)
-			this->throw_error(regex_constants::error_paren);
+			return this->set_error(regex_constants::error_paren);
 
 		++curpos;
 
@@ -5164,7 +5507,7 @@ private:
 				if (firststate.quantifier.atleast)	//  > 0 means lookbehind.
 				{
 					if (!piecesize.is_same() || piecesize.is_infinity())
-						this->throw_error(regex_constants::error_lookbehind);
+						return this->set_error(regex_constants::error_lookbehind);
 
 					firststate.quantifier = piecesize;
 				}
@@ -5184,227 +5527,20 @@ private:
 			break;
 
 		default:
-			set_bracket_close(piece, rbstate, piecesize, cvars);
+			rbstate.type = st_roundbracket_close;
+			rbstate.next1 = 1;
+			rbstate.next2 = 1;
+
+			re_quantifier &rb_open = piece[0].quantifier;
+			re_quantifier &rb_pop = piece[1].quantifier;
+
+			rb_open.atleast = rb_pop.atleast = rbstate.char_num + 1;
+			rb_open.atmost = rb_pop.atmost = this->number_of_brackets - 1;
+			rb_open.is_greedy = piecesize.atleast != 0u;
 		}
 
 		piece.push_back(rbstate);
 		return true;
-	}
-
-	bool extended_roundbrackets(state_array &piece, state_type &erbstate, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		bool lookbehind = false;
-#endif
-
-		if (curpos == end)
-			this->throw_error(regex_constants::error_paren);
-
-		erbstate.char_num = *curpos;
-
-		if (erbstate.char_num == meta_char::mc_lt)	//  '<'
-		{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-			lookbehind = true;
-#endif
-			if (++curpos == end)
-				this->throw_error(regex_constants::error_paren);
-
-			erbstate.char_num = *curpos;
-
-			if (erbstate.char_num != meta_char::mc_eq && erbstate.char_num != meta_char::mc_exclam)
-			{
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-				return parse_groupname(curpos, end, cvars);
-#else
-				this->throw_error(regex_constants::error_paren);
-#endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
-			}
-		}
-		else
-			erbstate.quantifier.atleast = 0;
-			//  Sets atleast to 0 for other assertions than lookbehinds. The automaton
-			//  checks atleast to know whether lookbehinds or other assertions.
-
-		switch (erbstate.char_num)
-		{
-		case meta_char::mc_exclam:	//  '!':
-			erbstate.is_not = 1u;
-			//@fallthrough@
-
-		case meta_char::mc_eq:	//  '=':
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-			cvars.back = lookbehind;
-#else
-//			erbstate.reverse = lookbehind;
-#endif
-
-#if defined(SRELL_ENABLE_GT)
-			//@fallthrough@
-		case meta_char::mc_gt:
-#endif
-			erbstate.type = st_lookaround_open;
-			erbstate.next2 = 1;
-			break;
-
-		default:
-#if !defined(SRELL_NO_UBMOD)
-			if (!parse_modflags(erbstate, curpos, end, cvars))
-#endif
-			{
-				this->throw_error(regex_constants::error_paren);
-			}
-
-			if (*curpos == meta_char::mc_rbracl)
-			{
-				erbstate.type = st_roundbracket_close;
-				return true;
-			}
-			//@fallthrough@
-
-		case meta_char::mc_colon:
-			erbstate.type = st_epsilon;
-			erbstate.char_num = epsilon_type::et_ncgopen;
-			erbstate.quantifier.atleast = this->number_of_brackets;
-		}
-
-		++curpos;
-		piece.push_back(erbstate);
-		return true;
-	}
-
-#if !defined(SRELL_NO_UBMOD)
-
-	bool parse_modflags(state_type &fstate, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
-		const u32array_size_type boffset = curpos - cvars.begin;
-		regex_constants::syntax_option_type modified = regex_constants::ECMAScript;
-		regex_constants::syntax_option_type localflags = this->soflags;
-		bool negate = false;
-		bool flagerror = false;
-
-		for (;;)
-		{
-			switch (fstate.char_num)
-			{
-#if 0
-			case meta_char::mc_colon:	//  ':':
-				//  (?ims-ims:...)
-				break;
-#endif
-			case meta_char::mc_rbracl:	//  ')':
-				if (boffset == 2 && modified != regex_constants::ECMAScript)
-				{
-					this->soflags = localflags;
-					return true;
-				}
-				flagerror = true;	//  "(?)" or "(?-)"
-				break;
-
-			case meta_char::mc_minus:	//  '-':
-				if (negate)
-					flagerror = true;
-				else
-					negate = true;
-				break;
-
-			case char_alnum::ch_i:	//  'i':
-				if (modified & regex_constants::icase)
-					flagerror = true;
-				modified |= regex_constants::icase;
-				if (!negate)
-					localflags |= regex_constants::icase;
-				else
-					localflags &= ~regex_constants::icase;
-				break;
-
-			case char_alnum::ch_m:	//  'm':
-				if (modified & regex_constants::multiline)
-					flagerror = true;
-				modified |= regex_constants::multiline;
-				if (!negate)
-					localflags |= regex_constants::multiline;
-				else
-					localflags &= ~regex_constants::multiline;
-				break;
-
-			case char_alnum::ch_s:	//  's':
-				if (modified & regex_constants::dotall)
-					flagerror = true;
-				modified |= regex_constants::dotall;
-				if (!negate)
-					localflags |= regex_constants::dotall;
-				else
-					localflags &= ~regex_constants::dotall;
-				break;
-
-#if 0
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-
-			case char_alnum::ch_v:	//  'v':
-				if (modified & regex_constants::unicodesets)
-					flagerror = true;
-				modified |= regex_constants::unicodesets;
-				if (!negate)
-					localflags |= regex_constants::unicodesets;
-				else
-					localflags &= ~regex_constants::unicodesets;
-				break;
-#endif
-#endif
-			default:
-				return false;
-			}
-
-			if (flagerror)
-				this->throw_error(regex_constants::error_modifier);
-
-			if (++curpos == end)
-				return false;
-
-			fstate.char_num = *curpos;
-		}
-	}
-
-#endif	//  !defined(SRELL_NO_UBMOD)
-
-	void push_bracket_open(state_array &piece, state_type &rbstate)
-	{
-		rbstate.char_num = this->number_of_brackets;
-		rbstate.next1  = 2;
-		rbstate.next2  = 1;
-		piece.push_back(rbstate);
-		++this->number_of_brackets;
-
-		rbstate.type  = st_roundbracket_pop;
-		rbstate.next1 = 0;
-		rbstate.next2 = 0;
-		piece.push_back(rbstate);
-	}
-
-	void set_bracket_close(state_array &piece, state_type &rbstate, const re_quantifier &piecesize, cvars_type & /* cvars */)
-	{
-//		ui_l32 max_bracketno = rbstate.char_num;
-
-		rbstate.type = st_roundbracket_close;
-		rbstate.next1 = 1;
-		rbstate.next2 = 1;
-#if 0
-		for (state_size_type i = 0; i < piece.size(); ++i)
-		{
-			const state_type &state = piece[i];
-
-			if (state.type == st_roundbracket_open && max_bracketno < state.char_num)
-				max_bracketno = state.char_num;
-		}
-#endif
-
-		re_quantifier &rb_open = piece[0].quantifier;
-		re_quantifier &rb_pop = piece[1].quantifier;
-
-		rb_open.atleast = rb_pop.atleast = rbstate.char_num + 1;
-		rb_open.atmost = rb_pop.atmost = this->number_of_brackets - 1;	//  max_bracketno;
-		rb_open.is_greedy = piecesize.atleast != 0u;
 	}
 
 	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
@@ -5629,18 +5765,6 @@ private:
 		piece_with_quantifier += piece;
 	}
 
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool parse_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
-		const gname_string groupname = get_groupname(curpos, end, cvars);
-
-		if (!this->namedcaptures.push_back(groupname, this->number_of_brackets))
-			this->throw_error(regex_constants::error_backref);
-
-		return true;
-	}
-#endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
-
 	//  '['.
 
 	bool register_character_class(state_type &castate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type & /* cvars */)
@@ -5651,7 +5775,7 @@ private:
 		range_pairs curranges;
 
 		if (curpos == end)
-			this->throw_error(regex_constants::error_brack);
+			return this->set_error(regex_constants::error_brack);
 
 		castate.type = st_character_class;
 
@@ -5664,7 +5788,7 @@ private:
 		for (;;)
 		{
 			if (curpos == end)
-				this->throw_error(regex_constants::error_brack);
+				return this->set_error(regex_constants::error_brack);
 
 			if (*curpos == meta_char::mc_sbracl)	//   ']'
 				break;
@@ -5681,12 +5805,12 @@ private:
 				if (curpos != end && *curpos == meta_char::mc_minus)	//  '-'
 				{
 					if (++curpos == end)
-						this->throw_error(regex_constants::error_brack);
+						return this->set_error(regex_constants::error_brack);
 
 					if (*curpos == meta_char::mc_sbracl)
 						break;	// OK.
 
-					this->throw_error(regex_constants::error_brack);
+					return this->set_error(regex_constants::error_brack);
 				}
 				continue;
 			}
@@ -5694,14 +5818,14 @@ private:
 			code_range.first = code_range.second = rstate.char_num;
 
 			if (curpos == end)
-				this->throw_error(regex_constants::error_brack);
+				return this->set_error(regex_constants::error_brack);
 
 			if (*curpos == meta_char::mc_minus)	//  '-'
 			{
 				++curpos;
 
 				if (curpos == end)
-					this->throw_error(regex_constants::error_brack);
+					return this->set_error(regex_constants::error_brack);
 
 				if (*curpos == meta_char::mc_sbracl)
 				{
@@ -5723,7 +5847,7 @@ private:
 					code_range.second = rstate.char_num;
 
 					if (!code_range.is_range_valid())
-						this->throw_error(regex_constants::error_range);
+						return this->set_error(regex_constants::error_range);
 				}
 			}
 			ranges.join(code_range);
@@ -5762,7 +5886,13 @@ private:
 			return true;
 
 		rp.clear();
-		return translate_escseq(&rp, rstate, curpos, end, true);
+
+		if (curpos == end)
+			return this->set_error(regex_constants::error_escape);
+
+		rstate.char_num = *curpos++;
+
+		return translate_escape(&rp, rstate, curpos, end, true, false);
 	}
 
 	void add_predefclass_to_charclass(range_pairs &cls, const state_type &castate)
@@ -5781,7 +5911,8 @@ private:
 	{
 		posdata_holder pos;
 
-		parse_unicharset(pos, curpos, end, cvars);
+		if (!parse_unicharset(pos, curpos, end, cvars))
+			return false;
 
 		if (!pos.may_contain_strings())
 		{
@@ -5807,7 +5938,7 @@ private:
 		return true;
 	}
 
-	void parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
+	bool parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
 		enum operation_type
 		{
@@ -5843,7 +5974,39 @@ private:
 			if (*curpos == meta_char::mc_sbracl)	//   ']'
 				break;
 
-			const ui_l32 next2chars = check_doublepunctuators(curpos, end);
+			ui_l32 next2chars = constants::invalid_u32value;
+
+			if (curpos + 1 != end && *curpos == curpos[1])
+			{
+				switch (*curpos)
+				{
+				//  ClassSetReservedDoublePunctuator :: one of
+				//  && !! ## $$ %% ** ++ ,, .. :: ;; << == >> ?? @@ ^^ `` ~~
+				case char_other::co_amp:	//  '&'
+				case meta_char::mc_exclam:	//  '!'
+				case meta_char::mc_sharp:	//  '#'
+				case meta_char::mc_dollar:	//  '$'
+				case char_other::co_perc:	//  '%'
+				case meta_char::mc_astrsk:	//  '*'
+				case meta_char::mc_plus:	//  '+'
+				case meta_char::mc_comma:	//  ','
+				case meta_char::mc_period:	//  '.'
+				case meta_char::mc_colon:	//  ':'
+				case char_other::co_smcln:	//  ';'
+				case meta_char::mc_lt:		//  '<'
+				case meta_char::mc_eq:		//  '='
+				case meta_char::mc_gt:		//  '>'
+				case meta_char::mc_query:	//  '?'
+				case char_other::co_atmrk:	//  '@'
+				case meta_char::mc_caret:	//  '^'
+				case char_other::co_grav:	//  '`'
+				case char_other::co_tilde:	//  '~'
+				case meta_char::mc_minus:	//  '-'
+					next2chars = *curpos;
+					//@fallthrough@
+				default:;
+				}
+			}
 
 			switch (otype)
 			{
@@ -5889,10 +6052,11 @@ private:
 			if (*curpos == meta_char::mc_sbraop)	//  '['
 			{
 				++curpos;
-				parse_unicharset(newpos, curpos, end, cvars);
+				if (!parse_unicharset(newpos, curpos, end, cvars))
+					return false;
 			}
-			else
-				get_character_in_class_vmode(newpos, castate, curpos, end, cvars, false);
+			else if (!get_character_in_class_vmode(newpos, castate, curpos, end, cvars, false))
+				return false;
 
 			if (otype == op_init)
 				otype = op_firstcc;
@@ -5928,7 +6092,8 @@ private:
 								goto AFTER_OPERATOR;
 							}
 
-							get_character_in_class_vmode(newpos, castate, curpos, end, cvars, true);
+							if (!get_character_in_class_vmode(newpos, castate, curpos, end, cvars, true))
+								return false;
 
 							otype = op_union;
 							code_range.second = castate.char_num;
@@ -5977,57 +6142,19 @@ private:
 			basepos.ranges.negation();
 		}
 
-		return;
+		return true;
 
 		ERROR_NOT_CLOSED:
-		this->throw_error(regex_constants::error_brack);
+		return this->set_error(regex_constants::error_brack);
 
 		ERROR_BROKEN_RANGE:
-		this->throw_error(regex_constants::error_range);
+		return this->set_error(regex_constants::error_range);
 
 		ERROR_NOT_INVERTIBLE:
-		this->throw_error(regex_constants::error_complement);
+		return this->set_error(regex_constants::error_complement);
 
 		ERROR_DOUBLE_PUNCT:
-		this->throw_error(regex_constants::error_operator);
-	}
-
-	ui_l32 check_doublepunctuators(const ui_l32 *curpos, const ui_l32 *const end) const
-	{
-		const ui_l32 firstchar = *curpos++;
-
-		if (curpos == end || *curpos != firstchar)
-			return constants::invalid_u32value;
-
-		switch (firstchar)
-		{
-		//  ClassSetReservedDoublePunctuator :: one of
-		//  && !! ## $$ %% ** ++ ,, .. :: ;; << == >> ?? @@ ^^ `` ~~
-		case char_other::co_amp:	//  '&'
-		case meta_char::mc_exclam:	//  '!'
-		case meta_char::mc_sharp:	//  '#'
-		case meta_char::mc_dollar:	//  '$'
-		case char_other::co_perc:	//  '%'
-		case meta_char::mc_astrsk:	//  '*'
-		case meta_char::mc_plus:	//  '+'
-		case meta_char::mc_comma:	//  ','
-		case meta_char::mc_period:	//  '.'
-		case meta_char::mc_colon:	//  ':'
-		case char_other::co_smcln:	//  ';'
-		case meta_char::mc_lt:		//  '<'
-		case meta_char::mc_eq:		//  '='
-		case meta_char::mc_gt:		//  '>'
-		case meta_char::mc_query:	//  '?'
-		case char_other::co_atmrk:	//  '@'
-		case meta_char::mc_caret:	//  '^'
-		case char_other::co_grav:	//  '`'
-		case char_other::co_tilde:	//  '~'
-		case meta_char::mc_minus:	//  '-'
-			return firstchar;
-
-		default:
-			return constants::invalid_u32value;
-		}
+		return this->set_error(regex_constants::error_operator);
 	}
 
 	bool get_character_in_class_vmode(
@@ -6056,18 +6183,18 @@ private:
 		case char_other::co_slash:	//  '/'
 		case meta_char::mc_minus:	//  '-'
 		case meta_char::mc_bar:		//  '|'
-			this->throw_error(regex_constants::error_noescape);
+			return this->set_error(regex_constants::error_noescape);
 			//@fallthrough@
 
 		case meta_char::mc_escape:	//  '\\'
 			break;
 
 		default:
-			return false;
+			return true;
 		}
 
 		if (curpos == end)
-			this->throw_error(regex_constants::error_escape);
+			return this->set_error(regex_constants::error_escape);
 
 		castate.char_num = *curpos++;
 
@@ -6079,7 +6206,60 @@ private:
 			}
 			else if (castate.char_num == char_alnum::ch_q)
 			{
-				return parse_escape_q_vmode(pos, curpos, end, cvars);
+				if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
+					return this->set_error(regex_constants::error_escape);
+
+				simple_array<ui_l32> seqs;
+				simple_array<ui_l32> curseq;
+				posdata_holder dummypos;
+				state_type castate;
+
+				++curpos;
+
+				for (;;)
+				{
+					if (curpos == end)
+						return this->set_error(regex_constants::error_escape);
+
+					if (*curpos == meta_char::mc_bar || *curpos == meta_char::mc_cbracl)	//  '|' or '}'.
+					{
+						const ui_l32 seqlen = static_cast<ui_l32>(curseq.size());
+
+						if (seqlen <= 1)
+						{
+							seqs.push_backncr(2);
+							seqs.push_backncr(seqlen != 0 ? curseq[0] : constants::ccstr_empty);
+						}
+						else	//  >= 2
+						{
+							seqs.push_backncr(seqlen + 1);
+							seqs.append(curseq);
+						}
+
+						if (*curpos == meta_char::mc_cbracl)	//  '}'
+							break;
+
+						curseq.clear();
+						++curpos;
+					}
+					else
+					{
+						castate.reset();
+						if (!get_character_in_class_vmode(dummypos, castate, curpos, end, cvars, true))
+							return false;
+
+						curseq.push_backncr(castate.char_num);
+					}
+				}
+
+				++curpos;
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+				pos.split_seqs_and_ranges(seqs, this->is_icase(), cvars.back);
+#else
+				pos.split_seqs_and_ranges(seqs, this->is_icase(), false);
+#endif
+
+				return true;
 			}
 		}
 
@@ -6100,184 +6280,109 @@ private:
 		case char_other::co_atmrk:	//  '@'
 		case char_other::co_grav:	//  '`'
 		case char_other::co_tilde:	//  '~'
-			return false;
+			return true;
 
 		default:;
 		}
 
-		translate_escseq_nocheck(&pos.ranges, castate, curpos, end, true, no_ccesc);
-		return false;
-	}
-
-	bool parse_escape_q_vmode(posdata_holder &pos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
-	{
-		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
-			this->throw_error(regex_constants::error_escape);
-
-		simple_array<ui_l32> seqs;
-		simple_array<ui_l32> curseq;
-		posdata_holder dummypos;
-		state_type castate;
-
-		++curpos;
-
-		for (;;)
-		{
-			if (curpos == end)
-				this->throw_error(regex_constants::error_escape);
-
-			if (*curpos == meta_char::mc_bar || *curpos == meta_char::mc_cbracl)	//  '|' or '}'.
-			{
-				const ui_l32 seqlen = static_cast<ui_l32>(curseq.size());
-
-				if (seqlen <= 1)
-				{
-					seqs.push_backncr(2);
-					seqs.push_backncr(seqlen != 0 ? curseq[0] : constants::ccstr_empty);
-				}
-				else	//  >= 2
-				{
-					seqs.push_backncr(seqlen + 1);
-					seqs.append(curseq);
-				}
-
-				if (*curpos == meta_char::mc_cbracl)	//  '}'
-					break;
-
-				curseq.clear();
-				++curpos;
-			}
-			else
-			{
-				castate.reset();
-				get_character_in_class_vmode(dummypos, castate, curpos, end, cvars, true);
-
-				curseq.push_backncr(castate.char_num);
-			}
-		}
-
-		++curpos;
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-		pos.split_seqs_and_ranges(seqs, this->is_icase(), cvars.back);
-#else
-		pos.split_seqs_and_ranges(seqs, this->is_icase(), false);
-#endif
-
-		return true;
+		return translate_escape(&pos.ranges, castate, curpos, end, true, no_ccesc);
 	}
 
 #endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool translate_escseq(range_pairs *const rp, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool insidecharclass)
+	bool translate_escape(range_pairs *const rp, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool insidecharclass, const bool no_ccesc)
 	{
-		if (curpos == end)
-			this->throw_error(regex_constants::error_escape);
-
-		eastate.char_num = *curpos++;
-
-		return translate_escseq_nocheck(rp, eastate, curpos, end, insidecharclass, false);
-	}
-
-	bool translate_character_class_escape(range_pairs *const rp, state_type &cceastate
-#if !defined(SRELL_NO_UNICODE_PROPERTY)
-		, const ui_l32 *&curpos
-		, const ui_l32 *const end
-		, const bool insidecharclass
-#else
-		, const ui_l32 *&
-		, const ui_l32 *const
-		, const bool
-#endif
-		)
-	{
-		//  Predefined classes.
-		switch (cceastate.char_num)
+		if (!no_ccesc)
 		{
-		case char_alnum::ch_D:	//  'D':
-			cceastate.is_not = 1u;
-			//@fallthrough@
-
-		case char_alnum::ch_d:	//  'd':
-			cceastate.char_num = static_cast<ui_l32>(re_character_class::digit);	//  \d, \D.
-			break;
-
-		case char_alnum::ch_S:	//  'S':
-			cceastate.is_not = 1u;
-			//@fallthrough@
-
-		case char_alnum::ch_s:	//  's':
-			cceastate.char_num = static_cast<ui_l32>(re_character_class::space);	//  \s, \S.
-			break;
-
-		case char_alnum::ch_W:	//  'W':
-			cceastate.is_not = 1u;
-			//@fallthrough@
-
-		case char_alnum::ch_w:	//  'w':
-			if (this->is_icase())
+			//  Predefined classes.
+			switch (eastate.char_num)
 			{
-				this->character_class.setup_icase_word();
-				cceastate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
-			}
-			else
-				cceastate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
-			break;
+			case char_alnum::ch_D:	//  'D':
+				eastate.is_not = 1u;
+				//@fallthrough@
+
+			case char_alnum::ch_d:	//  'd':
+				eastate.char_num = static_cast<ui_l32>(re_character_class::digit);	//  \d, \D.
+				break;
+
+			case char_alnum::ch_S:	//  'S':
+				eastate.is_not = 1u;
+				//@fallthrough@
+
+			case char_alnum::ch_s:	//  's':
+				eastate.char_num = static_cast<ui_l32>(re_character_class::space);	//  \s, \S.
+				break;
+
+			case char_alnum::ch_W:	//  'W':
+				eastate.is_not = 1u;
+				//@fallthrough@
+
+			case char_alnum::ch_w:	//  'w':
+				if (this->is_icase())
+				{
+					this->character_class.setup_icase_word();
+					eastate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
+				}
+				else
+					eastate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
+				break;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-		//  Prepared for Unicode properties and script names.
-		case char_alnum::ch_P:	//  \P{...}
-			cceastate.is_not = 1u;
-			//@fallthrough@
+			//  Prepared for Unicode properties and script names.
+			case char_alnum::ch_P:	//  \P{...}
+				eastate.is_not = 1u;
+				//@fallthrough@
 
-		case char_alnum::ch_p:	//  \p{...}
-			{
-				range_pairs lranges;
-				range_pairs *const pranges = (rp != NULL) ? rp : &lranges;
-
-				get_property_ranges(*pranges, curpos, end);
-
-				if (cceastate.is_not)
+			case char_alnum::ch_p:	//  \p{...}
 				{
-					pranges->negation();
-					cceastate.is_not = 0u;
+					range_pairs lranges;
+					range_pairs *const pranges = (rp != NULL) ? rp : &lranges;
+					const ui_l32 pnumber = lookup_propertynumber(curpos, end);
+
+					if (pnumber == up_constants::error_property || this->character_class.is_pos(pnumber))
+						return this->set_error(regex_constants::error_property);
+
+					this->character_class.load_upranges(*pranges, pnumber);
+
+					if (eastate.is_not)
+					{
+						pranges->negation();
+						eastate.is_not = 0u;
+					}
+
+					if (!insidecharclass && this->is_icase())
+						pranges->make_caseunfoldedcharset();
+
+					if (rp == NULL)
+						eastate.char_num = this->character_class.register_newclass(*pranges);
 				}
-
-				if (!insidecharclass && this->is_icase())
-					pranges->make_caseunfoldedcharset();
-
-				if (rp == NULL)
-					cceastate.char_num = this->character_class.register_newclass(*pranges);
-			}
-			cceastate.type = st_character_class;
-			return true;
+				eastate.type = st_character_class;
+				return true;
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
-		default:
-			return false;
-		}
-
-		if (rp != NULL)
-			add_predefclass_to_charclass(*rp, cceastate);
-		else
-		{
-			if (cceastate.is_not)
-			{
-				range_pairs lranges;
-
-				add_predefclass_to_charclass(lranges, cceastate);
-				cceastate.char_num = this->character_class.register_newclass(lranges);
+			default:
+				goto CLASS_OR_CHARACTER_ESCAPE;
 			}
+
+			if (rp != NULL)
+				add_predefclass_to_charclass(*rp, eastate);
+			else
+			{
+				if (eastate.is_not)
+				{
+					range_pairs lranges;
+
+					add_predefclass_to_charclass(lranges, eastate);
+					eastate.char_num = this->character_class.register_newclass(lranges);
+				}
+			}
+
+			eastate.is_not = 0u;
+			eastate.type = st_character_class;
+			return true;
 		}
 
-		cceastate.is_not = 0u;
-		cceastate.type = st_character_class;
-		return true;
-	}
-
-	bool translate_escseq_nocheck(range_pairs *const rp, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool insidecharclass, const bool no_ccesc)
-	{
-		if (!no_ccesc && translate_character_class_escape(rp, eastate, curpos, end, insidecharclass))
-			return true;
+		CLASS_OR_CHARACTER_ESCAPE:
 
 		switch (eastate.char_num)
 		{
@@ -6314,7 +6419,7 @@ private:
 					eastate.char_num = static_cast<ui_l32>(*curpos++ & 0x1f);
 				else
 				{
-					this->throw_error(regex_constants::error_escape);	//  Strict.
+					return this->set_error(regex_constants::error_escape);	//  Strict.
 //					eastate.char_num = char_alnum::ch_c;	//  Loose.
 				}
 			}
@@ -6360,7 +6465,7 @@ private:
 		}
 
 		if (eastate.char_num == constants::invalid_u32value)
-			this->throw_error(regex_constants::error_escape);
+			return this->set_error(regex_constants::error_escape);
 
 		return true;
 	}
@@ -6409,57 +6514,42 @@ private:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	void get_property_ranges(range_pairs &pranges, const ui_l32 *&curpos, const ui_l32 *const end)
-	{
-		const ui_l32 pnumber = lookup_propertynumber(curpos, end);
-
-		if (pnumber == up_constants::error_property || this->character_class.is_pos(pnumber))
-			this->throw_error(regex_constants::error_property);
-
-		this->character_class.load_upranges(pranges, pnumber);
-	}
-
 	ui_l32 lookup_propertynumber(const ui_l32 *&curpos, const ui_l32 *const end)
 	{
 		pstring pname;
 		pstring pvalue;
 
-		get_property_name_and_value(pname, pvalue, curpos, end);
-
-		pname.push_backncr(0);
-		pvalue.push_backncr(0);
-
-		return this->character_class.get_propertynumber(pname, pvalue);
-	}
-
-	void get_property_name_and_value(pstring &pname, pstring &pvalue, const ui_l32 *&curpos, const ui_l32 *const end)
-	{
 		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
-			this->throw_error(regex_constants::error_escape);
+			return up_constants::error_property;
 
 		const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
 
 		if (!pvalue.size())
-			this->throw_error(regex_constants::error_escape);
+			return up_constants::error_property;
 
 		if (!digit_seen)
 		{
 			if (curpos == end)
-				this->throw_error(regex_constants::error_escape);
+				return up_constants::error_property;
 
 			if (*curpos == meta_char::mc_eq)	//  '='
 			{
 				pname = pvalue;
 				get_property_name_or_value(pvalue, ++curpos, end);
 				if (!pvalue.size())
-					this->throw_error(regex_constants::error_escape);
+					return up_constants::error_property;
 			}
 		}
 
 		if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
-			this->throw_error(regex_constants::error_escape);
+			return up_constants::error_property;
 
 		++curpos;
+
+		pname.push_backncr(0);
+		pvalue.push_backncr(0);
+
+		return this->character_class.get_propertynumber(pname, pvalue);
 	}
 
 	bool get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
@@ -6495,134 +6585,7 @@ private:
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool translate_atom_escape(state_type &eastate
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-		, state_array &piece
-		, re_quantifier &piecesize
-#else
-		, state_array &
-		, re_quantifier &
-#endif
-		, const ui_l32 *&curpos, const ui_l32 *const end, /* const */ cvars_type &cvars)
-	{
-		if (curpos == end)
-			this->throw_error(regex_constants::error_escape);
-
-		eastate.char_num = *curpos;
-
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-		if (this->is_vmode() && ((eastate.char_num | constants::asc_icase) == char_alnum::ch_p))
-		{
-			posdata_holder pos;
-
-			parse_escape_p_vmode(pos, eastate, ++curpos, end, cvars);
-
-			if (eastate.type == st_character_class)
-				eastate.char_num = this->character_class.register_newclass(pos.ranges);
-			else
-				transform_seqdata(piece, pos);
-
-			piecesize.set(eastate.quantifier.atleast, eastate.quantifier.atmost);
-			return true;
-		}
-#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-
-		switch (eastate.char_num)
-		{
-		case char_alnum::ch_B:	//  'B':
-			eastate.is_not = 1u;
-			//@fallthrough@
-
-		case char_alnum::ch_b:	//  'b':
-			eastate.type   = st_boundary;	//  \b, \B.
-			eastate.quantifier.reset(0);
-//			eastate.char_num = 0;
-			if (this->is_icase())
-			{
-				this->character_class.setup_icase_word();
-				eastate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
-			}
-			else
-				eastate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
-			break;
-
-//		case char_alnum::ch_A:	//  'A':
-//			eastate.type   = st_bol;	//  '\A'
-//		case char_alnum::ch_Z:	//  'Z':
-//			eastate.type   = st_eol;	//  '\Z'
-//		case char_alnum::ch_z:	//  'z':
-//			eastate.type   = st_eol;	//  '\z'
-//		case char_alnum::ch_R:	//  'R':
-		//  (?>\r\n?|[\x0A-\x0C\x85\u{2028}\u{2029}])
-
-		//  Backreferences.
-
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-		//  Prepared for named captures.
-		case char_alnum::ch_k:	//  'k':
-			return parse_backreference_name(eastate, curpos, end, cvars);	//  \k.
-#endif
-
-		default:
-
-			if (eastate.char_num >= char_alnum::ch_1 && eastate.char_num <= char_alnum::ch_9)	//  \1, \9.
-				return parse_backreference_number(eastate, curpos, end, cvars);
-
-			return translate_escseq(NULL, eastate, curpos, end, false);
-		}
-
-		++curpos;
-		return true;
-	}
-
-	bool parse_backreference_number(state_type &brastate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
-	{
-		const ui_l32 backrefno = translate_numbers(curpos, end, 10, 0, 0, 0xfffffffe);
-			//  22.2.1.1 Static Semantics: Early Errors:
-			//  It is a Syntax Error if NcapturingParens >= 23^2 - 1.
-
-		if (backrefno == constants::invalid_u32value)
-			this->throw_error(regex_constants::error_escape);
-
-		brastate.char_num = static_cast<ui_l32>(backrefno);
-		brastate.icase_backrefno_unresolved = 0u;
-
-		return backreference_postprocess(brastate, cvars);
-	}
-
-	bool backreference_postprocess(state_type &brastate, const cvars_type & /* cvars */) const
-	{
-		brastate.next2 = 1;
-		brastate.type = st_backreference;
-		brastate.quantifier.atleast = 0;
-
-		if (this->is_icase())
-			brastate.icase |= 1u;
-
-		return true;
-	}
-
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool parse_backreference_name(state_type &brastate, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
-		if (++curpos == end || *curpos != meta_char::mc_lt)
-			this->throw_error(regex_constants::error_escape);
-
-		const gname_string groupname = get_groupname(++curpos, end, cvars);
-
-		brastate.char_num = this->namedcaptures[groupname];
-
-		if (brastate.char_num != groupname_mapper<charT>::notfound)
-			brastate.icase_backrefno_unresolved = 0u;
-		else
-		{
-			brastate.icase_backrefno_unresolved = 2u;
-			brastate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size());
-			cvars.unresolved_gnames.push_back(groupname, brastate.char_num);
-		}
-
-		return backreference_postprocess(brastate, cvars);
-	}
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
@@ -6639,7 +6602,10 @@ private:
 		for (;;)
 		{
 			if (curpos == end)
-				this->throw_error(regex_constants::error_escape);
+			{
+				groupname.clear();
+				break;
+			}
 
 			ui_l32 curchar = *curpos++;
 
@@ -6659,15 +6625,16 @@ private:
 				curchar = constants::invalid_u32value;
 
 			if (curchar == constants::invalid_u32value)
-				this->throw_error(regex_constants::error_escape);
+			{
+				groupname.clear();
+				break;
+			}
 
 			const ui_l32 seqlen = utf_traits::to_codeunits(mbstr, curchar);
 
 			for (ui_l32 i = 0; i < seqlen; ++i)
 				groupname.append(1, mbstr[i]);
 		}
-		if (!groupname.size())
-			this->throw_error(regex_constants::error_escape);
 
 		return groupname;
 	}
@@ -6683,7 +6650,7 @@ private:
 #endif
 	{
 		if (curpos == end)
-			this->throw_error(regex_constants::error_escape);
+			return this->set_error(regex_constants::error_escape);
 
 //		ccepastate.is_not = (ccepastate.char_num & constants::asc_icase) ? false : true;
 		if (ccepastate.char_num == char_alnum::ch_P)	//  \P{...}
@@ -6692,7 +6659,7 @@ private:
 		ccepastate.char_num = lookup_propertynumber(curpos, end);
 
 		if (ccepastate.char_num == up_constants::error_property)
-			this->throw_error(regex_constants::error_property);
+			return this->set_error(regex_constants::error_property);
 
 		if (!this->character_class.is_pos(ccepastate.char_num))
 		{
@@ -6726,7 +6693,7 @@ private:
 			ccepastate.quantifier.set(pos.length.first, pos.length.second);
 
 			if (ccepastate.is_not)
-				this->throw_error(regex_constants::error_complement);
+				return this->set_error(regex_constants::error_complement);
 		}
 		return true;
 	}
@@ -6898,83 +6865,32 @@ private:
 
 #endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool get_quantifier(re_quantifier &quantifier, const ui_l32 *&curpos, const ui_l32 *const end)
-	{
-		switch (*curpos)
-		{
-		case meta_char::mc_astrsk:	//  '*':
-			--quantifier.atleast;
-			//@fallthrough@
-
-		case meta_char::mc_plus:	//  '+':
-			quantifier.set_infinity();
-			break;
-
-		case meta_char::mc_query:	//  '?':
-			--quantifier.atleast;
-			break;
-
-		case meta_char::mc_cbraop:	//  '{':
-			get_brace_with_quantifier(quantifier, curpos, end);
-			break;
-
-		default:
-			return true;
-		}
-
-		if (++curpos != end && *curpos == meta_char::mc_query)	//  '?'
-		{
-			quantifier.is_greedy = 0u;
-			++curpos;
-		}
-		return true;
-	}
-
-	void get_brace_with_quantifier(re_quantifier &quantifier, const ui_l32 *&curpos, const ui_l32 *const end)
-	{
-		++curpos;
-
-		quantifier.atleast = static_cast<ui_l32>(translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value));
-
-		if (quantifier.atleast == static_cast<ui_l32>(constants::invalid_u32value))
-			goto THROW_ERROR_BRACE;
-
-		if (curpos == end)
-			goto THROW_ERROR_BRACE;
-
-		if (*curpos == meta_char::mc_comma)	//  ','
-		{
-			++curpos;
-
-			quantifier.atmost = static_cast<ui_l32>(translate_numbers(curpos, end, 10, 1, 0, constants::max_u32value));
-
-			if (quantifier.atmost == static_cast<ui_l32>(constants::invalid_u32value))
-				quantifier.set_infinity();
-
-			if (!quantifier.is_valid())
-				this->throw_error(regex_constants::error_badbrace);
-		}
-		else
-			quantifier.atmost = quantifier.atleast;
-
-		if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
-		{
-			THROW_ERROR_BRACE:
-			this->throw_error(regex_constants::error_brace);
-		}
-		//  *curpos == '}'
-	}
-
 	ui_l32 translate_numbers(const ui_l32 *&curpos, const ui_l32 *const end, const int radix, const std::size_t minsize, const std::size_t maxsize, const ui_l32 maxvalue) const
 	{
 		std::size_t count = 0;
 		ui_l32 u32value = 0;
-		int num;
+		ui_l32 num;
 
 		for (; maxsize == 0 || count < maxsize; ++curpos, ++count)
 		{
 
-			if (curpos == end || (num = tonumber(*curpos, radix)) == -1)
+			if (curpos == end)
+				break;
+
+			const ui_l32 ch = *curpos;
+
+			if ((ch >= char_alnum::ch_0 && ch <= char_alnum::ch_7) || (radix >= 10 && (ch == char_alnum::ch_8 || ch == char_alnum::ch_9)))
+				num = ch - char_alnum::ch_0;
+			else if (radix == 16)
+			{
+				if (ch >= char_alnum::ch_A && ch <= char_alnum::ch_F)
+					num = ch - char_alnum::ch_A + 10;
+				else if (ch >= char_alnum::ch_a && ch <= char_alnum::ch_f)
+					num = ch - char_alnum::ch_a + 10;
+				else
+					break;
+			}
+			else
 				break;
 
 			const ui_l32 nextvalue = u32value * radix + num;
@@ -6989,22 +6905,6 @@ private:
 			return u32value;
 
 		return constants::invalid_u32value;
-	}
-
-	int tonumber(const ui_l32 ch, const int radix) const
-	{
-		if ((ch >= char_alnum::ch_0 && ch <= char_alnum::ch_7) || (radix >= 10 && (ch == char_alnum::ch_8 || ch == char_alnum::ch_9)))
-			return static_cast<int>(ch - char_alnum::ch_0);
-
-		if (radix == 16)
-		{
-			if (ch >= char_alnum::ch_a && ch <= char_alnum::ch_f)
-				return static_cast<int>(ch - char_alnum::ch_a + 10);
-
-			if (ch >= char_alnum::ch_A && ch <= char_alnum::ch_F)
-				return static_cast<int>(ch - char_alnum::ch_A + 10);
-		}
-		return -1;
 	}
 
 	bool check_backreferences(cvars_type &cvars)
@@ -7310,7 +7210,8 @@ private:
 #endif
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-		find_entrypoint();
+		if (!this->bmdata)
+			find_entrypoint();
 #endif
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
@@ -8548,7 +8449,7 @@ public:	//  For debug.
 };
 //  re_compiler
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_compiler.hpp"]
 //  ["regex_sub_match.hpp" ...
@@ -8604,8 +8505,11 @@ public:
 
 	void swap(sub_match &s)
 	{
-		this->std::pair<BidirectionalIterator, BidirectionalIterator>::swap(s);
-		std::swap(matched, s.matched);
+		if (this != &s)
+		{
+			this->std::pair<BidirectionalIterator, BidirectionalIterator>::swap(s);
+			std::swap(matched, s.matched);
+		}
 	}
 
 #if !defined(SRELL_NO_APIEXT)
@@ -8626,7 +8530,7 @@ public:
 
 #endif	//  !defined(SRELL_NO_APIEXT)
 
-	void set_(const typename regex_internal::re_submatch_type<BidirectionalIterator> &br)
+	void set_(const typename re_detail::re_submatch_type<BidirectionalIterator> &br)
 	{
 		this->first = br.core.open_at;
 		this->second = br.core.close_at;
@@ -9081,7 +8985,7 @@ public:
 
 	//  28.10.1, construct/copy/destroy:
 	//  [7.10.1] construct/copy/destroy
-	explicit match_results(const Allocator &a = Allocator()) : ready_(false), sub_matches_(a)
+	explicit match_results(const Allocator &a = Allocator()) : ready_(0u), sub_matches_(a)
 	{
 	}
 
@@ -9138,7 +9042,7 @@ public:
 	//  28.10.2, state:
 	bool ready() const
 	{
-		return ready_;
+		return (ready_ & 1u) ? true : false;
 	}
 
 	//  28.10.3, size:
@@ -9180,11 +9084,7 @@ public:
 
 	const_reference operator[](const size_type n) const
 	{
-#if defined(SRELL_STRICT_IMPL)
 		return n < sub_matches_.size() ? sub_matches_[n] : unmatched_;
-#else
-		return sub_matches_[n];
-#endif
 	}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
@@ -9230,7 +9130,9 @@ public:
 
 	const_reference operator[](const string_type &sub) const
 	{
-		return sub_matches_[lookup_and_check_backref_number(sub.c_str(), sub.c_str() + sub.size())];
+		const re_detail::ui_l32 backrefno = lookup_backref_number(sub.data(), sub.data() + sub.size());
+
+		return backrefno != re_detail::groupname_mapper<char_type>::notfound ? sub_matches_[backrefno] : unmatched_;
 	}
 
 	difference_type length(const char_type *sub) const
@@ -9252,7 +9154,9 @@ public:
 
 	const_reference operator[](const char_type *sub) const
 	{
-		return sub_matches_[lookup_and_check_backref_number(sub, sub + std::char_traits<char_type>::length(sub))];
+		const re_detail::ui_l32 backrefno = lookup_backref_number(sub, sub + std::char_traits<char_type>::length(sub));
+
+		return backrefno != re_detail::groupname_mapper<char_type>::notfound ? sub_matches_[backrefno] : unmatched_;
 	}
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
@@ -9306,7 +9210,7 @@ public:
 
 			while (fmt_first != fmt_last)
 			{
-				if (*fmt_first != static_cast<char_type>(regex_internal::meta_char::mc_dollar))	//  '$'
+				if (*fmt_first != static_cast<char_type>(re_detail::meta_char::mc_dollar))	//  '$'
 				{
 					*out++ = *fmt_first++;
 				}
@@ -9315,25 +9219,25 @@ public:
 					++fmt_first;
 					if (fmt_first == fmt_last)
 					{
-						*out++ = regex_internal::meta_char::mc_dollar;	//  '$';
+						*out++ = re_detail::meta_char::mc_dollar;	//  '$';
 					}
-					else if (*fmt_first == static_cast<char_type>(regex_internal::char_other::co_amp))	//  '&', $&
+					else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_amp))	//  '&', $&
 					{
 						out = std::copy(m0.first, m0.second, out);
 						++fmt_first;
 					}
-					else if (*fmt_first == static_cast<char_type>(regex_internal::char_other::co_grav))	//  '`', $`, prefix.
+					else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_grav))	//  '`', $`, prefix.
 					{
 						out = std::copy(this->prefix().first, this->prefix().second, out);
 						++fmt_first;
 					}
-					else if (*fmt_first == static_cast<char_type>(regex_internal::char_other::co_apos))	//  '\'', $', suffix.
+					else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_apos))	//  '\'', $', suffix.
 					{
 						out = std::copy(this->suffix().first, this->suffix().second, out);
 						++fmt_first;
 					}
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-					else if (*fmt_first == static_cast<char_type>(regex_internal::meta_char::mc_lt) && !no_groupnames)	//  '<', $<
+					else if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_lt) && !no_groupnames)	//  '<', $<
 					{
 						const char_type *const current_backup = fmt_first;
 						bool replaced = false;
@@ -9346,11 +9250,11 @@ public:
 
 							for (;; ++fmt_first)
 							{
-								if (*fmt_first == static_cast<char_type>(regex_internal::meta_char::mc_gt))
+								if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_gt))
 								{
-									const regex_internal::ui_l32 backref_number = lookup_backref_number(name_begin, fmt_first);
+									const re_detail::ui_l32 backref_number = lookup_backref_number(name_begin, fmt_first);
 
-									if (backref_number != regex_internal::groupname_mapper<char_type>::notfound)
+									if (backref_number != re_detail::groupname_mapper<char_type>::notfound)
 									{
 										const value_type &mn = (*this)[backref_number];
 
@@ -9369,7 +9273,7 @@ public:
 						if (!replaced)
 						{
 							fmt_first = current_backup;
-							*out++ = regex_internal::meta_char::mc_dollar;	//  '$';
+							*out++ = re_detail::meta_char::mc_dollar;	//  '$';
 						}
 					}
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
@@ -9378,14 +9282,14 @@ public:
 						const char_type *const backup_pos = fmt_first;
 						size_type backref_number = 0;
 
-						if (fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(regex_internal::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(regex_internal::char_alnum::ch_9))	//  '0'-'9'
+						if (fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
 						{
-							backref_number += *fmt_first - regex_internal::char_alnum::ch_0;	//  '0';
+							backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
 
-							if (++fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(regex_internal::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(regex_internal::char_alnum::ch_9))	//  '0'-'9'
+							if (++fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
 							{
 								backref_number *= 10;
-								backref_number += *fmt_first - regex_internal::char_alnum::ch_0;	//  '0';
+								backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
 								++fmt_first;
 							}
 						}
@@ -9399,10 +9303,10 @@ public:
 						}
 						else
 						{
-							*out++ = regex_internal::meta_char::mc_dollar;	//  '$';
+							*out++ = re_detail::meta_char::mc_dollar;	//  '$';
 
 							fmt_first = backup_pos;
-							if (*fmt_first == static_cast<char_type>(regex_internal::meta_char::mc_dollar))
+							if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_dollar))
 								++fmt_first;
 						}
 					}
@@ -9459,17 +9363,22 @@ public:
 		*this = tmp;
 	}
 
+	regex_constants::error_type ecode() const
+	{
+		return static_cast<regex_constants::error_type>(ready_ >> 1);
+	}
+
 public:	//  For internal.
 
 	typedef match_results<BidirectionalIterator> match_results_type;
 	typedef typename match_results_type::size_type match_results_size_type;
-	typedef typename regex_internal::re_search_state</*charT, */BidirectionalIterator> search_state_type;
+	typedef typename re_detail::re_search_state</*charT, */BidirectionalIterator> search_state_type;
 
 	search_state_type sstate_;
 
 	void clear_()
 	{
-		ready_ = false;
+		ready_ = 0u;
 		sub_matches_.clear();
 //		prefix_.matched = false;
 //		suffix_.matched = false;
@@ -9480,7 +9389,7 @@ public:	//  For internal.
 
 //	template <typename charT>
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool set_match_results_(const regex_internal::groupname_mapper<char_type> &gnames)
+	bool set_match_results_(const re_detail::groupname_mapper<char_type> &gnames)
 #else
 	bool set_match_results_()
 #endif
@@ -9490,7 +9399,7 @@ public:	//  For internal.
 
 		sub_matches_[0].matched = true;
 
-		for (regex_internal::ui_l32 i = 1; i < static_cast<regex_internal::ui_l32>(sstate_.bracket.size()); ++i)
+		for (re_detail::ui_l32 i = 1; i < static_cast<re_detail::ui_l32>(sstate_.bracket.size()); ++i)
 			sub_matches_[i].set_(sstate_.bracket[i]);
 
 		base_ = sstate_.lblim;
@@ -9505,7 +9414,7 @@ public:	//  For internal.
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		gnames_ = gnames;
 #endif
-		ready_ = true;
+		ready_ = 1u;
 		return true;
 	}
 
@@ -9525,7 +9434,7 @@ public:	//  For internal.
 		prefix_.matched = prefix_.first != prefix_.second;
 		suffix_.matched = suffix_.first != suffix_.second;
 
-		ready_ = true;
+		ready_ = 1u;
 		return true;
 	}
 
@@ -9557,9 +9466,9 @@ public:	//  For internal.
 		prefix_.first = prefix_.second = mf;
 	}
 
-	bool mark_as_failed_()
+	bool mark_as_failed_(const int reason)
 	{
-		ready_ = true;	//  30.11.2 and 3: Postconditions: m.ready() == true in all cases.
+		ready_ = reason ? (reason << 1) : 1u;
 		return false;
 	}
 
@@ -9567,24 +9476,14 @@ private:
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
-	regex_internal::ui_l32 lookup_backref_number(const char_type *begin, const char_type *const end) const
+	re_detail::ui_l32 lookup_backref_number(const char_type *begin, const char_type *const end) const
 	{
-		typename regex_internal::groupname_mapper<char_type>::gname_string key(end - begin);
+		typename re_detail::groupname_mapper<char_type>::gname_string key(end - begin);
 
 		for (std::size_t i = 0; begin != end; ++begin, ++i)
 			key[i] = *begin;
 
 		return gnames_[key];
-	}
-
-	regex_internal::ui_l32 lookup_and_check_backref_number(const char_type *begin, const char_type *const end) const
-	{
-		const regex_internal::ui_l32 backrefno = lookup_backref_number(begin, end);
-
-		if (backrefno == regex_internal::groupname_mapper<char_type>::notfound)
-			throw regex_error(regex_constants::error_backref);
-
-		return backrefno;
 	}
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
@@ -9599,17 +9498,15 @@ private:
 
 	typedef std::vector<value_type, Allocator> sub_match_array;
 
-	bool ready_;
+	unsigned int ready_;
 	sub_match_array sub_matches_;
 	value_type prefix_;
 	value_type suffix_;
+	value_type unmatched_;
 	BidirectionalIterator base_;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	regex_internal::groupname_mapper<char_type> gnames_;
-#endif
-#if defined(SRELL_STRICT_IMPL)
-	value_type unmatched_;
+	re_detail::groupname_mapper<char_type> gnames_;
 #endif
 };
 
@@ -9699,7 +9596,7 @@ typedef smatch u8csmatch;
 //  ... "regex_match_results.hpp"]
 //  ["rei_algorithm.hpp" ...
 
-	namespace regex_internal
+	namespace re_detail
 	{
 
 #if !defined(SRELL_NO_APIEXT)
@@ -9765,6 +9662,8 @@ public:
 		const regex_constants::match_flag_type flags
 	) const
 	{
+		int reason = 0;
+
 		results.clear_();
 
 		if (this->NFA_states.size())
@@ -9800,10 +9699,9 @@ public:
 #else
 				sstate.reset(this->limit_counter);
 #endif
-				if (!this->is_ricase() ? run_automaton<false, false>(sstate) : run_automaton<true, false>(sstate))
-					goto FOUND;
+				reason = !this->is_ricase() ? run_automaton<false, false>(sstate) : run_automaton<true, false>(sstate);
 
-				goto NOT_FOUND;
+				goto CHECK_REASON;
 			}
 
 			sstate.entry_state = this->NFA_states[0].next_state1;
@@ -9811,20 +9709,20 @@ public:
 #if !defined(SRELLDBG_NO_SCFINDER)
 			if (this->NFA_states[0].char_num != constants::invalid_u32value)
 			{
-				if (!this->is_ricase() ? do_search_sc<false>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : do_search_sc<true>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
-					goto FOUND;
+				reason = !this->is_ricase() ? do_search_sc<false>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : do_search_sc<true>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category());
 
-				goto NOT_FOUND;
+				goto CHECK_REASON;
 			}
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
 #if !defined(SRELL_NO_ICASE)
-			if (!this->is_ricase() ? do_search<false>(sstate) : do_search<true>(sstate))
+			reason = !this->is_ricase() ? do_search<false>(sstate) : do_search<true>(sstate);
 #else
-			if (do_search<false>(results))
+			reason = do_search<false>(results);
 #endif
+			CHECK_REASON:
+			if (reason == 1)
 			{
-				FOUND:
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 				return results.set_match_results_(this->namedcaptures);
 #else
@@ -9832,10 +9730,10 @@ public:
 #endif
 			}
 		}
-#if !defined(SRELLDBG_NO_BMH) || !defined(SRELLDBG_NO_SCFINDER)
+#if !defined(SRELLDBG_NO_BMH)
 		NOT_FOUND:
 #endif
-		return results.mark_as_failed_();
+		return results.mark_as_failed_(reason);
 	}
 
 private:
@@ -9843,7 +9741,7 @@ private:
 	typedef typename traits::utf_traits utf_traits;
 
 	template <const bool icase, typename BidirectionalIterator>
-	bool do_search(re_search_state<BidirectionalIterator> &sstate) const
+	int do_search(re_search_state<BidirectionalIterator> &sstate) const
 	{
 		for (;;)
 		{
@@ -9874,19 +9772,20 @@ private:
 #else
 			sstate.reset(/* first, */ this->limit_counter);
 #endif
-			if (run_automaton<icase, false>(sstate /* , false */))
-				return true;
+			const int reason = run_automaton<icase, false>(sstate /* , false */);
+			if (reason)
+				return reason;
 
 			if (final)
 				break;
 		}
-		return false;
+		return 0;
 	}
 
 #if !defined(SRELLDBG_NO_SCFINDER)
 
 	template <const bool icase, typename ContiguousIterator>
-	bool do_search_sc(re_search_state<ContiguousIterator> &sstate, const std::random_access_iterator_tag) const
+	int do_search_sc(re_search_state<ContiguousIterator> &sstate, const std::random_access_iterator_tag) const
 	{
 		if (is_contiguous(sstate.srchbegin))
 		{
@@ -9914,19 +9813,20 @@ private:
 #else
 					sstate.reset(this->limit_counter);
 #endif
-					if (run_automaton<icase, false>(sstate))
-						return true;
+					const int reason = run_automaton<icase, false>(sstate);
+					if (reason)
+						return reason;
 				}
 				else
 					break;
 			}
-			return false;
+			return 0;
 		}
 		return do_search_sc<icase>(sstate, std::bidirectional_iterator_tag());
 	}
 
 	template <const bool icase, typename BidirectionalIterator>
-	bool do_search_sc(re_search_state<BidirectionalIterator> &sstate, const std::bidirectional_iterator_tag) const
+	int do_search_sc(re_search_state<BidirectionalIterator> &sstate, const std::bidirectional_iterator_tag) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 		const char_type ec = static_cast<char_type>(this->NFA_states[0].char_num);
@@ -9945,13 +9845,14 @@ private:
 #else
 				sstate.reset(this->limit_counter);
 #endif
-				if (run_automaton<icase, false>(sstate))
-					return true;
+				const int reason = run_automaton<icase, false>(sstate);
+				if (reason)
+					return reason;
 			}
 			else
 				break;
 		}
-		return false;
+		return 0;
 	}
 
 	template <typename BidirectionalIterator, typename CharT0>
@@ -9970,6 +9871,16 @@ private:
 		return false;
 	}
 
+#if !defined(SRELL_NO_CONCEPTS) && defined(__cpp_concepts)
+
+	template <std::contiguous_iterator I>
+	bool is_contiguous(I) const
+	{
+		return true;
+	}
+
+#else
+
 	bool is_contiguous(const charT *) const
 	{
 		return true;
@@ -9979,7 +9890,7 @@ private:
 	{
 		return true;
 	}
-
+#endif	//  !defined(SRELL_NO_CONCEPTS) && defined(__cpp_concepts)
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
 	template <typename T, const bool>
@@ -10001,7 +9912,7 @@ private:
 	};
 
 	template <const bool icase, const bool reverse, typename BidirectionalIterator>
-	bool run_automaton
+	int run_automaton
 	(
 		re_search_state</*charT, */BidirectionalIterator> &sstate
 	) const
@@ -10040,12 +9951,16 @@ private:
 					sstate.ssc.state = sstate.ssc.state->next_state2;
 				}
 				else
-					return false;
+					return 0;
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 			}
 			else
+#if defined(SRELL_NO_THROW)
+				return static_cast<int>(regex_constants::error_complexity);
+#else
 				throw regex_error(regex_constants::error_complexity);
+#endif
 #endif
 		}
 
@@ -10587,10 +10502,22 @@ private:
 
 					//  sstate.ssc.state is no longer pointing to lookaround_open!
 
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-					is_matched = (lostate->quantifier.atleast == 0 ? run_automaton<icase, false>(sstate /* , true */) : run_automaton<icase, true>(sstate /* , true */)) ? 1u : 0u;
+#if defined(SRELL_NO_THROW)
+					const int reason =
 #else
-					is_matched = run_automaton<icase, false>(sstate /* , true */) ? 1u : 0u;
+					is_matched =
+#endif
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+						(lostate->quantifier.atleast == 0 ? run_automaton<icase, false>(sstate) : run_automaton<icase, true>(sstate));
+#else
+						run_automaton<icase, false>(sstate);
+#endif
+
+#if defined(SRELL_NO_THROW)
+					if (reason & ~1)
+						return reason;
+
+					is_matched = reason ? 1 : 0;
 #endif
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
@@ -10754,7 +10681,7 @@ private:
 			case st_success:	//  == lookaround_close.
 //				if (is_recursive)
 				if (sstate.btstack_size)
-					return true;
+					return 1;
 
 				if
 				(
@@ -10762,7 +10689,7 @@ private:
 					&&
 					(!sstate.match_match_flag() || sstate.is_at_srchend())
 				)
-					return true;
+					return 1;
 
 				goto NOT_MATCHED;
 
@@ -10785,7 +10712,11 @@ private:
 
 			default:
 				//  Reaching here means that this->NFA_states is corrupted.
+#if defined(SRELL_NO_THROW)
+				return static_cast<int>(regex_constants::error_internal);
+#else
 				throw regex_error(regex_constants::error_internal);
+#endif
 				}
 			}
 		}
@@ -10926,14 +10857,14 @@ protected:
 };
 //  re_object
 
-	}	//  namespace regex_internal
+	}	//  namespace re_detail
 
 //  ... "rei_algorithm.hpp"]
 //  ["basic_regex.hpp" ...
 
 //  28.8, class template basic_regex:
 template <class charT, class traits = regex_traits<charT> >
-class basic_regex : public regex_internal::re_object<charT, traits>
+class basic_regex : public re_detail::re_object<charT, traits>
 {
 public:
 
@@ -11044,14 +10975,14 @@ public:
 	//  [7.8.3] assign
 	basic_regex &assign(const basic_regex &right)
 	{
-		regex_internal::re_object_core<charT, traits>::operator=(right);
+		re_detail::re_object_core<charT, traits>::operator=(right);
 		return *this;
 	}
 
 #if defined(SRELL_CPP11_MOVE_ENABLED)
 	basic_regex &assign(basic_regex &&right) SRELL_NOEXCEPT
 	{
-		regex_internal::re_object_core<charT, traits>::operator=(std::move(right));
+		re_detail::re_object_core<charT, traits>::operator=(std::move(right));
 		return *this;
 	}
 #endif
@@ -11120,7 +11051,12 @@ public:
 	//  [7.8.6] swap
 	void swap(basic_regex &e)
 	{
-		regex_internal::re_object_core<charT, traits>::swap(e);
+		re_detail::re_object_core<charT, traits>::swap(e);
+	}
+
+	regex_constants::error_type ecode() const
+	{
+		return re_detail::re_object_core<charT, traits>::ecode();
 	}
 
 #if !defined(SRELL_NO_APIEXT)
@@ -11276,9 +11212,9 @@ public:
 	{
 		typedef typename StringLike::traits_type ST;
 		typedef typename StringLike::allocator_type SA;
-		regex_internal::repoptions<charT> opts(fmt_begin, fmt_end, global);
+		re_detail::repoptions<charT> opts(fmt_begin, fmt_end, global);
 
-		this->do_replace(s, regex_internal::call_mrformat<charT, ST, SA, const charT *>, reinterpret_cast<void *>(&opts));
+		this->do_replace(s, re_detail::call_mrformat<charT, ST, SA, const charT *>, reinterpret_cast<void *>(&opts));
 	}
 
 	template <typename StringLike>
@@ -11336,7 +11272,7 @@ public:
 	{
 		typedef typename container::value_type::iterator BidiIter;
 		typedef match_results<BidiIter> match_type;	//  match_type::value_type == container::value_type.
-		this->template do_split<match_type>(c, regex_internal::pos0_<charT>(s, BidiIter()), regex_internal::pos1_<charT>(s, BidiIter()), limit);
+		this->template do_split<match_type>(c, re_detail::pos0_<charT>(s, BidiIter()), re_detail::pos1_<charT>(s, BidiIter()), limit);
 	}
 
 	template <typename container, typename BidirectionalIterator>
@@ -11379,7 +11315,7 @@ public:
 	) const
 	{
 		typedef typename container::value_type::iterator BidiIter;
-		this->template do_split<MatchResults>(c, regex_internal::pos0_<charT>(s, BidiIter()), regex_internal::pos1_<charT>(s, BidiIter()), limit);
+		this->template do_split<MatchResults>(c, re_detail::pos0_<charT>(s, BidiIter()), re_detail::pos1_<charT>(s, BidiIter()), limit);
 	}
 
 	template <typename MatchResults, typename container, typename BidirectionalIterator>
@@ -11407,7 +11343,7 @@ public:
 
 private:
 
-	typedef regex_internal::re_object<charT, traits> base_type;
+	typedef re_detail::re_object<charT, traits> base_type;
 
 #endif	//  !defined(SRELL_NO_APIEXT)
 };
@@ -11717,8 +11653,8 @@ public:
 		const std::basic_string<char_type, ST, SA> &s,
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
-		: begin_(regex_internal::pos0_<char_type>(s, BidirectionalIterator()))
-		, end_(regex_internal::pos1_<char_type>(s, BidirectionalIterator()))
+		: begin_(re_detail::pos0_<char_type>(s, BidirectionalIterator()))
+		, end_(re_detail::pos1_<char_type>(s, BidirectionalIterator()))
 		, pregex_(&re)
 	{
 		rewind(m);
@@ -11802,8 +11738,8 @@ public:
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
 	{
-		begin_ = regex_internal::pos0_<char_type>(s, BidirectionalIterator());
-		end_ = regex_internal::pos1_<char_type>(s, BidirectionalIterator());
+		begin_ = re_detail::pos0_<char_type>(s, BidirectionalIterator());
+		end_ = re_detail::pos1_<char_type>(s, BidirectionalIterator());
 		pregex_ = &re;
 		rewind(m);
 	}
@@ -11871,7 +11807,7 @@ public:
 
 		if (match_.size())
 		{
-			const BidirectionalIterator oldbegin = regex_internal::pos0_<char_type>(entire_string, BidirectionalIterator());
+			const BidirectionalIterator oldbegin = re_detail::pos0_<char_type>(entire_string, BidirectionalIterator());
 			const typename string_type::size_type oldbeginoffset = begin_ - oldbegin;
 			const typename string_type::size_type oldendoffset = end_ - oldbegin;
 			const typename string_type::size_type pos = match_[0].first - oldbegin;
@@ -11880,7 +11816,7 @@ public:
 
 			entire_string.replace(pos, count, replacement);
 
-			const BidirectionalIterator newbegin = regex_internal::pos0_<char_type>(entire_string, BidirectionalIterator());
+			const BidirectionalIterator newbegin = re_detail::pos0_<char_type>(entire_string, BidirectionalIterator());
 
 			begin_ = newbegin + oldbeginoffset;
 			end_ = newbegin + (oldendoffset + addition);	//  VC checks if an iterator exceeds end().

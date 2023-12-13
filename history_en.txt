@@ -1,6 +1,29 @@
+20231209; version 4.034:
+  * Modified to use std::contiguous_iterator when it is available, to
+    check if the iterator passed to an algorithm function is a
+    contigous_iterator.
+  * Modified match_results::operator[]() not to throw error_backref when
+    a group name not existing in the regular expression is passed to as
+    an argument, but to return the reference to a sub_match object
+    representing an unmatched sub-exression.
+    In accordance with this change, now
+    match_results::operator[](size_type n) also returns the same object
+    when n >= size(). (Behaviour accordant to std::regex. Until the
+    previous version, this object was returned only when
+    SRELL_STRICT_IMPL is defined).
+  * Implemented the no throw/exception mode.
+  * For the no throw mode, added basic_regex::ecode() that returns
+    error_type that should have been thrown during the previous pattern
+    compilation.
+  * For the no throw mode, added match_results::ecode() that returns
+    error_type that should have been thrown during the previous pattern
+    matching/searching.
+
 20230926; version 4.033:
   * Fixed a bug that could cause a crash on 64-bit systems since version
-    4.020 (Thanks for the bug report).
+    4.020 (Thanks to Yuriy Skvortsov for the bug report).
+    Condition: 3 or more Alternatives begin with the same character such
+    as /ab|ac|ad/.
   * Removed an unused member function from utf_traits.
   * Some clean-ups.
 
@@ -394,12 +417,12 @@
 20200630; version 2.700:
   * Optimisation adjustments.
 
-20200620: version 2.651:
+20200620; version 2.651:
   * Move the group name validity check to after parsing the \u escape.
   * Updated misc/sample01.cpp to version 1.103. Changed the version
     number of the ECMAScript specification referenced by to 2020 (ES11).
 
-20200618: version 2.650:
+20200618; version 2.650:
   * To element access functions in match_results, added overload
     functions for specifying the group name by a pointer.
   * When a three-iterators version of regex_search() is used, SRELL now
@@ -408,20 +431,20 @@
     the beginning of the subject (first param).
   * Removed some operations that seem to be redundant.
 
-20200601: version 2.643:
+20200601; version 2.643:
   * Added "inline" to operators in syntax_option_type and
     match_flag_type types, based on a report that it is needed not to
     cause the multiple definition error.
   * Minor improvements.
 
-20200530: version 2.642:
+20200530; version 2.642:
   * Reduced the size of memory allocated by the basic_regex instance.
 
-20200528: version 2.641:
+20200528; version 2.641:
   * The fix in 2.640 was incomplete. Fixed the optimisation bug 1 again.
   * Optimisation adjustments.
 
-20200516: version 2.640:
+20200516; version 2.640:
   * Fixed an optimisation bug 1: It was possible for regex_match to pass
     the end of a subject string under certain conditions.
   * Fixed an optimisation bug 2: ^ and $ were not given a chance to
@@ -429,7 +452,7 @@
     is set to true.
   * Updated srell_ucfdata2.hpp and srell_updata.hpp.
 
-20200509: version 2.630:
+20200509; version 2.630:
   * SRELL's pattern compiler no longer permits invalid UTF-8 sequences
     in regular expressions. It throws regex_utf8. (Invalid UTF-8
     sequences in the subject string are not treated as an error.)
@@ -441,17 +464,17 @@
     replace $<NAME> with an empty string when any capturing group whose
     name is NAME did not exist.
 
-20200502: version 2.620:
+20200502; version 2.620:
   * Removed methods used for match_continuous and regex_match in the
     class for the Boyer-Moore-Horspool algorithm. Now SRELL always uses
     the automaton like earlier versions when they are processed.
   * Some clean-ups.
 
-20200428: version 2.611:
+20200428; version 2.611:
   * Fixed a bug that caused /\d*/ not to match the head of "abc" but to
     match the end of it. (regression introduced in version 2.210.)
 
-20200426: version 2.610:
+20200426; version 2.610:
   * Fixed a bug that caused case-insensitive (icase) BMH search to skip
     a matched sequence at the beginning of the entire text, when 1)
     search is done against UTF-8 or UTF-16 text, and 2) the searched
@@ -461,7 +484,7 @@
     specification and strictly checks its validity. Group names like
     /(?<,>...)/ cause regex_error.
 
-20200418: version 2.600:
+20200418; version 2.600:
   * To pass to regex_search() directly the limit of a sequence until
     where the automaton can lookbehind, added three-iterators versions
     of regex_search().
@@ -474,7 +497,7 @@
     advance new script names that will be available in RegExp of
     ECMAScript 2020).
 
-20191118: version 2.500:
+20191118; version 2.500:
   * Modified basic_regex to hold precomputed tables for icase matching,
     instead of creating them from case folding data when its instance is
     first created.
@@ -496,12 +519,12 @@
   * Updated updataout.cpp to version 1.101.
   * Added a standalone version of SRELL in the single-header directory.
 
-20190914: version 2.401:
+20190914; version 2.401:
   * Reduced the size of basic_regex. (It was bloated by my carelessness
     when support for Unicode property escapes was added).
   * Improved basic_regex::swap().
 
-20190907: version 2.400:
+20190907; version 2.400:
   * Improved the performance of character class matching.
   * Modified the pattern compiler to interpret the \u escape sequence in
     the group name in accordance with the ECMAScript specification.
@@ -514,16 +537,16 @@
     newer version of srell_ucfdata.hpp).
   * Some clean-ups and improvements.
 
-20190902: version 2.304:
+20190902; version 2.304:
   * Fixed regex_iterator that had been broken by the code clean-up in
     version 2.303.
 
-20190810: version 2.303:
+20190810; version 2.303:
   * Refixed the problem that was fixed in version 2.302 as the fix was
     incomplete.
   * Cleaned up code.
 
-20190809: version 2.302:
+20190809; version 2.302:
   * Bug fix: When (?...) has a quantifier, strings captured by round
     brackets inside it were not cleared in each repetition but carried
     over to the next loop. For example,
@@ -532,14 +555,14 @@
   * Updated misc/sample01.cpp to version 1.102. Rewrote the chapter
     numbers in accordance with ECMAScript 2019 (ES10).
 
-20190724: version 2.301:
+20190724; version 2.301:
   * In accordance with the ECMAScript spec, restricted the characters
     which can be escaped by '\', to the following fifteen characters:
     ^$\.*+?()[]{}|/
     Only in the character class, i.e., inside [], '-' also becomes a
     member of the group.
 
-20190717: version 2.300:
+20190717; version 2.300:
   * Added a feature for specifying the limit until where the automaton
     can lookbehind, separated from the beginning of a target sequence.
     (Addition of the match_lblim_avail flag to match_flag_type and the
@@ -552,12 +575,12 @@
   * Updated misc/sample01.cpp to version 1.101. Added one compliance
     test from misc.js.
 
-20190714: version 2.230:
+20190714; version 2.230:
   * Improved the performance of searching when regular expressions begin
     with a character or character class followed by a '*' or '+'. (E.g.
     /[A-Za-z]+ing/).
 
-20190707: version 2.221:
+20190707; version 2.221:
   * Changed the feature test macro used for checking availability of
     std::u8string, from __cpp_char8_t to __cpp_lib_char8_t.
   * When icase specified, if all characters in a character class become
@@ -566,7 +589,7 @@
     literal (e.g. /r[Ss\u017F]t/i -> /rst/i).
   * Fixed a minor issue.
 
-20190617: version 2.220:
+20190617; version 2.220:
   * Changed the internal representation of repetition in the case that
     it becomes more compact by not using the counter.
   * Fixed an optimisation bug that caused searching for /a{1,2}?b/
@@ -574,16 +597,16 @@
     character or character class with a non-greedy quantifier is
     followed by its exclusive character or character class).
 
-20190613: version 2.210:
+20190613; version 2.210:
   * Improved a method of matching for expressions like /ab|cd|ef/ (where
     string literals separaterd by '|' begin with a character exclusive
     to each other).
 
-20190603: version 2.202:
+20190603; version 2.202:
   * Fixed a bug that caused regex_match to behave like regex_search in
     the situation where the BMH algorithm is used.
 
-20190531: version 2.200:
+20190531; version 2.200:
   * For searching with a ordinary (non-regex) string, added an
     implementation based on the Boyer-Moore-Horspool algorithm.
   * Improved UTF-8 iterators.
@@ -591,7 +614,7 @@
     against "s\u017F".
   * Fixed minor issues.
 
-20190508: version 2.100:
+20190508; version 2.100:
   * Fixed a bug that caused failure of capturing when 1) a pair of
     capturing brackets exists in a lookbehind assertion, and 2) variable
     length expressions exist in both the left side of and the inside of
@@ -630,7 +653,7 @@
       u8ccregex_iterator, u8csregex_iterator; u8ccregex_token_iterator,
       u8csregex_token_iterator.
 
-20180717: version 2.002:
+20180717; version 2.002:
   * Changed the maximum number of hexdigits in \u{h...} from six to
     'unlimited' in accordance with the ECMAScript specification. ("one
     to six hexadecimal digits" of the old implementation was based on
@@ -640,11 +663,11 @@
   * Updated srell_ucfdata.hpp and srell_updata.hpp to support Unicode
     11.0.0.
 
-20180204: version 2.001:
+20180204; version 2.001:
   * When icase is specified, [\W] (a character class containing \W) no
     longer matches any of [KkSs\u017F\u212A] (ecma262 issue #512).
 
-20180127: version 2.000:
+20180127; version 2.000:
   * Added the following features that are to be included into RegExp of
     ECMAScript 2018:
     * New syntax option flag for '.' to match every code point, dotall,
