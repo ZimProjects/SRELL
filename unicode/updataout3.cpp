@@ -1,5 +1,5 @@
 //
-//  updataout.cpp: version 3.001 (2023/09/14).
+//  updataout.cpp: version 3.002 (2023/12/29).
 //
 //  This is a program that generates srell_updata3.h from:
 //    DerivedCoreProperties.txt
@@ -373,14 +373,14 @@ public:
 
 private:
 
-	typedef srell::regex_internal::ui_l32 ui_l32;
-	typedef srell::regex_internal::range_pairs ucprange_array;
-	typedef srell::regex_internal::range_pair u32pair;
+	typedef srell::re_detail::ui_l32 ui_l32;
+	typedef srell::re_detail::range_pairs ucprange_array;
+	typedef srell::re_detail::range_pair u32pair;
 	typedef u32pair ucprange;
-	typedef srell::regex_internal::range_pair_helper u32rp_helper;
+	typedef srell::re_detail::range_pair_helper u32rp_helper;
 	typedef u32rp_helper ucprange_helper;
 	typedef std::map<std::string, ucprange_array> rangeholder;
-	typedef srell::regex_internal::simple_array<ui_l32> u32array;
+	typedef srell::re_detail::simple_array<ui_l32> u32array;
 	typedef std::map<std::string, u32array> seqholder;
 	typedef std::vector<std::string> strings_type;
 	typedef std::vector<srell::csub_match> matchranges_type;
@@ -388,7 +388,7 @@ private:
 	typedef std::map<std::string, std::string> name_mapper;
 	typedef std::map<std::string, ui_l32> namenumber_mapper;
 	typedef name_mapper canonicalname_mapper;
-	static const ui_l32 invalid_u32value = srell::regex_internal::constants::invalid_u32value;
+	static const ui_l32 invalid_u32value = srell::re_detail::constants::invalid_u32value;
 	static const ui_l32 compositeclass = invalid_u32value;
 
 	struct sorted_name_and_ranges
@@ -1425,7 +1425,7 @@ private:
 		const std::string &maxorlast, const std::string &t2scope, const std::string &t1prefix, const std::string &t1finaltail, const std::string &t1tail, const std::string &t1head, name_mapper &ptype_mappings, const std::string &indent, const sortedrangeholder &alldata, const sortedseqholder &emsq, const int version)
 	{
 		namenumber_mapper registered;
-		srell::regex_internal::simple_array<ucprange> rangepos;
+		srell::re_detail::simple_array<ucprange> rangepos;
 		srell::sregex_iterator2 rei2;
 
 		for (sortedrangeholder::size_type i = 0; i < alldata.size(); ++i)

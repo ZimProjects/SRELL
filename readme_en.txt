@@ -9,7 +9,7 @@ The files in the following directories are supplements. As SRELL does not use
 them, it is safe to remove them.
 
 * misc
-  Contains a source code file for a simple test and benchmark program.
+  Contains source code files for a conformance test program.
 
 * single-header
   Contains a standalone version of srell.hpp into which srell_ucfdata2.hpp

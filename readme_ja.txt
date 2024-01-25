@@ -11,7 +11,7 @@ SRELL側からは参照していませんので、削除してしまってもラ
 影響はありません。
 
 ・misc
-  簡単なテスト及びベンチマークプログラムのソースが入っています。
+  テストプログラムのソースが入っています。
 
 ・single-header
   srell.hppの中にsrell_ucfdata2.hppとsrell_updata2.hppとを埋め込んで、こ

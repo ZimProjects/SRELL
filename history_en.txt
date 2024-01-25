@@ -1,10 +1,48 @@
+20240124; version 4.038:
+  * Fixed a bug that caused /(?:ab)+|cd/ to match "ababcd".
+    Condition: Both sides of | begin with different characters, and the
+    left side character is contained in (?:)+.
+  * Minor improvements.
+
+20240122; version 4.037:
+  * Fixed an optimisation bug that caused /(?:a|ab|abc)$/ to match "ac"
+    since version 4.021.
+    Condition: (?:A|B|C) where A is a prefix of B, and B is a prefix of
+    C.
+    -> A path from the end of A to a suffix of C occured through the
+       wrong optimisation. This path was usually hidden, but could be
+       used when backtracking is performed.
+  * Other various improvements and fixes.
+
+20240114; version 4.036:
+  * Improvement and bugfix of lookaround (lookahead and lookbehind):
+    1. Removed unnecessary stack operations.
+    2. Restored the state type that had been removed in version 3.003 so
+       that the value of the first capturing group in /(?:(?=(\w))|b)c$/
+       against "abc" will be undefined, not "b".
+       Condition: 1. A lookaround assertion contains a capturing group,
+       2. After the lookaround assertion is successful, matching with
+       succeeding expressions fails, 3, Tries another subpattern
+       separated by '|' and founds a match with total expressions.
+       -> A subsequence captured by the group in the lookaround remained
+          without being reverted to "undefined".
+  * Replaced misc/sample01.cpp with conftest.cpp.
+  * Tagged each kind of epsilon.
+
+20231229; version 4.035:
+  * Improved case folding of character classes. (Compilation of \p{Any}
+    was a bit slow when the icase flag was set).
+  * Several preparations for (?i:) support.
+  * Updated updataout3.cpp. It could not be compiled because an internal
+    namespace was changed in the previous version.
+
 20231209; version 4.034:
   * Modified to use std::contiguous_iterator when it is available, to
     check if the iterator passed to an algorithm function is a
     contigous_iterator.
   * Modified match_results::operator[]() not to throw error_backref when
     a group name not existing in the regular expression is passed to as
-    an argument, but to return the reference to a sub_match object
+    an argument, but to return a reference to a sub_match object
     representing an unmatched sub-exression.
     In accordance with this change, now
     match_results::operator[](size_type n) also returns the same object
