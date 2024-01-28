@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.038
+**  SRELL (std::regex-like library) version 4.039
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -3207,7 +3207,6 @@ struct re_quantifier
 	//    minimum and maximum bracket numbers respectively inside the lookaround.
 
 	ui_l32 atleast;
-		//  (Special case 5) in NFA_states[0] represents the class number of the first character class.
 
 	ui_l32 atmost;
 
@@ -4910,6 +4909,8 @@ private:
 			return false;
 		}
 
+		this->NFA_states[0].quantifier = piecesize;
+
 		if (begin != end)
 			return this->set_error(regex_constants::error_paren);	//  ')'s are too many.
 
@@ -5555,6 +5556,11 @@ private:
 				firststate.quantifier.is_greedy = piecesize.atleast;
 			}
 #endif
+
+#if defined(SRELL_ENABLE_GT)
+			if (firststate.char_num != meta_char::mc_gt)
+#endif
+				piecesize.reset(0);
 
 			firststate.next1 = static_cast<std::ptrdiff_t>(piece.size()) + 1;
 			piece[1].quantifier.atmost = firststate.quantifier.atmost;
@@ -6953,7 +6959,7 @@ private:
 		}
 
 #if !defined(SRELLDBG_NO_BITSET)
-		this->NFA_states[0].quantifier.atleast = this->character_class.register_newclass(fcc);
+		this->NFA_states[0].quantifier.is_greedy = this->character_class.register_newclass(fcc);
 #endif
 
 #if !defined(SRELLDBG_NO_BITSET) || !defined(SRELLDBG_NO_SCFINDER)

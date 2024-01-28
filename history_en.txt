@@ -1,3 +1,6 @@
+20240127; version 4.039:
+  * Restored some code that had been removed mistakenly in 4.037.
+
 20240124; version 4.038:
   * Fixed a bug that caused /(?:ab)+|cd/ to match "ababcd".
     Condition: Both sides of | begin with different characters, and the
@@ -22,8 +25,8 @@
        against "abc" will be undefined, not "b".
        Condition: 1. A lookaround assertion contains a capturing group,
        2. After the lookaround assertion is successful, matching with
-       succeeding expressions fails, 3, Tries another subpattern
-       separated by '|' and founds a match with total expressions.
+       succeeding expressions fails, 3, Another subpattern separated by
+       '|' is tried and a match with total expressions is found.
        -> A subsequence captured by the group in the lookaround remained
           without being reverted to "undefined".
   * Replaced misc/sample01.cpp with conftest.cpp.
