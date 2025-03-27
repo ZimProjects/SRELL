@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.063
+**  SRELL (std::regex-like library) version 4.064
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -1014,9 +1014,6 @@ public:
 		, size_(0)
 		, capacity_(0)
 	{
-		if (pos > right.size_)
-			pos = right.size_;
-
 		{
 			const size_type len2 = right.size_ - pos;
 			if (len > len2)
@@ -2654,12 +2651,8 @@ public:
 	range_pairs operator[](const ui_l32 no) const
 	{
 		const range_pair &ccpos = char_class_pos_[no];
-		range_pairs rp(ccpos.second);
 
-		for (ui_l32 i = 0; i < ccpos.second; ++i)
-			rp[i] = char_class_[ccpos.first + i];
-
-		return rp;
+		return range_pairs(char_class_, ccpos.first, ccpos.second);
 	}
 
 #if !defined(SRELLDBG_NO_CCPOS)
@@ -4032,7 +4025,6 @@ public:	//  For debug.
 private:
 
 	simple_array<ui_l32> u32string_;
-//	std::size_t bmtable_[256];
 	simple_array<std::size_t> bmtable_;
 	simple_array<charT> repseq_;
 };
@@ -6854,7 +6846,7 @@ private:
 #endif
 #if defined(SRELL_HAS_SSE42)
 		charT *const sranges = reinterpret_cast<charT *>(this->simdranges);
-		const int maxnum = sizeof (charT) == 1 ? 16 : 8;
+		const int maxnum = sizeof (charT) ? (16 / sizeof (charT)) : 0;
 		int curnum = 0;
 #endif
 		ui_l32 cu2 = 0;
@@ -6909,6 +6901,7 @@ private:
 						curnum = -1;
 				}
 #endif
+				static_cast<void>(prev2);
 				if (r2 == maxr2)
 					break;
 
@@ -9191,7 +9184,7 @@ public:	//  For internal.
 		prefix_.first = prefix_.second = mf;
 	}
 
-	bool mark_as_failed_(const int reason)
+	bool mark_as_failed_(const re_detail::ui_l32 reason)
 	{
 		ready_ = reason ? (reason << 1) : 1u;
 		return false;
@@ -9246,7 +9239,7 @@ private:
 
 	typedef std::vector<value_type, Allocator> sub_match_array;
 
-	unsigned int ready_;
+	re_detail::ui_l32 ready_;
 	sub_match_array sub_matches_;
 	value_type prefix_;
 	value_type suffix_;
@@ -9365,7 +9358,7 @@ public:
 		const regex_constants::match_flag_type flags
 	) const
 	{
-		int reason = 0;
+		ui_l32 reason = 0;
 
 		results.clear_();
 
@@ -9452,7 +9445,7 @@ private:
 #if defined(SRELL_HAS_SSE42)
 
 	template <const bool icase, typename ContiguousIterator>
-	SRELL_AT_SSE42 int do_search(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
+	SRELL_AT_SSE42 ui_l32 do_search(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
 	{
 		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type2;
 
@@ -9509,7 +9502,7 @@ SRELL_NO_VCWARNING_END
 #else
 					sstate.reset(this->limit_counter);
 #endif
-					const int reason = run_automaton<icase, false>(sstate);
+					const ui_l32 reason = run_automaton<icase, false>(sstate);
 					if (reason)
 						return reason;
 				}
@@ -9521,7 +9514,7 @@ SRELL_NO_VCWARNING_END
 #endif //  defined(SRELL_HAS_SSE42)
 
 	template <const bool icase, typename BidirectionalIterator>
-	int do_search(re_search_state<BidirectionalIterator> &sstate, const non_cont_iter) const
+	ui_l32 do_search(re_search_state<BidirectionalIterator> &sstate, const non_cont_iter) const
 	{
 		for (;;)
 		{
@@ -9580,7 +9573,7 @@ SRELL_NO_VCWARNING_END
 #else
 			sstate.reset(/* first, */ this->limit_counter);
 #endif
-			const int reason = run_automaton<icase, false>(sstate /* , false */);
+			const ui_l32 reason = run_automaton<icase, false>(sstate /* , false */);
 			if (reason)
 				return reason;
 
@@ -9593,7 +9586,7 @@ SRELL_NO_VCWARNING_END
 #if !defined(SRELLDBG_NO_SCFINDER)
 
 	template <const bool icase, typename ContiguousIterator>
-	int do_search_sc(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
+	ui_l32 do_search_sc(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
 	{
 		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type2;
 		const char_type2 ec = static_cast<char_type2>(this->NFA_states[0].char_num);
@@ -9637,7 +9630,7 @@ SRELL_NO_VCWARNING_END
 #else
 				sstate.reset(this->limit_counter);
 #endif
-				const int reason = run_automaton<icase, false>(sstate);
+				const ui_l32 reason = run_automaton<icase, false>(sstate);
 				if (reason)
 					return reason;
 			}
@@ -9648,7 +9641,7 @@ SRELL_NO_VCWARNING_END
 	}
 
 	template <const bool icase, typename BidirectionalIterator>
-	int do_search_sc(re_search_state<BidirectionalIterator> &sstate, const non_cont_iter) const
+	ui_l32 do_search_sc(re_search_state<BidirectionalIterator> &sstate, const non_cont_iter) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type2;
 		const char_type2 ec = static_cast<char_type2>(this->NFA_states[0].char_num);
@@ -9688,7 +9681,7 @@ SRELL_NO_VCWARNING_END
 #else
 				sstate.reset(this->limit_counter);
 #endif
-				const int reason = run_automaton<icase, false>(sstate);
+				const ui_l32 reason = run_automaton<icase, false>(sstate);
 				if (reason)
 					return reason;
 			}
@@ -9758,7 +9751,7 @@ SRELL_NO_VCWARNING_END
 	};
 
 	template <const bool icase, const bool reverse, typename BidirectionalIterator>
-	int run_automaton
+	ui_l32 run_automaton
 	(
 		re_search_state</*charT, */BidirectionalIterator> &sstate
 	) const
@@ -10303,11 +10296,7 @@ SRELL_NO_VCWARNING_END
 
 					//  sstate.ssc.state is no longer pointing to lookaround_open!
 
-#if defined(SRELL_NO_THROW)
-					const int reason =
-#else
 					is_matched =
-#endif
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 						(lostate->quantifier.is_greedy == 0 ? run_automaton<icase, false>(sstate) : run_automaton<icase, true>(sstate));
 #else
@@ -10315,10 +10304,8 @@ SRELL_NO_VCWARNING_END
 #endif
 
 #if defined(SRELL_NO_THROW)
-					if (reason & ~1)
-						return reason;
-
-					is_matched = reason ? 1 : 0;
+					if (is_matched >> 1)
+						return is_matched;
 #endif
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
@@ -10719,6 +10706,88 @@ public:
 	{
 		return re_detail::re_object_core<charT, traits>::ecode();
 	}
+
+#if !defined(SRELL_NO_APIEXT)
+
+	template <typename BidirectionalIterator, typename Allocator>
+	bool match(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		match_results<BidirectionalIterator, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return base_type::search(begin, end, begin, m, flags | regex_constants::match_continuous | regex_constants::match_match_);
+	}
+
+	template <typename Allocator>
+	bool match(
+		const charT *const str,
+		match_results<const charT *, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->match(str, str + std::char_traits<charT>::length(str), m, flags);
+	}
+
+	template <typename ST, typename SA, typename MA>
+	bool match(
+		const std::basic_string<charT, ST, SA> &s,
+		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->match(s.begin(), s.end(), m, flags);
+	}
+
+	template <typename BidirectionalIterator, typename Allocator>
+	bool search(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const BidirectionalIterator lookbehind_limit,
+		match_results<BidirectionalIterator, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return base_type::search(begin, end, lookbehind_limit, m, flags);
+	}
+
+	template <typename BidirectionalIterator, typename Allocator>
+	bool search(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		match_results<BidirectionalIterator, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return base_type::search(begin, end, begin, m, flags);
+	}
+
+	template <typename Allocator>
+	bool search(
+		const charT *const str,
+		match_results<const charT *, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(str, str + std::char_traits<charT>::length(str), m, flags);
+	}
+
+	template <typename ST, typename SA, typename MA>
+	bool search(
+		const std::basic_string<charT, ST, SA> &s,
+		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(s.begin(), s.end(), m, flags);
+	}
+
+private:
+
+	typedef re_detail::re_object<charT, traits> base_type;
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 };
 template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::icase;

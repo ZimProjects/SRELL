@@ -1,3 +1,12 @@
+20250214; version 4.064:
+  * Fixed a bug that caused memory corruption when u32regex's pattern
+    compiler is used with SIMD support being enabled.
+  * Restored some of API extensions to basic_regex, match() and search()
+    member functions that had been removed mistakenly in version 4.057.
+    But overloads that take match_results as a parameter only. Ones that
+    do not take are dropped officially.
+  * Other minor modifications.
+
 20241208; version 4.063:
   * Adjusted the pattern compiler to consider surrogate pairs when
     generating SIMD data for UTF-16.
