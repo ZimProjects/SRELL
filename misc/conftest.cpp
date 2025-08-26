@@ -1,6 +1,6 @@
 //
 //  Conformance test program for SRELL.
-//  Version 3.004 (2024/09/22)
+//  Version 3.005 (2025/04/20)
 //
 //  This needs to be compiled and run on a system that supports
 //  an ISO-646/US-ASCII compatible encoding.
@@ -543,7 +543,10 @@ bool conf_test(
 		re.assign(exp, so);
 
 		if (errortest)	//  Reaching here means that an exception has not been thrown.
+		{
+			std::fprintf(stdout, "\t/%s/\nResult: Failed (expected %u \"%s\", but no error thrown).\n\n", expfc.c_str(), offset, get_errmsg(offset));
 			return false;
+		}
 
 		const CharT *const begin = str.c_str() + offset;
 		const CharT *const end = str.c_str() + str.size();
@@ -672,7 +675,7 @@ bool conf_test(
 				return true;
 			}
 
-			std::fprintf(stdout, "Result: Failed... (expected: %u)\n\n", offset);
+			std::fprintf(stdout, "Result: Failed... (expected: %u \"%s\")\n\n", offset, get_errmsg(offset));
 		}
 		else
 			std::fprintf(stdout, "Result: Failed.\n\n");

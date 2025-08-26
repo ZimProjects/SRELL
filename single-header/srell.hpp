@@ -1,8 +1,8 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.064
+**  SRELL (std::regex-like library) version 4.068
 **
-**  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
+**  Copyright (c) 2012-2025, Nozomu Katoo. All rights reserved.
 **
 **  Redistribution and use in source and binary forms, with or without
 **  modification, are permitted provided that the following conditions are
@@ -36,17 +36,17 @@
 #include <stdexcept>
 #include <climits>
 #include <cwchar>
+#include <limits>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <cstddef>
+#include <memory>
 #include <utility>
 #include <vector>
 #include <iterator>
-#include <memory>
 #include <algorithm>
-#include <limits>
 
 #if !defined(SRELL_NO_UNISTACK) && (defined(__cplusplus) && (__cplusplus >= 201103L)) || (defined(_MSC_VER) && (_MSC_VER >= 1900))
 #include <type_traits>
@@ -157,10 +157,12 @@ namespace srell
 			sticky      = 1 << 5,
 			dotall      = 1 << 6,	//  singleline.
 			unicodesets = 1 << 7,
+			vmode       = unicodesets,
+			quiet       = 1 << 8,
 
 			//  For internal use.
-			back_       = 1 << 8,
-			pflagsmask_ = (1 << 8) - 1
+			back_       = 1 << 9,
+			pflagsmask_ = (1 << 9) - 1
 		};
 
 		inline syntax_option_type operator&(const syntax_option_type left, const syntax_option_type right)
@@ -254,7 +256,6 @@ namespace srell
 	}
 	//  namespace regex_constants
 
-	//  28.5, regex constants:
 	namespace regex_constants
 	{
 		typedef int error_type;
@@ -304,7 +305,6 @@ namespace srell
 //  ... "regex_constants.h"]
 //  ["regex_error.hpp" ...
 
-//  28.6, class regex_error:
 class regex_error : public std::runtime_error
 {
 public:
@@ -390,8 +390,8 @@ private:
 			st_move_nextpos,            //  0x15
 #endif
 
-			st_lookaround_close        = st_success,
-			st_zero_width_boundary     = st_lookaround_open,
+			st_lookaround_close    = st_success,
+			st_zero_width_boundary = st_lookaround_open
 		};
 		//  re_state_type
 
@@ -402,6 +402,7 @@ private:
 			static const ui_l32 max_u32value = static_cast<ui_l32>(-2);
 			static const ui_l32 ccstr_empty = static_cast<ui_l32>(-1);
 			static const ui_l32 infinity = static_cast<ui_l32>(~0);
+			static const ui_l32 errshift = 24;
 		}
 		//  constants
 
@@ -412,6 +413,8 @@ private:
 			static const ui_l32 pos_char = 0x1fffff;
 			static const ui_l32 fcc_simd = 0xffffff00;
 			static const ui_l32 fcc_simd_num = 0xff;
+			static const ui_l32 errmask = 0xff000000;
+			static const ui_l32 somask = 0xffffff;
 		}
 		//  masks
 
@@ -563,11 +566,12 @@ public:
 	enum
 	{
 		maxseqlen = 1,
-		charbit = (sizeof (charT) * CHAR_BIT) > 21 ? 21 : (sizeof (charT) * CHAR_BIT)
+		cb_ = sizeof (charT) == 1 ? CHAR_BIT : std::numeric_limits<charT>::digits,
+		charbit = cb_ < 21 ? cb_ : 21
 	};
 	static const ui_l32 bitsetsize = static_cast<ui_l32>(1) << charbit;
 	static const ui_l32 bitsetmask = bitsetsize - 1;
-	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : bitsetmask;
+	static const ui_l32 maxcpvalue = charbit < 21 ? bitsetmask : 0x10ffff;
 
 	//  *iter++
 	template <typename ForwardIterator>
@@ -638,8 +642,7 @@ public:
 
 	enum
 	{
-		maxseqlen = 4,
-		charbit = 8
+		maxseqlen = 4
 	};
 	static const ui_l32 bitsetsize = 0x100;
 	static const ui_l32 bitsetmask = 0xff;
@@ -800,8 +803,7 @@ public:
 
 	enum
 	{
-		maxseqlen = 2,
-		charbit = 16
+		maxseqlen = 2
 	};
 	static const ui_l32 bitsetsize = 0x10000;
 	static const ui_l32 bitsetmask = 0xffff;
@@ -933,7 +935,6 @@ struct utf_traits<char8_t> : public utf8_traits<char8_t>
 //  ... "rei_utf_traits.hpp"]
 //  ["regex_traits.hpp" ...
 
-//  28.7, class template regex_traits:
 template <class charT>
 struct regex_traits
 {
@@ -970,7 +971,7 @@ struct u16regex_traits : public regex_traits<charT>
  *    b. uses realloc() to avoid moving data as much as possible when
  *       resizing an allocated buffer.
  */
-template <typename ElemT>
+template <typename ElemT, typename Alloc = std::allocator<ElemT> >
 class simple_array
 {
 public:
@@ -981,93 +982,87 @@ public:
 	typedef const ElemT &const_reference;
 	typedef ElemT *pointer;
 	typedef const ElemT *const_pointer;
+	typedef const_pointer const_iterator;
 
 	static const size_type npos = static_cast<size_type>(-1);
+
+	struct sa_view
+	{
+		const_pointer data;
+		size_type size;
+
+		explicit sa_view(const const_pointer p = NULL, const size_type s = 0) : data(p), size(s)
+		{
+		}
+
+		sa_view(const simple_array &sa) : data(sa.data()), size(sa.size())
+		{
+		}
+	};
+	//  sa_view
 
 public:
 
 	simple_array()
-		: buffer_(NULL)
-		, size_(0)
-		, capacity_(0)
+		: buffer_(NULL), size_(0), capacity_p1_(1)
 	{
 	}
 
 	simple_array(const size_type initsize)
-		: buffer_(NULL)
-		, size_(0)
-		, capacity_(0)
+		: buffer_(static_cast<pointer>(std::malloc(initsize * sizeof (ElemT)))), size_(initsize), capacity_p1_(initsize + 1)
 	{
-		if (initsize)
-		{
-			buffer_ = static_cast<pointer>(std::malloc(initsize * sizeof (ElemT)));
-
-			if (buffer_ != NULL)
-				size_ = capacity_ = initsize;
-			else
-				throw std::bad_alloc();
-		}
-	}
-
-	simple_array(const simple_array &right, size_type pos, size_type len = npos)
-		: buffer_(NULL)
-		, size_(0)
-		, capacity_(0)
-	{
-		{
-			const size_type len2 = right.size_ - pos;
-			if (len > len2)
-				len = len2;
-		}
-
-		if (len)
-		{
-			buffer_ = static_cast<pointer>(std::malloc(len * sizeof (ElemT)));
-
-			if (buffer_ != NULL)
-			{
-				for (capacity_ = len; size_ < capacity_;)
-					buffer_[size_++] = right[pos++];
-			}
-			else
-			{
-				throw std::bad_alloc();
-			}
-		}
+		if (buffer_ == NULL)
+			throw std::bad_alloc();
 	}
 
 	simple_array(const simple_array &right)
-		: buffer_(NULL)
-		, size_(0)
-		, capacity_(0)
+		: buffer_(NULL), size_(0), capacity_p1_(1)
 	{
 		operator=(right);
 	}
 
-#if defined(__cpp_rvalue_references)
-	simple_array(simple_array &&right) SRELL_NOEXCEPT
-		: buffer_(right.buffer_)
-		, size_(right.size_)
-		, capacity_(right.capacity_)
+	simple_array(const sa_view &v)
+		: buffer_(NULL), size_(0), capacity_p1_(1)
 	{
-		right.size_ = 0;
-		right.capacity_ = 0;
-		right.buffer_ = NULL;
+		operator=(v);
 	}
-#endif
+
+	simple_array(Alloc)
+		: buffer_(NULL), size_(0), capacity_p1_(1)
+	{
+	}
 
 	simple_array &operator=(const simple_array &right)
 	{
 		if (this != &right)
 		{
 			resize(right.size_);
-			for (size_type i = 0; i < right.size_; ++i)
-				buffer_[i] = right.buffer_[i];
+			std::memcpy(static_cast<void *>(buffer_), right.buffer_, right.size_ * sizeof (ElemT));
+		}
+		return *this;
+	}
+
+	simple_array &operator=(const sa_view &v)
+	{
+		if (buffer_ != v.data)
+		{
+			resize(v.size);
+			std::memcpy(buffer_, v.data, v.size * sizeof (ElemT));
 		}
 		return *this;
 	}
 
 #if defined(__cpp_rvalue_references)
+	simple_array(simple_array &&right) SRELL_NOEXCEPT
+		: buffer_(right.buffer_)
+		, size_(right.size_)
+		, capacity_p1_(right.capacity_p1_)
+	{
+		right.size_ = 0;
+		right.capacity_p1_ = 1;
+		right.buffer_ = NULL;
+	}
+
 	simple_array &operator=(simple_array &&right) SRELL_NOEXCEPT
 	{
 		if (this != &right)
@@ -1076,11 +1071,11 @@ public:
 				std::free(this->buffer_);
 
 			this->size_ = right.size_;
-			this->capacity_ = right.capacity_;
+			this->capacity_p1_ = right.capacity_p1_;
 			this->buffer_ = right.buffer_;
 
 			right.size_ = 0;
-			right.capacity_ = 0;
+			right.capacity_p1_ = 1;
 			right.buffer_ = NULL;
 		}
 		return *this;
@@ -1098,6 +1093,18 @@ public:
 		return size_;
 	}
 
+	bool operator==(const simple_array &right) const
+	{
+		if (this->size_ != right.size_)
+			return false;
+
+		for (size_type i = 0; i < size_; ++i)
+			if (this->buffer_[i] != right[i])
+				return false;
+
+		return true;
+	}
+
 	void clear()
 	{
 		size_ = 0;
@@ -1105,8 +1112,8 @@ public:
 
 	void resize(const size_type newsize)
 	{
-		if (newsize > capacity_)
-			reserve(newsize);
+		if (newsize >= capacity_p1_)
+			reserve_<16>(newsize);
 
 		size_ = newsize;
 	}
@@ -1134,13 +1141,13 @@ public:
 	{
 		const size_type oldsize = size_;
 
-		if (++size_ > capacity_)
-			reserve(size_);
+		if (++size_ >= capacity_p1_)
+			reserve_<16>(size_);
 
 		buffer_[oldsize] = n;
 	}
 
-	void push_backncr(const ElemT e)
+	void push_back_c(const ElemT e)
 	{
 		push_back(e);
 	}
@@ -1160,9 +1167,13 @@ public:
 		--size_;
 	}
 
-	simple_array &operator+=(const simple_array &right)
+	void assign(const const_pointer p, const size_type len)
 	{
-		return append(right);
+		if (p != buffer_)
+		{
+			resize(len);
+			std::memcpy(buffer_, p, len * sizeof (ElemT));
+		}
 	}
 
 	simple_array &append(const size_type size, const ElemT &type)
@@ -1171,7 +1182,7 @@ public:
 		return *this;
 	}
 
-	simple_array &append(const value_type *const p, const size_type size)
+	simple_array &append(const const_pointer p, const size_type size)
 	{
 		resize(size_ + size);
 		std::memcpy(buffer_ + size_ - size, p, size * sizeof (value_type));
@@ -1180,16 +1191,15 @@ public:
 
 	simple_array &append(const simple_array &right)
 	{
-		size_type oldsize = size_;
+		const size_type oldsize = size_;
+		const size_type rightsize = right.size_;
 
 		resize(size_ + right.size_);
-		for (size_type i = 0; i < right.size_; ++i, ++oldsize)
-			buffer_[oldsize] = right.buffer_[i];
-
+		std::memcpy(buffer_ + oldsize, right.buffer_, rightsize * sizeof (ElemT));
 		return *this;
 	}
 
-	simple_array &append(const simple_array &right, size_type pos, size_type len /* = npos */)
+	simple_array &append(const simple_array &right, const size_type pos, size_type len)
 	{
 		{
 			const size_type len2 = right.size_ - pos;
@@ -1197,13 +1207,10 @@ public:
 				len = len2;
 		}
 
-		size_type oldsize = size_;
+		const size_type oldsize = size_;
 
 		resize(size_ + len);
-		len += pos;	//  end.
-		for (; pos < len; ++oldsize, ++pos)
-			buffer_[oldsize] = right.buffer_[pos];
-
+		std::memcpy(buffer_ + oldsize, right.buffer_ + pos, len * sizeof (ElemT));
 		return *this;
 	}
 
@@ -1235,18 +1242,17 @@ public:
 	//  For rei_compiler class.
 	void insert(const size_type pos, const ElemT &type)
 	{
-		move_forward(pos, 1);
+		move_forwards_(pos, 1);
 		buffer_[pos] = type;
 	}
 
-	void insert(size_type pos, const simple_array &right)
+	void insert(const size_type pos, const simple_array &right)
 	{
-		move_forward(pos, right.size_);
-		for (size_type i = 0; i < right.size_; ++i, ++pos)
-			buffer_[pos] = right.buffer_[i];
+		move_forwards_(pos, right.size_);
+		std::memcpy(buffer_ + pos, right.buffer_, right.size_ * sizeof (ElemT));
 	}
 
-	void insert(size_type destpos, const simple_array &right, size_type srcpos, size_type srclen = npos)
+	void insert(const size_type destpos, const simple_array &right, size_type srcpos, size_type srclen = npos)
 	{
 		{
 			const size_type len2 = right.size_ - srcpos;
@@ -1254,16 +1260,14 @@ public:
 				srclen = len2;
 		}
 
-		move_forward(destpos, srclen);
-		srclen += srcpos;	//  srcend.
-		for (; srcpos < srclen; ++destpos, ++srcpos)
-			buffer_[destpos] = right.buffer_[srcpos];
+		move_forwards_(destpos, srclen);
+		std::memcpy(buffer_ + destpos, right.buffer_ + srcpos, srclen * sizeof (ElemT));
 	}
 
-	simple_array &replace(size_type pos, size_type count, const simple_array &right)
+	simple_array &replace(const size_type pos, size_type count, const simple_array &right)
 	{
 		if (count < right.size_)
-			move_forward(pos + count, right.size_ - count);
+			move_forwards_(pos + count, right.size_ - count);
 		else if (count > right.size_)
 		{
 			const pointer base = buffer_ + pos;
@@ -1272,9 +1276,7 @@ public:
 			size_ -= count - right.size_;
 		}
 
-		for (size_type i = 0; i < right.size_; ++pos, ++i)
-			buffer_[pos] = right[i];
-
+		std::memcpy(buffer_ + pos, right.buffer_, right.size_ * sizeof (ElemT));
 		return *this;
 	}
 
@@ -1292,9 +1294,23 @@ public:
 		return buffer_;
 	}
 
+	const_iterator begin() const
+	{
+		return buffer_;
+	}
+	const_iterator end() const
+	{
+		return buffer_ + size_;
+	}
+
 	size_type max_size() const
 	{
 		return maxsize_;
+	}
+
+	bool no_alloc_failure() const
+	{
+		return capacity_p1_ > 0;
 	}
 
 	void swap(simple_array &right)
@@ -1303,46 +1319,50 @@ public:
 		{
 			const pointer tmpbuffer = this->buffer_;
 			const size_type tmpsize = this->size_;
-			const size_type tmpcapacity = this->capacity_;
+			const size_type tmpcapacity = this->capacity_p1_;
 
 			this->buffer_ = right.buffer_;
 			this->size_ = right.size_;
-			this->capacity_ = right.capacity_;
+			this->capacity_p1_ = right.capacity_p1_;
 
 			right.buffer_ = tmpbuffer;
 			right.size_ = tmpsize;
-			right.capacity_ = tmpcapacity;
+			right.capacity_p1_ = tmpcapacity;
 		}
 	}
 
 protected:
 
-	void reserve(const size_type newsize)
+	template <const size_type minsize>
+	void reserve_(size_type newsize)
 	{
 		if (newsize <= maxsize_)
 		{
-//			capacity_ = newsize + (newsize >> 1);	//  newsize * 1.5.
-			capacity_ = ((newsize >> 8) + 1) << 8;	//  Round up to a multiple of 256.
-
-			if (capacity_ > maxsize_)
-				capacity_ = maxsize_;
-
-			const size_type newsize_in_byte = capacity_ * sizeof (ElemT);
 			const pointer oldbuffer = buffer_;
+			const size_type capa2 = newsize >= minsize ? capacity_p1_ << 1 : minsize;
 
-			buffer_ = static_cast<pointer>(std::realloc(buffer_, newsize_in_byte));
+			if (newsize < capa2)
+			{
+				newsize = capa2;
+				if (newsize > maxsize_)
+					newsize = maxsize_;
+			}
+
+			buffer_ = static_cast<pointer>(std::realloc(static_cast<void *>(buffer_), newsize * sizeof (ElemT)));
+			capacity_p1_ = newsize + 1;
+
 			if (buffer_ != NULL)
 				return;
 
-			//  Even if realloc() failed, already-existing buffer remains valid.
 			std::free(oldbuffer);
 //			buffer_ = NULL;
-			size_ = capacity_ = 0;
+			size_ = 0;
+			capacity_p1_ = 1;
 		}
 		throw std::bad_alloc();
 	}
 
-	void move_forward(const size_type pos, const size_type count)
+	void move_forwards_(const size_type pos, const size_type count)
 	{
 		const size_type oldsize = size_;
 
@@ -1360,12 +1380,12 @@ protected:
 
 	pointer buffer_;
 	size_type size_;
-	size_type capacity_;
+	size_type capacity_p1_;
 
-	static const size_type maxsize_ = (npos - sizeof (pointer) - sizeof (size_type) * 2) / sizeof (ElemT) / 2;
+	static const size_type maxsize_ = npos / sizeof (ElemT) / 2;
 };
-template <typename ElemT>
-const typename simple_array<ElemT>::size_type simple_array<ElemT>::npos;
+template <typename ElemT, typename Alloc>
+const typename simple_array<ElemT, Alloc>::size_type simple_array<ElemT, Alloc>::npos;
 //  simple_array
 
 struct simple_stack : protected simple_array<char>
@@ -1376,37 +1396,43 @@ struct simple_stack : protected simple_array<char>
 	using simple_array<char>::resize;
 
 	template <typename T>
-	void push_back_t(const T &n)
+	void push_back_t_nc(const T &n)
 	{
-		const size_type oldsize = size_;
-
-		size_ += (sizeof (T) + sizeof (void *) - 1) / sizeof (void *) * sizeof (void *);
-		if (size_ > capacity_)
-			reserve(size_);
-
-		*reinterpret_cast<T *>(buffer_ + oldsize) = n;
+		std::memcpy(buffer_ + size_, &n, sizeof (T));
+		size_ += sizeof (T);
 	}
 
 	template <typename T>
-	T pop_back_t()
+	void push_back_t(const T &n)
 	{
-		size_ -= (sizeof (T) + sizeof (void *) - 1) / sizeof (void *) * sizeof (void *);
-		return *reinterpret_cast<const T *>(buffer_ + size_);
+		const size_type newsize = size_ + sizeof (T);
+
+		if (newsize >= capacity_p1_)
+			reserve_<256>(newsize);
+
+		std::memcpy(buffer_ + size_, &n, sizeof (T));
+		size_ = newsize;
 	}
 
-	size_type capacity() const
+	template <typename T>
+	void pop_back_t(T &t)
 	{
-		return capacity_;
+		size_ -= sizeof (T);
+		std::memcpy(&t, buffer_ + size_, sizeof (T));
 	}
 
-#if 0
-
-	template <typename Type>
-	const Type &back_t() const
+	void resize(const size_type newsize)
 	{
-		return *reinterpret_cast<const Type *>(buffer_ + size_ - sizeof (Type));
+		size_ = newsize;
 	}
-#endif
+
+	void expand(const size_type add)
+	{
+		const size_type newsize = size_ + add;
+
+		if (newsize >= capacity_p1_)
+			reserve_<256>(newsize);
+	}
 };
 //  simple_stack
 
@@ -1424,14 +1450,14 @@ struct bitsetbase
 	typedef std::size_t array_type;
 
 #if defined(__cpp_constexpr)
-	static constexpr std::size_t pow2leN(const std::size_t n, const std::size_t p2)
+	static constexpr std::size_t find_maxpow2(const array_type v, const std::size_t p2)
 	{
-		return ((p2 << 1) == 0 || (p2 << 1) > n) ? p2 : pow2leN(n, p2 << 1);
+		return v == 0 ? (p2 >> 1) : find_maxpow2((v << (p2 - 1)) << 1, p2 << 1);
 	}
-	static const std::size_t bits_per_elem_ = pow2leN(CHAR_BIT * sizeof (array_type), 8);
+	static const std::size_t bits_per_elem_ = find_maxpow2(32768, 16);
 #else
-	static const std::size_t bpe_tmp_ = CHAR_BIT * sizeof (array_type);
-	static const std::size_t bits_per_elem_ = bpe_tmp_ >= 64 ? 64 : (bpe_tmp_ >= 32 ? 32 : (bpe_tmp_ >= 16 ? 16 : 8));
+	static const array_type maxval_ = static_cast<array_type>(-1);
+	static const std::size_t bits_per_elem_ = (((((maxval_ >> 15) >> 15) >> 15) >> 15) >> 3) ? 64 : (maxval_ >= 0xFFFFFFFFul ? 32 : 16);
 #endif
 };
 
@@ -1452,25 +1478,17 @@ class bitset : private bitsetbase<Bits>
 public:
 
 	bitset()
-		: buffer_(static_cast<array_type *>(std::malloc(size_in_byte_)))
+		: buffer_(NULL)
 	{
-		if (buffer_ != NULL)
-		{
-			reset();
-			return;
-		}
-		throw std::bad_alloc();
+		ensure_alloc_();
+		std::memset(buffer_, 0, size_in_byte_);
 	}
 
 	bitset(const bitset &right)
-		: buffer_(static_cast<array_type *>(std::malloc(size_in_byte_)))
+		: buffer_(NULL)
 	{
-		if (buffer_ != NULL)
-		{
-			operator=(right);
-			return;
-		}
-		throw std::bad_alloc();
+		ensure_alloc_();
+		std::memcpy(buffer_, right.buffer_, size_in_byte_);
 	}
 
 #if defined(__cpp_rvalue_references)
@@ -1485,6 +1503,7 @@ public:
 	{
 		if (this != &right)
 		{
+			ensure_alloc_();
 			std::memcpy(buffer_, right.buffer_, size_in_byte_);
 		}
 		return *this;
@@ -1511,10 +1530,15 @@ public:
 			std::free(buffer_);
 	}
 
-	bitset &reset()
+	void clear()
 	{
+		ensure_alloc_();
 		std::memset(buffer_, 0, size_in_byte_);
-		return *this;
+	}
+
+	std::size_t size() const
+	{
+		return buffer_ != NULL ? Bits : 0;
 	}
 
 	bitset &reset(const std::size_t bit)
@@ -1545,6 +1569,18 @@ public:
 	}
 
 private:
+
+	void ensure_alloc_()
+	{
+		if (buffer_ != NULL)
+			return;
+
+		buffer_ = static_cast<array_type *>(std::malloc(size_in_byte_));
+		if (buffer_ != NULL)
+			return;
+
+		throw std::bad_alloc();
+	}
 
 	static const std::size_t bitmask_ = base_type::bits_per_elem_ - 1;
 	static const std::size_t arraylength_ = (Bits + bitmask_) / base_type::bits_per_elem_;
@@ -4239,22 +4275,6 @@ public:
 			return nocase;
 #endif
 		return constants::invalid_u32value;
-	}
-
-	unicode_case_folding &operator=(const unicode_case_folding &)
-	{
-		return *this;
-	}
-
-#if defined(__cpp_rvalue_references)
-	unicode_case_folding &operator=(unicode_case_folding &&) SRELL_NOEXCEPT
-	{
-		return *this;
-	}
-#endif
-
-	void swap(unicode_case_folding & /* right */)
-	{
 	}
 
 private:
@@ -14190,22 +14210,6 @@ public:
 
 	typedef simple_array<char> pstring;
 
-	unicode_property()
-	{
-	}
-
-	unicode_property &operator=(const unicode_property &)
-	{
-		return *this;
-	}
-
-#if defined(__cpp_rvalue_references)
-	unicode_property &operator=(unicode_property &&) SRELL_NOEXCEPT
-	{
-		return *this;
-	}
-#endif
-
 	static ui_l32 lookup_property(const pstring &name, const pstring &value)
 	{
 		up_type ptype = name.size() > 1 ? lookup_property_name(name) : up_constants::uptype_gc;
@@ -14376,103 +14380,70 @@ struct range_pair_helper : public range_pair
 };
 //  range_pair_helper
 
-struct range_pairs
+struct range_pairs : public simple_array<range_pair>
 {
 public:
 
 	typedef simple_array<range_pair> array_type;
 	typedef array_type::size_type size_type;
+	typedef array_type::sa_view view_type;
 
 	range_pairs()
 	{
 	}
 
-	range_pairs(const range_pairs &rp) : rparray_(rp.rparray_)
+	range_pairs(const range_pairs &rp) : array_type(rp)
+	{
+	}
+
+	range_pairs(const view_type &v) : array_type(v)
 	{
 	}
 
 	range_pairs &operator=(const range_pairs &rp)
 	{
-		rparray_.operator=(rp.rparray_);
+		array_type::operator=(rp);
 		return *this;
-	}
-
-	range_pairs(const size_type initsize) : rparray_(initsize)
-	{
-	}
-
-	range_pairs(const range_pairs &right, size_type pos, size_type size)
-		: rparray_(right.rparray_, pos, size)
-	{
 	}
 
 #if defined(__cpp_rvalue_references)
 	range_pairs(range_pairs &&rp) SRELL_NOEXCEPT
-		: rparray_(std::move(rp.rparray_))
+		: array_type(std::move(rp))
 	{
 	}
 
 	range_pairs &operator=(range_pairs &&rp) SRELL_NOEXCEPT
 	{
-		rparray_.operator=(std::move(rp.rparray_));
+		array_type::operator=(std::move(rp));
 		return *this;
 	}
 #endif
 
-	void clear()
-	{
-		rparray_.clear();
-	}
-
-	size_type size() const
-	{
-		return rparray_.size();
-	}
-
-	const range_pair &operator[](const size_type pos) const
-	{
-		return rparray_[pos];
-	}
-	range_pair &operator[](const size_type pos)
-	{
-		return rparray_[pos];
-	}
-
-	void resize(const size_type size)
-	{
-		rparray_.resize(size);
-	}
-
-	void swap(range_pairs &right)
-	{
-		rparray_.swap(right.rparray_);
-	}
-
 	void set_solerange(const range_pair &right)
 	{
-		rparray_.clear();
-		rparray_.push_back(right);
+		this->resize(1);
+		(*this)[0] = right;
 	}
 
 	void append_newclass(const range_pairs &right)
 	{
-		rparray_.append(right.rparray_);
+		this->append(right);
 	}
 
 	void append_newpair(const range_pair &right)
 	{
-		rparray_.push_back(right);
+		this->push_back(right);
 	}
 
 	void append_newpairs(const range_pair *const p, const ui_l32 n)
 	{
-		rparray_.append(p, n);
+		this->append(p, n);
 	}
 
 	void join(const range_pair &right)
 	{
-		range_pair *base = &rparray_[0];
-		size_type count = rparray_.size();
+		range_pair *base = &(*this)[0];
+		size_type count = this->size();
 
 		while (count)
 		{
@@ -14501,7 +14472,7 @@ public:
 
 				if (cp->first > 0u)
 				{
-					for (--cp->first; lw != &rparray_[0];)
+					for (--cp->first; lw != &(*this)[0];)
 					{
 						if ((--lw)->second < cp->first)
 						{
@@ -14512,18 +14483,18 @@ public:
 					++cp->first;
 				}
 				else
-					lw = &rparray_[0];
+					lw = &(*this)[0];
 
 				if (lw != cp)
 				{
 					if (cp->first > lw->first)
 						cp->first = lw->first;
 
-					rparray_.erase(lw - &rparray_[0], cp - lw);
+					this->erase(lw - &(*this)[0], cp - lw);
 					cp = lw;
 				}
 
-				range_pair *const rend = &rparray_[0] + rparray_.size();
+				range_pair *const rend = &(*this)[0] + this->size();
 				range_pair *rw = cp;
 
 				if (++cp->second > 0u)
@@ -14546,12 +14517,12 @@ public:
 						rw->second = cp->second;
 
 					rw->first = cp->first;
-					rparray_.erase(cp - &rparray_[0], rw - cp);
+					this->erase(cp - &(*this)[0], rw - cp);
 				}
 				return;
 			}
 		}
-		rparray_.insert(base - &rparray_[0], right);
+		this->insert(base - &(*this)[0], right);
 	}
 
 	void merge(const range_pairs &right)
@@ -14560,26 +14531,31 @@ public:
 			join(right[i]);
 	}
 
+	void merge(const view_type &v)
+	{
+		for (size_type i = 0; i < v.size; ++i)
+			join(v.data[i]);
+	}
+
 	bool same(ui_l32 pos, const ui_l32 count, const range_pairs &right) const
 	{
-		if (count == right.size())
-		{
-			for (ui_l32 i = 0; i < count; ++i, ++pos)
-				if (!(rparray_[pos] == right[i]))
-					return false;
+		if (count != right.size())
+			return false;
 
-			return true;
-		}
-		return false;
+		for (ui_l32 i = 0; i < count; ++i, ++pos)
+			if (!((*this)[pos] == right[i]))
+				return false;
+
+		return true;
 	}
 
 	int relationship(const range_pairs &right) const
 	{
-		if (rparray_.size() == right.rparray_.size())
+		if (this->size() == right.size())
 		{
-			for (size_type i = 0; i < rparray_.size(); ++i)
+			for (size_type i = 0; i < this->size(); ++i)
 			{
-				if (!(this->rparray_[i] == right.rparray_[i]))
+				if (!((*this)[i] == right[i]))
 				{
 					if (i == 0)
 						goto check_overlap;
@@ -14596,29 +14572,41 @@ public:
 	void negation()
 	{
 		ui_l32 begin = 0;
-		range_pairs newpairs;
+		size_type wpos = 0;
 
-		for (size_type i = 0; i < rparray_.size(); ++i)
+		for (size_type rpos = 0; rpos < this->size(); ++rpos)
 		{
-			const range_pair &range = rparray_[i];
+			const range_pair &rrange = (*this)[rpos];
+			const ui_l32 nextbegin = rrange.second + 1;
 
-			if (begin < range.first)
-				newpairs.join(range_pair_helper(begin, range.first - 1));
+			if (begin < rrange.first)
+			{
+				const ui_l32 prev2 = rrange.first - 1;
+				range_pair &wrange = (*this)[wpos];
 
-			begin = range.second + 1;
+				wrange.second = prev2;
+				wrange.first = begin;
+				++wpos;
+			}
+			begin = nextbegin;
 		}
 
 		if (begin <= constants::unicode_max_codepoint)
-			newpairs.join(range_pair_helper(begin, constants::unicode_max_codepoint));
+		{
+			if (wpos >= this->size())
+				this->resize(wpos + 1);
 
-		*this = newpairs;
+			(*this)[wpos].set(begin, constants::unicode_max_codepoint);
+		}
+		else
+			this->resize(wpos);
 	}
 
 	bool is_overlap(const range_pairs &right) const
 	{
-		for (size_type i = 0; i < rparray_.size(); ++i)
+		for (size_type i = 0; i < this->size(); ++i)
 		{
-			const range_pair &leftrange = rparray_[i];
+			const range_pair &leftrange = (*this)[i];
 
 			for (size_type j = 0; j < right.size(); ++j)
 			{
@@ -14643,9 +14631,9 @@ public:
 		ui_l32 table[ucf_constants::rev_maxset] = {};
 		range_pairs newranges;
 
-		for (size_type i = 0; i < rparray_.size(); ++i)
+		for (size_type i = 0; i < this->size(); ++i)
 		{
-			const range_pair &range = rparray_[i];
+			const range_pair &range = (*this)[i];
 
 			for (ui_l32 ucp = range.first; ucp <= range.second && ucp <= ucf_constants::rev_maxcp; ++ucp)
 			{
@@ -14664,9 +14652,9 @@ public:
 	//  For updataout.hpp.
 	void remove_range(const range_pair &right)
 	{
-		for (size_type pos = 0; pos < rparray_.size();)
+		for (size_type pos = 0; pos < this->size();)
 		{
-			range_pair &left = rparray_[pos];
+			range_pair &left = (*this)[pos];
 
 			if (right.first <= left.first)	//  r1 <= l1
 			{
@@ -14678,7 +14666,7 @@ public:
 						return;
 					}
 					else	//  r1 <= l1 <= l2 <= r2.
-						rparray_.erase(pos);
+						this->erase(pos);
 				}
 				else	//  r1 <= r2 < l1
 					return;
@@ -14697,7 +14685,7 @@ public:
 
 					left.second = right.first - 1;
 					newrange.first = right.second + 1;
-					rparray_.insert(++pos, newrange);
+					this->insert(++pos, newrange);
 					return;
 				}
 			}
@@ -14708,18 +14696,22 @@ public:
 
 	ui_l32 consists_of_one_character(const bool icase) const
 	{
-		if (rparray_.size() >= 1)
+		if (!icase)
 		{
-			ui_l32 (*const casefolding_func)(const ui_l32) = !icase ? do_nothing : unicode_case_folding::do_casefolding;
-			const ui_l32 ucp1st = casefolding_func(rparray_[0].first);
+			if (this->size() == 1 && (*this)[0].first == (*this)[0].second)
+				return (*this)[0].first;
+		}
+		else if (this->size())
+		{
+			const ui_l32 ucp1st = unicode_case_folding::do_casefolding((*this)[0].first);
 
-			for (size_type no = 0; no < rparray_.size(); ++no)
+			for (size_type i = 0; i < this->size(); ++i)
 			{
-				const range_pair &cr = rparray_[no];
+				const range_pair &cr = (*this)[i];
 
 				for (ui_l32 ucp = cr.first;; ++ucp)
 				{
-					if (ucp1st != casefolding_func(ucp))
+					if (ucp1st != unicode_case_folding::do_casefolding(ucp))
 						return constants::invalid_u32value;
 
 					if (ucp == cr.second)
@@ -14731,25 +14723,25 @@ public:
 		return constants::invalid_u32value;
 	}
 
-	void split_ranges(range_pairs &kept, range_pairs &removed, const range_pairs &rightranges) const
+	void split_ranges(range_pairs &removed, const range_pairs &rightranges)
 	{
+		range_pairs &kept = *this;	//  Subtraction set.
 		size_type prevolj = 0;
 		range_pair newpair;
 
-		kept.rparray_ = this->rparray_;	//  Subtraction set.
 		removed.clear();	//  Intersection set.
 
 		for (size_type i = 0;; ++i)
 		{
 			RETRY_SAMEINDEXNO:
-			if (i >= kept.rparray_.size())
+			if (i >= kept.size())
 				break;
 
-			range_pair &left = kept.rparray_[i];
+			range_pair &left = kept[i];
 
-			for (size_type j = prevolj; j < rightranges.rparray_.size(); ++j)
+			for (size_type j = prevolj; j < rightranges.size(); ++j)
 			{
-				const range_pair &right = rightranges.rparray_[j];
+				const range_pair &right = rightranges[j];
 
 				if (left.second < right.first)	//  Excludes l1 l2 < r1 r2.
 					break;
@@ -14766,7 +14758,7 @@ public:
 
 							newpair.set(right.second + 1, left.second);
 							left.second = right.first - 1;
-							kept.rparray_.insert(i + 1, newpair);
+							kept.insert(i + 1, newpair);
 						}
 						else	//  l1 < r1 <= l2 <= r2.
 						{
@@ -14783,7 +14775,7 @@ public:
 					else	//  r1 <= l1 <= l2 <= r2.
 					{
 						removed.join(range_pair_helper(left.first, left.second));
-						kept.rparray_.erase(i);
+						kept.erase(i);
 						goto RETRY_SAMEINDEXNO;
 					}
 				}
@@ -14794,9 +14786,9 @@ public:
 #if defined(SRELLDBG_NO_BITSET)
 	bool is_included(const ui_l32 ch) const
 	{
-		const range_pair *const end = rparray_.data() + rparray_.size();
+		const range_pair *const end = this->data() + this->size();
 
-		for (const range_pair *cur = rparray_.data(); cur != end; ++cur)
+		for (const range_pair *cur = this->data(); cur != end; ++cur)
 		{
 			if (ch <= cur->second)
 				return ch >= cur->first;
@@ -14809,7 +14801,7 @@ public:
 
 	bool is_included(const ui_l32 pos, ui_l32 count, const ui_l32 c) const
 	{
-		const range_pair *base = &rparray_[pos];
+		const range_pair *base = &(*this)[pos];
 
 		while (count)
 		{
@@ -14833,18 +14825,13 @@ public:
 		return false;
 	}
 
-	void replace(const size_type pos, const size_type count, const range_pairs &right)
-	{
-		rparray_.replace(pos, count, right.rparray_);
-	}
-
 #if !defined(SRELLDBG_NO_CCPOS)
 
 	//  For Eytzinger layout functions.
 
 	bool is_included_el(ui_l32 pos, const ui_l32 len, const ui_l32 c) const
 	{
-		const range_pair *const base = &rparray_[pos];
+		const range_pair *const base = &(*this)[pos];
 
 #if defined(__GNUC__)
 		__builtin_prefetch(base);
@@ -14865,10 +14852,10 @@ public:
 
 	ui_l32 create_el(const range_pair *srcbase, const ui_l32 srcsize)
 	{
-		const ui_l32 basepos = static_cast<ui_l32>(rparray_.size());
+		const ui_l32 basepos = static_cast<ui_l32>(this->size());
 
-		rparray_.resize(basepos + srcsize);
-		set_eytzinger_layout(0, srcbase, srcsize, &rparray_[basepos], 0);
+		this->resize(basepos + srcsize);
+		set_eytzinger_layout(0, srcbase, srcsize, &(*this)[basepos], 0);
 
 		return srcsize;
 	}
@@ -14881,9 +14868,9 @@ public:
 		ui_l32 prev2 = constants::invalid_u32value;
 		ui_l32 num = 0;
 
-		for (size_type no = 0; no < rparray_.size(); ++no)
+		for (size_type no = 0; no < this->size(); ++no)
 		{
-			const range_pair &cr = rparray_[no];
+			const range_pair &cr = (*this)[no];
 
 			for (ui_l32 first = cr.first; first <= utf_traits::maxcpvalue;)
 			{
@@ -14906,6 +14893,9 @@ public:
 
 private:
 
+	using array_type::push_back;
+	using array_type::append;
+
 #if !defined(SRELLDBG_NO_CCPOS)
 
 	ui_l32 set_eytzinger_layout(ui_l32 srcpos, const range_pair *const srcbase, const ui_l32 srclen,
@@ -14923,13 +14913,6 @@ private:
 	}
 
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
-
-	static ui_l32 do_nothing(const ui_l32 cp)
-	{
-		return cp;
-	}
-
-	array_type rparray_;
 
 public:	//  For debug.
 
@@ -15067,6 +15050,15 @@ public:
 	}
 #endif
 
+	bool no_alloc_failure() const
+	{
+		return char_class_.no_alloc_failure() && char_class_pos_.no_alloc_failure()
+#if !defined(SRELLDBG_NO_CCPOS)
+			&& char_class_el_.no_alloc_failure() && char_class_pos_el_.no_alloc_failure()
+#endif
+		;
+	}
+
 	bool is_included(const ui_l32 class_number, const ui_l32 c) const
 	{
 //		return char_class_.is_included(char_class_pos_[class_number], c);
@@ -15082,10 +15074,9 @@ public:
 	}
 #endif
 
-	void clear()
+	void reset()
 	{
-		char_class_.resize(20);
-		char_class_pos_.resize(number_of_predefcls);
+		setup_predefinedclass();
 
 #if !defined(SRELLDBG_NO_CCPOS)
 		char_class_el_.clear();
@@ -15107,11 +15098,17 @@ public:
 		return static_cast<ui_l32>(char_class_pos_.size() - 1);
 	}
 
-	range_pairs operator[](const ui_l32 no) const
+	void copy_to(range_pairs &out, const ui_l32 no) const
 	{
 		const range_pair &ccpos = char_class_pos_[no];
 
-		return range_pairs(char_class_, ccpos.first, ccpos.second);
+		out.assign(&char_class_[ccpos.first], ccpos.second);
+	}
+	range_pairs::view_type view(const ui_l32 no) const
+	{
+		const range_pair &ccpos = char_class_pos_[no];
+
+		return range_pairs::view_type(&char_class_[ccpos.first], ccpos.second);
 	}
 
 #if !defined(SRELLDBG_NO_CCPOS)
@@ -15275,11 +15272,23 @@ private:
 			{ 14, 4 },	//  word.
 			{ 14, 6 }	//  icase_word.
 		};
+		const std::size_t numofranges = sizeof allranges / sizeof (range_pair);
 
-//		char_class_.clear();
-//		char_class_pos_.clear();
-		char_class_.append_newpairs(allranges, sizeof allranges / sizeof (range_pair));
-		char_class_pos_.append(offsets, sizeof offsets / sizeof (range_pair));
+		if (char_class_.size() >= numofranges)
+			char_class_.resize(numofranges);
+		else
+		{
+//			char_class_.clear();
+			char_class_.append_newpairs(allranges, numofranges);
+		}
+
+		if (char_class_pos_.size() >= number_of_predefcls)
+			char_class_pos_.resize(number_of_predefcls);
+		else
+		{
+//			char_class_pos_.clear();
+			char_class_pos_.append(offsets, number_of_predefcls);
+		}
 	}
 
 private:
@@ -15320,6 +15329,7 @@ class groupname_mapper
 public:
 
 	typedef simple_array<charT> gname_string;
+	typedef typename gname_string::sa_view view_type;
 	typedef std::size_t size_type;
 	static const ui_l32 notfound = 0u;
 
@@ -15367,15 +15377,21 @@ public:
 		keysize_classno_.clear();
 	}
 
-	const ui_l32 *operator[](const gname_string &gname) const
+	bool no_alloc_failure() const
+	{
+		return names_.no_alloc_failure() && keysize_classno_.no_alloc_failure();
+	}
+
+	const ui_l32 *operator[](const view_type &v) const
 	{
 		ui_l32 pos = 0;
+
 		for (std::size_t i = 1; i < static_cast<std::size_t>(keysize_classno_.size());)
 		{
 			const ui_l32 keysize = keysize_classno_[i];
 			const ui_l32 keynum = keysize_classno_[++i];
 
-			if (keysize == static_cast<ui_l32>(gname.size()) && sameseq_(pos, gname))
+			if (keysize == v.size && sameseq_(pos, v))
 				return &keysize_classno_[i];
 
 			pos += keysize;
@@ -15384,9 +15400,10 @@ public:
 		return NULL;
 	}
 
-	gname_string operator[](const ui_l32 indexno) const
+	view_type operator[](const ui_l32 indexno) const
 	{
 		ui_l32 pos = 0;
+
 		for (std::size_t i = 1; i < static_cast<std::size_t>(keysize_classno_.size()); ++i)
 		{
 			const ui_l32 keysize = keysize_classno_[i];
@@ -15394,11 +15411,11 @@ public:
 			for (ui_l32 keynum = keysize_classno_[++i]; keynum; --keynum)
 			{
 				if (keysize_classno_[++i] == indexno)
-					return gname_string(names_, pos, keysize);
+					return view_type(&names_[pos], keysize);
 			}
 			pos += keysize;
 		}
-		return gname_string();
+		return view_type();
 	}
 
 	size_type size() const
@@ -15406,21 +15423,24 @@ public:
 		return keysize_classno_.size() ? keysize_classno_[0] : 0;
 	}
 
-	bool push_back(const gname_string &gname, const ui_l32 gno, const simple_array<ui_l32> &dupranges)
+	int push_back(const gname_string &gname, const ui_l32 gno, const simple_array<ui_l32> &dupranges)
 	{
 		const ui_l32 *list = operator[](gname);
 
 		if (list == NULL)
 		{
+			size_type curpos = keysize_classno_.size();
+
 			names_.append(gname);
-			if (keysize_classno_.size())
+			keysize_classno_.resize(curpos ? (curpos + 3) : 4);
+			if (curpos)
 				++keysize_classno_[0];
 			else
-				keysize_classno_.append(1, 1);
-			keysize_classno_.append(1, static_cast<ui_l32>(gname.size()));
-			keysize_classno_.append(1, 1);
-			keysize_classno_.append(1, gno);
-			return true;
+				keysize_classno_[curpos++] = 1;
+			keysize_classno_[curpos++] = static_cast<ui_l32>(gname.size());
+			keysize_classno_[curpos++] = 1;
+			keysize_classno_[curpos] = gno;
+			return 1;
 		}
 
 		const size_type offset = list - keysize_classno_.data();
@@ -15433,22 +15453,23 @@ public:
 			for (typename simple_array<ui_l32>::size_type j = 0;; ++j)
 			{
 				if (j >= dupranges.size())
-					return false;
+					return 0;
 
 				if (no < dupranges[j])
 				{
 					if (j & 1)
 						break;
 
-					return false;
+					return 0;
 				}
 			}
 		}
 
-		const size_type newkeynum = ++keysize_classno_[offset];;
+		const size_type newkeynum = ++keysize_classno_[offset];
+
 		keysize_classno_.insert(offset + newkeynum, gno);
 
-		return true;
+		return 1;
 	}
 
 	ui_l32 assign_number(const gname_string &gname, const ui_l32 gno)
@@ -15457,14 +15478,17 @@ public:
 
 		if (list == NULL)
 		{
+			size_type curpos = keysize_classno_.size();
+
 			names_.append(gname);
-			if (keysize_classno_.size())
+			keysize_classno_.resize(curpos ? (curpos + 3) : 4);
+			if (curpos)
 				++keysize_classno_[0];
 			else
-				keysize_classno_.append(1, 1);
-			keysize_classno_.append(1, static_cast<ui_l32>(gname.size()));
-			keysize_classno_.append(1, 1);
-			keysize_classno_.append(1, gno);
+				keysize_classno_[curpos++] = 1;
+			keysize_classno_[curpos++] = static_cast<ui_l32>(gname.size());
+			keysize_classno_[curpos++] = 1;
+			keysize_classno_[curpos] = gno;
 			return gno;
 		}
 		return list[1];
@@ -15478,10 +15502,10 @@ public:
 
 private:
 
-	bool sameseq_(size_type pos, const gname_string &gname) const
+	bool sameseq_(size_type pos, const view_type &v) const
 	{
-		for (size_type i = 0; i < gname.size(); ++i, ++pos)
-			if (pos >= names_.size() || names_[pos] != gname[i])
+		for (size_type i = 0; i < v.size; ++i, ++pos)
+			if (pos >= names_.size() || names_[pos] != v.data[i])
 				return false;
 
 		return true;
@@ -15510,9 +15534,10 @@ const ui_l32 groupname_mapper<charT>::notfound;
 
 struct re_quantifier
 {
-	//  atleast and atmost: for check_counter.
+	//  atleast and atmost: for check_counter and roundbracket_close.
 	//  (Special case 1) in charcter_class, bol, eol, boundary, represents the offset and length
 	//    of the range in the array of character classes.
+	//  (Special case 1+) in NFA_states[0] holds a character class for one character lookahead.
 	//  (Special case 2) in roundbracket_open and roundbracket_pop atleast and atmost represent
 	//    the minimum and maximum bracket numbers respectively inside the brackets itself.
 	//  (Special case 3) in repeat_in_push and repeat_in_pop atleast and atmost represent the
@@ -15521,9 +15546,7 @@ struct re_quantifier
 	//    minimum and maximum bracket numbers respectively inside the lookaround.
 
 	ui_l32 atleast;
-
 	ui_l32 atmost;
-
 	ui_l32 is_greedy;
 		//  (Special case 1: v1) in lookaround_open represents the number of characters to be rewound.
 		//  (Special case 2: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
@@ -15706,17 +15729,17 @@ struct re_state
 #endif
 	}
 
-	bool is_noncapturinggroup() const
+	bool is_ncgroup_open() const
 	{
 		return type == st_epsilon && char_num == epsilon_type::et_ncgopen;
 	}
 
-	bool is_noncapturinggroup_begin_or_end() const
+	bool is_ncgroup_open_or_close() const
 	{
 		return type == st_epsilon && next2 == 0 && (char_num == epsilon_type::et_ncgopen || char_num == epsilon_type::et_ncgclose);
 	}
 
-	bool is_branch() const
+	bool is_alt() const
 	{
 		return type == st_epsilon && next2 != 0 && char_num == epsilon_type::et_alt;	//  '|'
 	}
@@ -15753,7 +15776,8 @@ template <typename charT>
 struct re_compiler_state
 {
 	const ui_l32 *begin;
-	regex_constants::syntax_option_type soflags;
+	ui_l32 soflags;
+	ui_l32 depth;
 
 	bool backref_used;
 
@@ -15770,6 +15794,7 @@ struct re_compiler_state
 	{
 		begin = b;
 		soflags = f;
+		depth = 0;
 		backref_used = false;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
@@ -15821,10 +15846,10 @@ struct re_compiler_state
 	namespace re_detail
 	{
 
-template </* typename charT, */typename BidirectionalIterator>
+template <typename BidirectionalIterator>
 struct re_search_state_core
 {
-	const re_state/* <charT> */ *state;
+	const re_state *state;
 	BidirectionalIterator iter;
 };
 
@@ -15835,42 +15860,71 @@ struct re_submatch_core
 	BidirectionalIterator close_at;
 };
 
+struct re_counter
+{
+	union
+	{
+		ui_l32 no;
+		void *padding_;
+	};
+};
+
 template <typename BidirectionalIterator>
 struct re_submatch_type
 {
 	re_submatch_core<BidirectionalIterator> core;
-	union
-	{
-		ui_l32 counter;
-		void *padding_;
-	};
+	re_counter counter;
 
 	void init(const BidirectionalIterator b)
 	{
 		core.open_at = core.close_at = b;
-		counter = 0u;
+		counter.no = 0;
 	}
 };
 
 #if defined(SRELL_HAS_TYPE_TRAITS)
+
+template <typename T, typename Alloc, const bool>
+struct container_type
+{
+	typedef std::vector<T, Alloc> type;
+};
+template <typename T, typename Alloc>
+struct container_type<T, Alloc, true>
+{
+	typedef simple_array<T, Alloc> type;
+};
+
 template <typename BidirectionalIterator, const bool>
 #else
-template </*typename charT, */typename BidirectionalIterator>
-#endif
+
+template <typename Iter, typename T, typename Alloc>
+struct container_type
+{
+	typedef std::vector<T, Alloc> type;
+};
+template <typename Iter, typename T, typename Alloc>
+struct container_type<const Iter *, T, Alloc>
+{
+	typedef simple_array<T, Alloc> type;
+};
+
+template <typename BidirectionalIterator>
+#endif	//   defined(SRELL_HAS_TYPE_TRAITS)
 struct re_search_state_types
 {
 	typedef re_submatch_core<BidirectionalIterator> submatch_core;
 	typedef re_submatch_type<BidirectionalIterator> submatch_type;
-	typedef ui_l32 counter_type;
+	typedef re_counter counter_type;
 	typedef BidirectionalIterator position_type;
 
 	typedef std::vector<submatch_type> submatch_array;
 
-	typedef re_search_state_core</*charT, */BidirectionalIterator> search_state_core;
+	typedef re_search_state_core<BidirectionalIterator> search_state_core;
 
 	typedef std::vector<search_state_core> backtracking_array;
 	typedef std::vector<submatch_core> capture_array;
-	typedef simple_array<counter_type> counter_array;
+	typedef std::vector<counter_type> counter_array;
 	typedef std::vector<position_type> repeat_array;
 
 	typedef typename backtracking_array::size_type btstack_size_type;
@@ -15899,6 +15953,14 @@ public:
 	void bt_resize(const btstack_size_type s)
 	{
 		bt_stack.resize(s);
+	}
+
+	void expand(const btstack_size_type /* addlen */)
+	{
+	}
+	void push_bt_wc(const search_state_core &ssc)
+	{
+		bt_stack.push_back(ssc);
 	}
 
 	void push_bt(const search_state_core &ssc)
@@ -15971,19 +16033,19 @@ template <typename BidirectionalIterator>
 struct re_search_state_types<BidirectionalIterator, true>
 {
 #else
-template </*typename charT1, */typename charT2>
-struct re_search_state_types</*charT1, */const charT2 *>
+template <typename charT>
+struct re_search_state_types<const charT *>
 {
-	typedef const charT2 * BidirectionalIterator;
+	typedef const charT *BidirectionalIterator;
 #endif
 	typedef re_submatch_core<BidirectionalIterator> submatch_core;
 	typedef re_submatch_type<BidirectionalIterator> submatch_type;
-	typedef ui_l32 counter_type;
+	typedef re_counter counter_type;
 	typedef BidirectionalIterator position_type;
 
 	typedef simple_array<submatch_type> submatch_array;
 
-	typedef re_search_state_core</*charT, */BidirectionalIterator> search_state_core;
+	typedef re_search_state_core<BidirectionalIterator> search_state_core;
 
 	typedef simple_stack backtracking_array;
 	typedef simple_array<counter_type> counter_array;
@@ -16001,48 +16063,57 @@ public:
 	{
 		bt_stack.clear();
 	}
-	void bt_resize(const btstack_size_type s)
-	{
-		bt_stack.resize(s);
-	}
 
 	btstack_size_type bt_size() const
 	{
 		return bt_stack.size();
 	}
+	void bt_resize(const btstack_size_type s)
+	{
+		bt_stack.resize(s);
+	}
 
-	void push_bt(const search_state_core &ssc)
+	void expand(const btstack_size_type addlen)
+	{
+		bt_stack.expand(addlen);
+	}
+	void push_bt_wc(const search_state_core &ssc)
 	{
 		bt_stack.push_back_t<search_state_core>(ssc);
 	}
+
+	void push_bt(const search_state_core &ssc)
+	{
+		bt_stack.push_back_t_nc<search_state_core>(ssc);
+	}
 	void push_sm(const submatch_core &smc)
 	{
-		bt_stack.push_back_t<submatch_core>(smc);
+		bt_stack.push_back_t_nc<submatch_core>(smc);
 	}
 	void push_c(const counter_type c)
 	{
-		bt_stack.push_back_t<counter_type>(c);
+		bt_stack.push_back_t_nc<counter_type>(c);
 	}
 	void push_rp(const position_type p)
 	{
-		bt_stack.push_back_t<position_type>(p);
+		bt_stack.push_back_t_nc<position_type>(p);
 	}
 
 	void pop_bt(search_state_core &ssc)
 	{
-		ssc = bt_stack.pop_back_t<search_state_core>();
+		bt_stack.pop_back_t<search_state_core>(ssc);
 	}
 	void pop_sm(submatch_core &smc)
 	{
-		smc = bt_stack.pop_back_t<submatch_core>();
+		bt_stack.pop_back_t<submatch_core>(smc);
 	}
 	void pop_c(counter_type &c)
 	{
-		c = bt_stack.pop_back_t<counter_type>();
+		bt_stack.pop_back_t<counter_type>(c);
 	}
 	void pop_rp(position_type &p)
 	{
-		p = bt_stack.pop_back_t<position_type>();
+		bt_stack.pop_back_t<position_type>(p);
 	}
 
 public:
@@ -16064,17 +16135,22 @@ public:
 #endif	//  !defined(SRELL_NO_UNISTACK)
 //  re_search_state_types
 
-template </*typename charT, */typename BidirectionalIterator>
 #if defined(SRELL_HAS_TYPE_TRAITS)
+
+template <typename BidirectionalIterator>
 class re_search_state : public re_search_state_types<BidirectionalIterator, std::is_trivially_copyable<BidirectionalIterator>::value>
 {
 private:
 	typedef re_search_state_types<BidirectionalIterator, std::is_trivially_copyable<BidirectionalIterator>::value> base_type;
+
 #else
-class re_search_state : public re_search_state_types</*charT, */BidirectionalIterator>
+
+template <typename BidirectionalIterator>
+class re_search_state : public re_search_state_types<BidirectionalIterator>
 {
 private:
-	typedef re_search_state_types</*charT, */BidirectionalIterator> base_type;
+	typedef re_search_state_types<BidirectionalIterator> base_type;
+
 #endif
 
 public:
@@ -16113,10 +16189,11 @@ public:
 	BidirectionalIterator reallblim;
 	BidirectionalIterator srchbegin;
 	BidirectionalIterator lblim;
+	BidirectionalIterator curbegin;
 	BidirectionalIterator nextpos;
 	BidirectionalIterator srchend;
 
-	const re_state/* <charT> */ *entry_state;
+	const re_state *entry_state;
 	regex_constants::match_flag_type flags;
 
 public:
@@ -16137,37 +16214,35 @@ public:
 
 	void init_for_automaton
 	(
-		ui_l32 num_of_submatches,
+		const ui_l32 num_of_brackets,
 		const ui_l32 num_of_counters,
 		const ui_l32 num_of_repeats
 	)
 	{
-
-		bracket.resize(num_of_submatches);
 		counter.resize(num_of_counters);
 		repeat.resize(num_of_repeats);
 
-		while (num_of_submatches > 1)
-			bracket[--num_of_submatches].init(this->srchend);
-			//  15.10.2.9; AtomEscape:
-			//  If the regular expression has n or more capturing parentheses
-			//  but the nth one is undefined because it hasn't captured anything,
-			//  then the backreference always succeeds.
+		if (num_of_brackets > 1)	//  [0] is no longer used.
+		{
+			bracket.resize(num_of_brackets);
 
-			//  C.f., table 27 and 28 on TR1, table 142 and 143 on C++11.
+			for (ui_l32 i = 1; i < num_of_brackets; ++i)
+				bracket[i].init(this->srchend);
+		}
 
-		clear_stacks();
+		btstack_size = 0;
+		base_type::clear_stacks();
 	}
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
-	void reset(/* const BidirectionalIterator start */)
+	void reset()
 #else
-	void reset(/* const BidirectionalIterator start, */ const std::size_t limit)
+	void reset(const std::size_t limit)
 #endif
 	{
 		ssc.state = this->entry_state;
 
-		bracket[0].core.open_at = ssc.iter;
+		curbegin = ssc.iter;
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 		failure_counter = limit;
@@ -16179,12 +16254,6 @@ public:
 		ssc.iter = begin;
 		nextpos = end;
 		return true;
-	}
-
-	void clear_stacks()
-	{
-		btstack_size = 0;
-		base_type::clear_stacks();
 	}
 };
 //  re_search_state
@@ -16252,6 +16321,13 @@ public:
 
 		bmtable_.clear();
 		repseq_.clear();
+	}
+
+	bool no_alloc_failure() const
+	{
+		return u32string_.no_alloc_failure()
+			&& bmtable_.no_alloc_failure()
+			&& repseq_.no_alloc_failure();
 	}
 
 	void setup(const simple_array<ui_l32> &u32s, const bool icase)
@@ -16552,14 +16628,12 @@ struct posdata_holder
 
 			if (begin != end)
 			{
-				const std::size_t complen = seqlen * sizeof (ui_l32);
-
 				ensure_length(seqlen);
 				curseq.resize(seqlen);
 
 				for (; begin < end;)
 				{
-					const ui_l32 inspos = find_seq(&right.seqs[begin], seqlen, complen);
+					const ui_l32 inspos = find_seq(&right.seqs[begin], seqlen);
 
 					if (inspos == indices[seqlen - 1])
 					{
@@ -16583,11 +16657,9 @@ struct posdata_holder
 		const ui_l32 maxlen = static_cast<ui_l32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
 
 		{
-			range_pairs kept;
 			range_pairs removed;
 
-			ranges.split_ranges(kept, removed, right.ranges);
-			ranges.swap(kept);
+			ranges.split_ranges(removed, right.ranges);
 		}
 
 		if (right.has_empty() && has_empty())
@@ -16600,11 +16672,9 @@ struct posdata_holder
 
 			if (begin != end)
 			{
-				const std::size_t complen = seqlen * sizeof (ui_l32);
-
 				for (; begin < end;)
 				{
-					const ui_l32 delpos = find_seq(&right.seqs[begin], seqlen, complen);
+					const ui_l32 delpos = find_seq(&right.seqs[begin], seqlen);
 
 					if (delpos < indices[seqlen - 1])
 					{
@@ -16627,12 +16697,8 @@ struct posdata_holder
 		posdata_holder newpos;
 		simple_array<ui_l32> curseq;
 
-		{
-			range_pairs kept;
-
-			ranges.split_ranges(kept, newpos.ranges, right.ranges);
-			ranges.swap(newpos.ranges);
-		}
+		ranges.split_ranges(newpos.ranges, right.ranges);
+		ranges.swap(newpos.ranges);
 
 		if (has_empty() && right.has_empty())
 			newpos.register_emptystring();
@@ -16646,20 +16712,19 @@ struct posdata_holder
 
 			if (begin != end)
 			{
-				const std::size_t complen = seqlen * sizeof (ui_l32);
 				const ui_l32 myend = indices[seqlen - 1];
 
 				curseq.resize(seqlen);
 
 				for (; begin < end; begin += seqlen)
 				{
-					const ui_l32 srcpos = find_seq(&right.seqs[begin], seqlen, complen);
+					const ui_l32 srcpos = find_seq(&right.seqs[begin], seqlen);
 
 					if (srcpos < myend)
 					{
 						newpos.ensure_length(seqlen);
 
-						const ui_l32 inspos = newpos.find_seq(&right.seqs[begin], seqlen, complen);
+						const ui_l32 inspos = newpos.find_seq(&right.seqs[begin], seqlen);
 
 						if (inspos == newpos.indices[seqlen - 1])
 						{
@@ -16735,8 +16800,6 @@ struct posdata_holder
 					}
 				}
 
-				const std::size_t complen = seqlen * sizeof (ui_l32);
-
 				for (ui_l32 i = indices[seqlen];; i += seqlen)
 				{
 					if (i == inspos)
@@ -16747,7 +16810,7 @@ struct posdata_holder
 						break;
 					}
 
-					if (std::memcmp(&seqs[i], curseq.data(), complen) == 0)
+					if (is_sameseq(&seqs[i], curseq.data(), seqlen))
 						break;
 				}
 
@@ -16759,7 +16822,6 @@ struct posdata_holder
 			ranges.make_caseunfoldedcharset();
 
 		check_lengths();
-
 	}
 
 private:
@@ -16797,13 +16859,13 @@ private:
 		}
 	}
 
-	ui_l32 find_seq(const ui_l32 *const seqbegin, const ui_l32 seqlen, const std::size_t complen) const
+	ui_l32 find_seq(const ui_l32 *const seqbegin, const ui_l32 seqlen) const
 	{
 		const ui_l32 end = indices[seqlen - 1];
 
 		for (ui_l32 begin = indices[seqlen]; begin < end; begin += seqlen)
 		{
-			if (std::memcmp(seqbegin, &seqs[begin], complen) == 0)
+			if (is_sameseq(seqbegin, &seqs[begin], seqlen))
 				return begin;
 		}
 		return end;
@@ -16838,6 +16900,14 @@ private:
 		if (length.second == 0)
 			length.first = 0;
 	}
+
+	bool is_sameseq(const ui_l32 *const s1, const ui_l32 *const s2, const ui_l32 len) const
+	{
+		for (ui_l32 i = 0; i < len; ++i)
+			if (s1[i] != s2[i])
+				return false;
+		return true;
+	}
 };
 //  posdata_holder
 
@@ -16869,6 +16939,10 @@ private:
 #define SRELLDBG_NO_MPREWINDER
 #endif
 
+#if !defined(SRELL_MAX_DEPTH) || ((SRELL_MAX_DEPTH + 0) == 0)
+#define SRELL_MAX_DEPTH 256
+#endif
+
 template <typename charT, typename traits>
 struct re_object_core
 {
@@ -16883,8 +16957,6 @@ protected:
 #if !defined(SRELLDBG_NO_1STCHRCLS)
 	#if !defined(SRELLDBG_NO_BITSET)
 	bitset<traits::utf_traits::bitsetsize> firstchar_class_bs;
-	#else
-	range_pairs firstchar_class;
 	#endif
 #endif
 
@@ -16901,7 +16973,7 @@ protected:
 	ui_l32 number_of_brackets;
 	ui_l32 number_of_counters;
 	ui_l32 number_of_repeats;
-	regex_constants::syntax_option_type soflags;
+	ui_l32 soflags;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 	groupname_mapper<charT> namedcaptures;
@@ -16909,29 +16981,31 @@ protected:
 #endif
 
 #if !defined(SRELLDBG_NO_BMH)
-	re_bmh<charT, utf_traits> *bmdata;
+	typedef re_bmh<charT, utf_traits> bmh_type;
+	bmh_type *bmdata;
 #endif
 
 #if defined(SRELL_HAS_SSE42)
-	char simdranges[16];
+	__m128i simdranges;
 #endif
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 private:
 
-	static const std::size_t lcounter_defnum_ = 2097152;	//  1 << 21.
+	static const std::size_t lcounter_defnum_ = (1 << 15) << 6;
 
 #endif
 
 protected:
 
-	re_object_core() :
+	re_object_core()
 #if !defined(SRELL_NO_LIMIT_COUNTER)
-		limit_counter(lcounter_defnum_),
-#endif
-		number_of_repeats(0u)
+		: limit_counter(lcounter_defnum_)
 #if !defined(SRELLDBG_NO_BMH)
 		, bmdata(NULL)
+#endif
+#elif !defined(SRELLDBG_NO_BMH)
+		: bmdata(NULL)
 #endif
 	{
 	}
@@ -16965,13 +17039,11 @@ protected:
 	void reset(const regex_constants::syntax_option_type flags)
 	{
 		NFA_states.clear();
-		character_class.clear();
+		character_class.reset();
 
 #if !defined(SRELLDBG_NO_1STCHRCLS)
 	#if !defined(SRELLDBG_NO_BITSET)
-		firstchar_class_bs.reset();
-	#else
-		firstchar_class.clear();
+		firstchar_class_bs.clear();
 	#endif
 #endif
 
@@ -16982,7 +17054,11 @@ protected:
 		number_of_brackets = 1;
 		number_of_counters = 0;
 		number_of_repeats  = 0;
-		soflags = flags;	//  regex_constants::ECMAScript;
+		soflags = static_cast<ui_l32>(flags);	//  regex_constants::ECMAScript;
+
+#if defined(SRELL_NO_ICASE)
+		soflags &= ~regex_constants::icase;
+#endif
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		namedcaptures.clear();
@@ -17005,8 +17081,6 @@ protected:
 #if !defined(SRELLDBG_NO_1STCHRCLS)
 	#if !defined(SRELLDBG_NO_BITSET)
 			this->firstchar_class_bs = that.firstchar_class_bs;
-	#else
-			this->firstchar_class = that.firstchar_class;
 	#endif
 #endif
 
@@ -17029,7 +17103,7 @@ protected:
 				if (this->bmdata)
 					*this->bmdata = *that.bmdata;
 				else
-					this->bmdata = new re_bmh<charT, utf_traits>(*that.bmdata);
+					this->bmdata = new bmh_type(*that.bmdata);
 			}
 			else if (this->bmdata)
 			{
@@ -17038,7 +17112,7 @@ protected:
 			}
 #endif
 #if defined(SRELL_HAS_SSE42)
-			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
+			simdranges = that.simdranges;
 #endif
 
 			if (that.NFA_states.size())
@@ -17058,8 +17132,6 @@ protected:
 #if !defined(SRELLDBG_NO_1STCHRCLS)
 	#if !defined(SRELLDBG_NO_BITSET)
 			this->firstchar_class_bs = std::move(that.firstchar_class_bs);
-	#else
-			this->firstchar_class = std::move(that.firstchar_class);
 	#endif
 #endif
 
@@ -17083,7 +17155,7 @@ protected:
 			that.bmdata = NULL;
 #endif
 #if defined(SRELL_HAS_SSE42)
-			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
+			simdranges = that.simdranges;
 #endif
 		}
 		return *this;
@@ -17100,8 +17172,6 @@ protected:
 #if !defined(SRELLDBG_NO_1STCHRCLS)
 	#if !defined(SRELLDBG_NO_BITSET)
 			this->firstchar_class_bs.swap(right.firstchar_class_bs);
-	#else
-			this->firstchar_class.swap(right.firstchar_class);
 	#endif
 #endif
 
@@ -17129,7 +17199,7 @@ protected:
 				right.number_of_repeats = tmp_numof_repeats;
 			}
 			{
-				const regex_constants::syntax_option_type tmp_soflags = this->soflags;
+				const ui_l32 tmp_soflags = this->soflags;
 				this->soflags = right.soflags;
 				right.soflags = tmp_soflags;
 			}
@@ -17140,17 +17210,16 @@ protected:
 
 #if !defined(SRELLDBG_NO_BMH)
 			{
-				re_bmh<charT, utf_traits> *const tmp_bmdata = this->bmdata;
+				bmh_type *const tmp_bmdata = this->bmdata;
 				this->bmdata = right.bmdata;
 				right.bmdata = tmp_bmdata;
 			}
 #endif
 #if defined(SRELL_HAS_SSE42)
 			{
-				char tmp[sizeof simdranges];
-				std::memcpy(tmp, this->simdranges, sizeof simdranges);
-				std::memcpy(this->simdranges, right.simdranges, sizeof simdranges);
-				std::memcpy(right.simdranges, tmp, sizeof simdranges);
+				const __m128i tmp = this->simdranges;
+				this->simdranges = right.simdranges;
+				right.simdranges = tmp;
 			}
 #endif
 		}
@@ -17160,13 +17229,13 @@ protected:
 	{
 //		reset();
 		NFA_states.clear();
-		number_of_repeats = static_cast<ui_l32>(e);
+		soflags |= static_cast<ui_l32>(e) << constants::errshift;
 		return false;
 	}
 
 	regex_constants::error_type ecode() const
 	{
-		return NFA_states.size() ? 0 : static_cast<regex_constants::error_type>(number_of_repeats);
+		return static_cast<regex_constants::error_type>(soflags >> constants::errshift);
 	}
 
 private:
@@ -17234,33 +17303,21 @@ class re_compiler : public re_object_core<charT, traits>
 {
 protected:
 
-	template <typename ForwardIterator>
-	bool compile(ForwardIterator begin, const ForwardIterator end, const regex_constants::syntax_option_type flags /* = regex_constants::ECMAScript */)
+	template <typename InputIterator>
+	bool compile(InputIterator begin, const InputIterator end, const regex_constants::syntax_option_type flags)
 	{
-		simple_array<ui_l32> u32;
+		u32array u32;
 
-		while (begin != end)
+		if (!to_u32array(u32, begin, end) || !compile_core(u32.data(), u32.data() + u32.size(), flags & regex_constants::pflagsmask_))
 		{
-			const ui_l32 u32c = utf_traits::codepoint_inc(begin, end);
-
-			if (u32c > constants::unicode_max_codepoint)
-			{
-				this->set_error(regex_constants::error_utf8);
-				goto COMPILING_FAILURE;
-			}
-			u32.push_backncr(u32c);
-		}
-
-		if (!compile_core(u32.data(), u32.data() + u32.size(), flags & regex_constants::pflagsmask_))
-		{
-			COMPILING_FAILURE:
 #if !defined(SRELLDBG_NO_BMH)
 			if (this->bmdata)
 				delete this->bmdata;
 			this->bmdata = NULL;
 #endif
 #if !defined(SRELL_NO_THROW)
-			throw regex_error(this->number_of_repeats);
+			if (!(this->soflags & regex_constants::quiet))
+				throw regex_error(this->ecode());
 #else
 			return false;
 #endif
@@ -17271,7 +17328,7 @@ protected:
 	bool is_ricase() const
 	{
 #if !defined(SRELL_NO_ICASE)
-		return /* this->NFA_states.size() && */ this->NFA_states[0].flags ? true : false;	//  icase.
+		return this->NFA_states.size() && this->NFA_states[0].flags ? true : false;	//  icase.
 #else
 		return false;
 #endif
@@ -17289,12 +17346,30 @@ private:
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 	typedef typename re_character_class::pstring pstring;
 #endif
+#if !defined(SRELLDBG_NO_BMH)
+	typedef typename base_type::bmh_type bmh_type;
+#endif
 	typedef typename state_array::size_type state_size_type;
 
 	typedef simple_array<ui_l32> u32array;
 	typedef typename u32array::size_type u32array_size_type;
 
 	typedef re_compiler_state<charT> cvars_type;
+
+	template <typename InputIterator>
+	bool to_u32array(u32array &u32, InputIterator begin, const InputIterator end)
+	{
+		while (begin != end)
+		{
+			const ui_l32 u32c = utf_traits::codepoint_inc(begin, end);
+
+			if (u32c > constants::unicode_max_codepoint)
+				return this->set_error(regex_constants::error_utf8);
+
+			u32.push_back_c(u32c);
+		}
+		return true;
+	}
 
 	bool compile_core(const ui_l32 *begin, const ui_l32 *const end, const regex_constants::syntax_option_type flags)
 	{
@@ -17328,7 +17403,7 @@ private:
 		this->NFA_states.push_back(flstate);
 
 		if (cvars.backref_used && !check_backreferences(cvars))
-			return this->set_error(regex_constants::error_backref);
+			return false;
 
 		optimise(cvars);
 		relativejump_to_absolutejump();
@@ -17392,7 +17467,7 @@ private:
 				pbend.char_num = epsilon_type::et_brnchend;	//  '/'
 			}
 
-			piece += branch;
+			piece.append(branch);
 
 			if (curpos == end || *curpos == meta_char::mc_rbracl)
 				break;
@@ -17413,7 +17488,6 @@ private:
 		state_array piece;
 		state_array piece_with_quantifier;
 		re_quantifier quantifier;
-		re_quantifier piecesize;
 		range_pairs tmpcc;
 		state_type astate;
 		posdata_holder pos;
@@ -17433,7 +17507,7 @@ private:
 			switch (astate.char_num)
 			{
 			case meta_char::mc_rbraop:	//  '(':
-				if (!parse_group(piece, piecesize, curpos, end, cvars))
+				if (!parse_group(piece, astate.quantifier, curpos, end, cvars))
 					return false;
 				goto AFTER_PIECE_SET;
 
@@ -17447,7 +17521,7 @@ private:
 				{
 					ADD_POS:
 					transform_seqdata(piece, pos, cvars);
-					piecesize.set(pos.length.first, pos.length.second);
+					astate.quantifier.set(pos.length.first, pos.length.second);
 					goto AFTER_PIECE_SET;
 				}
 				tmpcc.swap(pos.ranges);
@@ -17538,12 +17612,11 @@ private:
 						const gname_string groupname = get_groupname(++curpos, end, cvars);
 
 						if (groupname.size() == 0)
-							return this->set_error(regex_constants::error_escape);
-						{
-							astate.flags = sflags::backrefno_unresolved;
-							astate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size() + 1);
-							astate.char_num = cvars.unresolved_gnames.assign_number(groupname, astate.char_num);
-						}
+							return false;
+
+						astate.flags = sflags::backrefno_unresolved;
+						astate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size() + 1);
+						astate.char_num = cvars.unresolved_gnames.assign_number(groupname, astate.char_num);
 						goto BACKREF_POSTPROCESS;
 					}
 #endif
@@ -17571,7 +17644,7 @@ private:
 				else
 #endif
 				{
-					tmpcc = this->character_class[static_cast<ui_l32>(re_character_class::newline)];
+					this->character_class.copy_to(tmpcc, static_cast<ui_l32>(re_character_class::newline));
 
 					tmpcc.negation();
 					astate.char_num = this->character_class.register_newclass(tmpcc);
@@ -17633,7 +17706,6 @@ private:
 			SKIP_ICASE_CHECK_FOR_CHAR:
 
 			piece.push_back(astate);
-			piecesize = astate.quantifier;
 			AFTER_PIECE_SET:
 
 			if (piece.size())
@@ -17700,26 +17772,26 @@ private:
 					AFTER_GREEDINESS_CHECK:;
 				}
 
-				if (piece.size() == 2 && firststate.is_noncapturinggroup())
+				if (piece.size() == 2 && firststate.is_ncgroup_open())
 				{
 					//  (?:) alone or followed by a quantifier.
 //					piece_with_quantifier += piece;
 					;	//  Does nothing.
 				}
-				else
-					combine_piece_with_quantifier(piece_with_quantifier, piece, quantifier, piecesize);
+				else if (!combine_piece_with_quantifier(piece_with_quantifier, piece, quantifier, astate.quantifier))
+					return false;
 
-				piecesize.multiply(quantifier);
-				branchsize.add(piecesize);
+				astate.quantifier.multiply(quantifier);
+				branchsize.add(astate.quantifier);
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 
 				if (!cvars.is_back())
-					branch += piece_with_quantifier;
+					branch.append(piece_with_quantifier);
 				else
 					branch.insert(0, piece_with_quantifier);
 #else
-				branch += piece_with_quantifier;
+				branch.append(piece_with_quantifier);
 #endif
 			}
 		}
@@ -17729,7 +17801,7 @@ private:
 
 	bool parse_group(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
-		const regex_constants::syntax_option_type originalflags(cvars.soflags);
+		const ui_l32 originalflags(cvars.soflags);
 		state_type rbstate;
 
 		if (curpos == end)
@@ -17761,9 +17833,11 @@ private:
 					const gname_string groupname = get_groupname(curpos, end, cvars);
 
 					if (groupname.size() == 0)
-						return this->set_error(regex_constants::error_escape);
+						return false;
 
-					if (!this->namedcaptures.push_back(groupname, this->number_of_brackets, cvars.dupranges))
+					const int res = this->namedcaptures.push_back(groupname, this->number_of_brackets, cvars.dupranges);
+
+					if (res == 0)
 						return this->set_error(regex_constants::error_backref);
 
 					goto AFTER_EXTRB;
@@ -17807,8 +17881,8 @@ private:
 			default:
 				{
 					const u32array_size_type boffset = curpos - cvars.begin;
-					regex_constants::syntax_option_type modified = regex_constants::ECMAScript;
-					regex_constants::syntax_option_type localflags = this->soflags;
+					ui_l32 modified = 0;
+					ui_l32 localflags = cvars.soflags;
 					bool negate = false;
 					bool flagerror = false;
 
@@ -17819,7 +17893,7 @@ private:
 #if !defined(SRELLDBG_NO_MODIFIERS)
 						case meta_char::mc_colon:	//  ':':
 							//  (?ims-ims:...)
-							if (modified != regex_constants::ECMAScript)
+							if (modified)
 								goto COLON_FOUND;
 
 							flagerror = true;
@@ -17827,11 +17901,16 @@ private:
 #endif
 #if !defined(SRELL_NO_UBMOD)
 						case meta_char::mc_rbracl:	//  ')':
-							if (modified != regex_constants::ECMAScript)
+							if (modified)
 							{
 								cvars.soflags = localflags;
 								if (boffset == 2)
+								{
 									this->soflags = localflags;
+#if defined(SRELL_NO_ICASE)
+									this->soflags &= ~regex_constants::icase;
+#endif
+								}
 
 								if (boffset == 2)	//  Restricts so that unbounded forms (?ims-ims) can be used only at the beginning of an expression.
 								{
@@ -17924,11 +18003,14 @@ private:
 
 		if (rbstate.type == st_roundbracket_open)
 		{
-			rbstate.char_num = this->number_of_brackets;
+			if (this->number_of_brackets > constants::max_u32value)
+				return this->set_error(regex_constants::error_complexity);
+
+			rbstate.char_num = this->number_of_brackets++;
 			rbstate.next1 = 2;
 			rbstate.next2 = 1;
+			rbstate.quantifier.atleast = this->number_of_brackets;
 			piece.push_back(rbstate);
-			++this->number_of_brackets;
 
 			rbstate.type  = st_roundbracket_pop;
 			rbstate.next1 = 0;
@@ -17937,8 +18019,11 @@ private:
 		}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-		const typename simple_array<ui_l32>::size_type dzsize = cvars.dupranges.size();
+		const typename u32array::size_type dzsize = cvars.dupranges.size();
 #endif
+
+		if (++cvars.depth > SRELL_MAX_DEPTH)
+			return this->set_error(regex_constants::error_complexity);
 
 		if (!make_nfa_states(piece, piecesize, curpos, end, cvars))
 			return false;
@@ -17947,6 +18032,7 @@ private:
 		if (curpos == end)
 			return this->set_error(regex_constants::error_paren);
 
+		--cvars.depth;
 		++curpos;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
@@ -17999,12 +18085,7 @@ private:
 			rbstate.next1 = 1;
 			rbstate.next2 = 1;
 
-			{
-				re_quantifier &rb_pop = piece[1].quantifier;
-
-				rb_pop.atleast = firststate.quantifier.atleast = rbstate.char_num + 1;
-				rb_pop.atmost = firststate.quantifier.atmost;
-			}
+			piece[1].quantifier.atmost = firststate.quantifier.atmost;
 			firststate.quantifier.is_greedy = piecesize.atleast != 0u;
 		}
 
@@ -18012,10 +18093,10 @@ private:
 		return true;
 	}
 
-	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
+	bool combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
 	{
 		if (quantifier.atmost == 0)
-			return;
+			return true;
 
 		state_type &firststate = piece[0];
 		state_type qstate;
@@ -18043,8 +18124,8 @@ private:
 			if (firststate.type == st_roundbracket_open)
 				firststate.quantifier.atmost = piece[1].quantifier.atmost = 0;
 
-			piece_with_quantifier += piece;
-			return;
+			piece_with_quantifier.append(piece);
+			return true;
 		}
 
 		//  atmost >= 2
@@ -18064,7 +18145,7 @@ private:
 			const state_size_type branchsize = piece.size() + 1;
 
 			for (ui_l32 i = 0; i < quantifier.atleast; ++i)
-				piece_with_quantifier += piece;
+				piece_with_quantifier.append(piece);
 
 			firststate.quantifier.set(0, 1, quantifier.is_greedy);
 
@@ -18078,10 +18159,10 @@ private:
 			for (ui_l32 i = quantifier.atleast; i < quantifier.atmost; ++i)
 			{
 				piece_with_quantifier.push_back(qstate);
-				piece_with_quantifier += piece;
+				piece_with_quantifier.append(piece);
 				quantifier.is_greedy ? (qstate.next2 -= branchsize) : (qstate.next1 -= branchsize);
 			}
-			return;
+			return true;
 		}
 #endif	//  !defined(SRELLDBG_NO_SIMPLEEQUIV)
 
@@ -18091,10 +18172,14 @@ private:
 			qstate.quantifier.set(1, 0);
 			goto ADD_CHECKER;
 		}
-		else if (firststate.is_noncapturinggroup() && (piecesize.atleast == 0 || firststate.quantifier.is_valid()))
+		else if (firststate.is_ncgroup_open() && (piecesize.atleast == 0 || firststate.quantifier.is_valid()))
 		{
 			qstate.quantifier = firststate.quantifier;
 			ADD_CHECKER:
+
+			if (this->number_of_repeats > constants::max_u32value)
+				return this->set_error(regex_constants::error_complexity);
+
 			qstate.char_num = this->number_of_repeats++;
 
 			qstate.type = st_repeat_in_pop;
@@ -18132,7 +18217,7 @@ private:
 
 			if (qstate.char_num == epsilon_type::et_ccastrsk)
 			{
-				piece_with_quantifier += piece;
+				piece_with_quantifier.append(piece);
 				--qstate.quantifier.atleast;	//  /.+/ -> /..*/.
 			}
 			else
@@ -18157,7 +18242,7 @@ private:
 				if (quantifier.atleast <= 6)
 				{
 					for (ui_l32 i = 0; i < quantifier.atleast; ++i)
-						piece_with_quantifier += piece;
+						piece_with_quantifier.append(piece);
 					qstate.quantifier.atleast = 0;
 					goto APPEND_ATOM;
 				}
@@ -18166,6 +18251,9 @@ private:
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 
 			USE_COUNTER:
+
+			if (this->number_of_counters > constants::max_u32value)
+				return this->set_error(regex_constants::error_complexity);
 
 			qstate.char_num = this->number_of_counters++;
 
@@ -18210,7 +18298,7 @@ private:
 			qstate.next2 = 1;
 		}
 		piece_with_quantifier.push_back(qstate);
-		piece_with_quantifier += piece;
+		piece_with_quantifier.append(piece);
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 
@@ -18224,11 +18312,13 @@ private:
 			goto APPEND_ATOM;
 		}
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
+
+		return true;
 	}
 
 	//  '['.
 
-	bool parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
+	bool parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
 		if (curpos == end)
 			return this->set_error(regex_constants::error_brack);
@@ -18337,9 +18427,13 @@ private:
 
 			if (!is_umode && *curpos == meta_char::mc_sbraop)	//  '['
 			{
+				if (++cvars.depth > SRELL_MAX_DEPTH)
+					return this->set_error(regex_constants::error_complexity);
+
 				++curpos;
 				if (!parse_unicharset(newpos, curpos, end, cvars))
 					return false;
+				--cvars.depth;
 			}
 			else if (!get_classatom(newpos, castate, curpos, end, cvars, false))
 				return false;
@@ -18518,8 +18612,8 @@ private:
 				if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 					return this->set_error(regex_constants::error_escape);
 
-				simple_array<ui_l32> seqs;
-				simple_array<ui_l32> curseq;
+				u32array seqs;
+				u32array curseq;
 				posdata_holder dummypos;
 				state_type castate2;
 
@@ -18536,12 +18630,12 @@ private:
 
 						if (seqlen <= 1)
 						{
-							seqs.push_backncr(2);
-							seqs.push_backncr(seqlen != 0 ? curseq[0] : constants::ccstr_empty);
+							seqs.push_back_c(2);
+							seqs.push_back_c(seqlen != 0 ? curseq[0] : constants::ccstr_empty);
 						}
 						else	//  >= 2
 						{
-							seqs.push_backncr(seqlen + 1);
+							seqs.push_back_c(seqlen + 1);
 							seqs.append(curseq);
 						}
 
@@ -18557,7 +18651,7 @@ private:
 						if (!get_classatom(dummypos, castate2, curpos, end, cvars, true))
 							return false;
 
-						curseq.push_backncr(castate2.char_num);
+						curseq.push_back_c(castate2.char_num);
 					}
 				}
 
@@ -18647,8 +18741,8 @@ private:
 
 				++curpos;
 
-				pname.push_backncr(0);
-				pvalue.push_backncr(0);
+				pname.push_back_c(0);
+				pvalue.push_back_c(0);
 
 				eastate.char_num = this->character_class.get_propertynumber(pname, pvalue);
 
@@ -18683,7 +18777,7 @@ private:
 #endif
 						return this->set_error(regex_constants::error_property);
 
-					simple_array<ui_l32> sequences;
+					u32array sequences;
 
 					this->character_class.get_prawdata(sequences, eastate.char_num);
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
@@ -18705,7 +18799,7 @@ private:
 				goto CHARACTER_ESCAPE;
 			}
 
-			range_pairs predefclass = this->character_class[eastate.char_num];
+			range_pairs predefclass(this->character_class.view(eastate.char_num));
 
 			if (eastate.flags)	//  is_not.
 				predefclass.negation();
@@ -18747,17 +18841,17 @@ private:
 				eastate.char_num = static_cast<ui_l32>(*curpos | masks::asc_icase);
 
 				if (eastate.char_num >= char_alnum::ch_a && eastate.char_num <= char_alnum::ch_z)
-					eastate.char_num = static_cast<ui_l32>(*curpos++ & 0x1f);
-				else
 				{
-					return this->set_error(regex_constants::error_escape);	//  Strict.
-//					eastate.char_num = char_alnum::ch_c;	//  Loose.
+					eastate.char_num = static_cast<ui_l32>(*curpos++ & 0x1f);
+					break;
 				}
 			}
-			break;
+			return this->set_error(regex_constants::error_escape);
 
 		case char_alnum::ch_0:
 			eastate.char_num = char_ctrl::cc_nul;	//  '\0' 0x00:NUL
+			if (curpos != end && *curpos >= char_alnum::ch_0 && *curpos <= char_alnum::ch_9)
+				return this->set_error(regex_constants::error_escape);
 			break;
 
 		case char_alnum::ch_x:	//  \xhh
@@ -18914,11 +19008,14 @@ private:
 			groupname.append(mbstr, seqlen);
 		}
 
+		if (groupname.size() == 0)
+			this->set_error(regex_constants::error_escape);
+
 		return groupname;
 	}
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 
-	ui_l32 transform_seqdata(state_array &piece, const posdata_holder &pos, const cvars_type &cvars)
+	void transform_seqdata(state_array &piece, const posdata_holder &pos, const cvars_type &cvars)
 	{
 		ui_l32 seqlen = static_cast<ui_l32>(pos.indices.size());
 		state_type castate;
@@ -18974,7 +19071,7 @@ private:
 							{
 								if (bpos + 1 == branch.size())
 								{
-									piece.push_backncr(piece[ppos]);
+									piece.push_back_c(piece[ppos]);
 
 									state_type &pst = piece[ppos];
 
@@ -19130,7 +19227,6 @@ private:
 				}
 			}
 		}
-		return castate.char_num;
 	}
 
 	ui_l32 translate_numbers(const ui_l32 *&curpos, const ui_l32 *const end, const int radix, const std::size_t minsize, const std::size_t maxsize, const ui_l32 maxvalue) const
@@ -19141,7 +19237,6 @@ private:
 
 		for (; maxsize == 0 || count < maxsize; ++curpos, ++count)
 		{
-
 			if (curpos == end)
 				break;
 
@@ -19199,14 +19294,14 @@ private:
 				if (brs.flags & sflags::backrefno_unresolved)
 				{
 					if (backrefno > cvars.unresolved_gnames.size())
-						return false;	//  Internal error.
+						return this->set_error(regex_constants::error_backref);	//  Internal error.
 
 					brs.flags &= ~sflags::backrefno_unresolved;
 
 					const ui_l32 *list = this->namedcaptures[cvars.unresolved_gnames[backrefno]];
 
 					if (list == NULL || *list < 1)
-						return false;
+						return this->set_error(regex_constants::error_backref);
 
 					const ui_l32 num = list[0];
 					state_type newbrs(brs);
@@ -19241,15 +19336,17 @@ private:
 						laststate.flags |= sflags::hookedlast;
 						laststate.next1 = static_cast<std::ptrdiff_t>(next1abs - lastabs);
 						laststate.next2 = static_cast<std::ptrdiff_t>(next2abs - lastabs);
-						this->NFA_states += additions;
+						this->NFA_states.append(additions);
 						additions.clear();
 					}
 				}
 				else
 #endif
 				{
+					if (backrefno >= this->number_of_brackets)
+						return this->set_error(regex_constants::error_backref);
 
-					if (backrefno >= this->number_of_brackets || !gno_found[backrefno])
+					if (!gno_found[backrefno])
 					{
 						REMOVE_BACKREF:
 						if (brs.next1 == -1)
@@ -19281,13 +19378,9 @@ private:
 
 	void create_firstchar_class()
 	{
-#if !defined(SRELLDBG_NO_BITSET)
 		range_pairs fcc;
-#else
-		range_pairs &fcc = this->firstchar_class;
-#endif
 
-		const bool canbe0length = gather_nextchars(fcc, static_cast<state_size_type>(this->NFA_states[0].next1), 0u, false);
+		const int canbe0length = gather_nextchars(fcc, static_cast<state_size_type>(this->NFA_states[0].next1), 0u, false);
 
 		if (canbe0length)
 		{
@@ -19296,15 +19389,13 @@ private:
 			//  We cannot but accept every codepoint.
 		}
 
-#if !defined(SRELLDBG_NO_BITSET)
 		this->NFA_states[0].quantifier.is_greedy = this->character_class.register_newclass(fcc);
-#endif
 
 #if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 		ui_l32 entrychar = constants::max_u32value;
 #endif
 #if defined(SRELL_HAS_SSE42)
-		charT *const sranges = reinterpret_cast<charT *>(this->simdranges);
+		charT sranges[16];
 		const int maxnum = sizeof (charT) ? (16 / sizeof (charT)) : 0;
 		int curnum = 0;
 #endif
@@ -19376,7 +19467,10 @@ private:
 #endif
 		{
 			if (curnum > 0)
+			{
 				entrychar = masks::fcc_simd | curnum;
+				std::memcpy(&this->simdranges, sranges, 16);
+			}
 		}
 #endif
 
@@ -19386,9 +19480,9 @@ private:
 	}
 #endif	//  !defined(SRELLDBG_NO_1STCHRCLS)
 
-	bool gather_nextchars(range_pairs &nextcharclass, state_size_type pos, simple_array<bool> &checked, const ui_l32 bracket_number, const bool subsequent) const
+	int gather_nextchars(range_pairs &nextcharclass, state_size_type pos, simple_array<bool> &checked, const ui_l32 bracket_number, const bool subsequent) const
 	{
-		bool canbe0length = false;
+		int canbe0length = 0;
 
 		for (;;)
 		{
@@ -19407,8 +19501,11 @@ private:
 					&& (state.type != st_repeat_in_push)
 					&& (state.type != st_backreference || (state.next1 != state.next2))
 					&& (state.type != st_lookaround_open))
-				if (gather_nextchars(nextcharclass, pos + state.next2, checked, bracket_number, subsequent))
-					canbe0length = true;
+			{
+				const int c0l = gather_nextchars(nextcharclass, pos + state.next2, checked, bracket_number, subsequent);
+				if (c0l)
+					canbe0length = 1;
+			}
 
 			switch (state.type)
 			{
@@ -19428,7 +19525,7 @@ private:
 				return canbe0length;
 
 			case st_character_class:
-				nextcharclass.merge(this->character_class[state.char_num]);
+				nextcharclass.merge(this->character_class.view(state.char_num));
 				return canbe0length;
 
 			case st_backreference:
@@ -19476,7 +19573,7 @@ private:
 		return canbe0length;
 	}
 
-	bool gather_nextchars(range_pairs &nextcharclass, const state_size_type pos, const ui_l32 bracket_number, const bool subsequent) const
+	int gather_nextchars(range_pairs &nextcharclass, const state_size_type pos, const ui_l32 bracket_number, const bool subsequent) const
 	{
 		simple_array<bool> checked;
 
@@ -19600,7 +19697,6 @@ private:
 	{
 		const state_size_type orgsize = this->NFA_states.size();
 #if !defined(SRELLDBG_NO_SPLITCC)
-		range_pairs kept;
 		range_pairs removed;
 #endif
 		range_pairs curcc;
@@ -19631,7 +19727,7 @@ private:
 				}
 				else
 				{
-					curcc = this->character_class[curstate.char_num];
+					this->character_class.copy_to(curcc, curstate.char_num);
 					if (curcc.size() == 0)	//  Means [], which always makes matching fail.
 						goto IS_EXCLUSIVE;	//  For preventing the automaton from pushing bt data.
 				}
@@ -19640,14 +19736,16 @@ private:
 
 				{
 					nextcc.clear();
-					const bool canbe0length = gather_nextchars(nextcc, nextno, 0u, true);
+					const int canbe0length = gather_nextchars(nextcc, nextno, 0u, true);
 
 					if (nextcc.size())
 					{
 						if (!canbe0length || bq.is_greedy)
 						{
 #if !defined(SRELLDBG_NO_SPLITCC)
-							curcc.split_ranges(kept, removed, nextcc);
+							curcc.split_ranges(removed, nextcc);
+
+							range_pairs &kept = curcc;
 
 							if (removed.size() == 0)	//  !curcc.is_overlap(nextcc)
 								goto IS_EXCLUSIVE;
@@ -19762,7 +19860,7 @@ private:
 				if (curstate.next2 == 0)
 					curstate.next2 = static_cast<std::ptrdiff_t>(nextno) - pos;
 
-				this->NFA_states += additions;
+				this->NFA_states.append(additions);
 			}
 		}
 		if (orgsize != this->NFA_states.size())
@@ -19773,7 +19871,7 @@ private:
 
 	void reorder_piece(state_array &piece) const
 	{
-		simple_array<ui_l32> newpos;
+		u32array newpos;
 		ui_l32 offset = 0;
 
 		newpos.resize(piece.size() + 1, 0);
@@ -19860,7 +19958,7 @@ private:
 			}
 			else if (cst.type == st_character_class)
 			{
-				charclass = this->character_class[cst.char_num];
+				this->character_class.copy_to(charclass, cst.char_num);
 				return pos;
 			}
 			else if (cst.type == st_epsilon && cst.char_num != epsilon_type::et_jmpinlp)
@@ -19883,14 +19981,14 @@ private:
 		{
 			const state_type &state = this->NFA_states[pos];
 
-			if (state.is_branch())
+			if (state.is_alt())
 			{
 				const state_size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1);
 
 				if (nextcharpos)
 				{
 					range_pairs nextcharclass2;
-					const bool canbe0length = gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
+					const int canbe0length = gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
 
 					if (!canbe0length && !nextcharclass1.is_overlap(nextcharclass2))
 					{
@@ -19910,36 +20008,23 @@ private:
 #if !defined(SRELLDBG_NO_BMH)
 	void setup_bmhdata()
 	{
-		simple_array<ui_l32> u32s;
+		u32array u32s;
 
 		for (state_size_type i = 1; i < this->NFA_states.size(); ++i)
 		{
 			const state_type &state = this->NFA_states[i];
 
-			if (state.type == st_character)
-				u32s.push_backncr(state.char_num);
-			else
-			{
-				u32s.clear();
-				break;
-			}
+			if (state.type != st_character)
+				return;
+
+			u32s.push_back_c(state.char_num);
 		}
 
 		if (u32s.size() > 1)
-//		if ((u32s.size() > 1 && !this->is_ricase()) || (u32s.size() > 2 && this->is_ricase()))
 		{
-			if (this->bmdata)
-				this->bmdata->clear();
-			else
-				this->bmdata = new re_bmh<charT, utf_traits>;
-
+			this->bmdata = new bmh_type;
 			this->bmdata->setup(u32s, this->is_ricase());
-			return /* false */;
 		}
-
-		if (this->bmdata)
-			delete this->bmdata;
-		this->bmdata = NULL;
 	}
 #endif	//  !defined(SRELLDBG_NO_BMH)
 
@@ -19979,34 +20064,26 @@ private:
 		{
 			const state_type &curstate = this->NFA_states[pos];
 
-			if (curstate.type == st_epsilon && curstate.next2 != 0 && curstate.char_num == epsilon_type::et_alt)	//  '|'
+			if (curstate.is_alt())
 			{
-				const state_size_type next1pos = pos + curstate.next1;
 				state_size_type precharchainpos = pos;
+				const state_size_type n1pos = gather_if_char_or_charclass(basealt1stch, pos + curstate.next1);
 
-				if (gather_if_char_or_charclass(basealt1stch, next1pos) != 0)
+				if (n1pos != 0)
 				{
-					state_type &next1ref = this->NFA_states[next1pos];
-					state_size_type next2pos = precharchainpos + curstate.next2;
+					state_type &n1ref = this->NFA_states[n1pos];
+					state_size_type n2pos = precharchainpos + curstate.next2;
 					state_size_type postcharchainpos = 0;
 
 					for (;;)
 					{
-						state_size_type next2next1pos = next2pos;
-						state_type &nstate2 = this->NFA_states[next2pos];
-						state_size_type next2next2pos = 0;
+						state_type &n2ref = this->NFA_states[n2pos];
+						const bool n2isalt = n2ref.is_alt();
+						const state_size_type next2next1poso = n2pos + (n2isalt ? n2ref.next1 : 0);
+						const state_size_type next2next2pos = n2isalt ? n2pos + n2ref.next2 : 0;
+						const state_size_type next2next1pos = gather_if_char_or_charclass(nextalt1stch, next2next1poso);
 
-						if (nstate2.type == st_epsilon)
-						{
-							if (nstate2.next2 != 0)
-							{
-								if (nstate2.char_num == epsilon_type::et_alt)	//  '|'
-									next2next2pos = next2pos + nstate2.next2;
-							}
-							next2next1pos += nstate2.next1;
-						}
-
-						if (gather_if_char_or_charclass(nextalt1stch, next2next1pos) != 0)
+						if (next2next1pos != 0)
 						{
 							const int relation = basealt1stch.relationship(nextalt1stch);
 
@@ -20014,7 +20091,7 @@ private:
 							{
 								state_type &prechainalt = this->NFA_states[precharchainpos];
 								state_type &becomes_unused = this->NFA_states[next2next1pos];
-								const state_size_type next1next1pos = next1pos + next1ref.next1;
+								const state_size_type next1next1pos = n1pos + n1ref.next1;
 
 								becomes_unused.type = st_epsilon;
 
@@ -20024,12 +20101,12 @@ private:
 
 									if (postcharchainpos == 0)
 									{
-										nstate2.next1 = next1next1pos - next2pos;
-										nstate2.next2 = next2next1pos - next2pos;
+										n2ref.next1 = next1next1pos - n2pos;
+										n2ref.next2 = next2next1pos - n2pos;
 
-										next1ref.next1 = next2pos - next1pos;
-										next1ref.flags |= sflags::hooking;
-										nstate2.flags |= sflags::hookedlast;
+										n1ref.next1 = n2pos - n1pos;
+										n1ref.flags |= sflags::hooking;
+										n2ref.flags |= sflags::hookedlast;
 										hooked = true;
 									}
 									else
@@ -20039,8 +20116,8 @@ private:
 										becomes_alt.char_num = epsilon_type::et_alt;	//  '|' <- '2'
 										becomes_alt.next2 = next2next1pos - postcharchainpos;
 
-										nstate2.next2 = 0;
-										nstate2.char_num = epsilon_type::et_bo2skpd;	//  '!'
+										n2ref.next2 = 0;
+										n2ref.char_num = epsilon_type::et_bo2skpd;	//  '!'
 									}
 									postcharchainpos = next2next1pos;
 									prechainalt.next2 = next2next2pos - precharchainpos;
@@ -20053,8 +20130,8 @@ private:
 										becomes_unused.next2 = becomes_unused.next1;
 										becomes_unused.next1 = next1next1pos - next2next1pos;
 
-										next1ref.next1 = next2next1pos - next1pos;
-										next1ref.flags |= sflags::hooking;
+										n1ref.next1 = next2next1pos - n1pos;
+										n1ref.flags |= sflags::hooking;
 										becomes_unused.flags |= sflags::hookedlast;
 										hooked = true;
 									}
@@ -20076,7 +20153,7 @@ private:
 								break;
 							}
 							else
-								precharchainpos = next2pos;
+								precharchainpos = n2pos;
 						}
 						else
 						{
@@ -20090,7 +20167,7 @@ private:
 						if (next2next2pos == 0)
 							break;
 
-						next2pos = next2next2pos;
+						n2pos = next2next2pos;
 					}
 				}
 			}
@@ -20194,14 +20271,19 @@ private:
 		return 0u;
 	}
 
-	void create_rewinder(const state_size_type end, const int needs_rerun, const cvars_type &cvars)
+	int create_rewinder(const state_size_type end, const int needs_rerun, const cvars_type &cvars)
 	{
 		state_array newNFAs;
 		state_type rwstate;
 
-		newNFAs.append(this->NFA_states, 1u, end - 1u);
-		if (!reverse_atoms(newNFAs, cvars) || newNFAs.size() == 0u)
-			return;
+		{
+			const int res = reverse_atoms(newNFAs, this->NFA_states, 1u, end, cvars);
+
+			if (res < 1)
+				return res;
+		}
+		if (newNFAs.size() == 0u)
+			return 0;
 
 		rwstate.reset(st_lookaround_pop, meta_char::mc_eq);
 		rwstate.quantifier.atmost = 0;
@@ -20229,24 +20311,29 @@ private:
 
 		this->NFA_states.insert(1, newNFAs);
 		this->NFA_states[0].next2 = static_cast<std::ptrdiff_t>(newNFAs.size()) + 1;
+
+		return 1;
 	}
 
-	bool reverse_atoms(state_array &NFAs, const cvars_type &cvars)
+	int reverse_atoms(state_array &revNFAs, const state_array &NFAs, state_size_type cur, const state_size_type send, const cvars_type &cvars)
 	{
-		state_array revNFAs;
+		const state_size_type orglen = send - cur;
 		state_array atomseq;
+		state_array revgrp;
 		state_type epsilon;
 
 		epsilon.reset(st_epsilon, epsilon_type::et_rvfmrcg);
 
-		for (state_size_type cur = 0u; cur < NFAs.size();)
+		revNFAs.clear();
+
+		for (; cur < send;)
 		{
 			const state_type &state = NFAs[cur];
 
 			switch (state.type)
 			{
 			case st_epsilon:
-				if (state.is_noncapturinggroup_begin_or_end())
+				if (state.is_ncgroup_open_or_close())
 				{
 					revNFAs.insert(0, epsilon);
 					++cur;
@@ -20270,122 +20357,121 @@ private:
 			default:;
 			}
 
-			const state_size_type boundary = find_atom_boundary(NFAs, cur, NFAs.size(), false);
+			const state_size_type boundary = find_atom_boundary(NFAs, cur, send, false);
 
 			if (boundary == 0u || cur == boundary)
-				return false;
+				return 0;
 
 			atomseq.clear();
 			atomseq.append(NFAs, cur, boundary - cur);
 
-			if (!mend_for_reverse(atomseq, cvars))
+			for (state_size_type pos = 0; pos < atomseq.size(); ++pos)
 			{
-				return false;
-			}
+				state_type &s = atomseq[pos];
 
-			cur = boundary;
-			revNFAs.insert(0, atomseq);
-		}
-		revNFAs.swap(NFAs);
-		return true;
-	}
-
-	bool mend_for_reverse(state_array &atoms, const cvars_type &cvars)
-	{
-		for (state_size_type pos = 0; pos < atoms.size(); ++pos)
-		{
-			state_type &s = atoms[pos];
-
-			switch (s.type)
-			{
-			case st_roundbracket_open:
-				if (!cvars.backref_used || !check_if_backref_used(pos + 1, s.char_num))
+				switch (s.type)
 				{
-					const state_size_type end = skip_bracket(s.char_num, atoms, pos);
-
-					if (end != 0u)
+				case st_roundbracket_open:
+					if (!cvars.backref_used || !check_if_backref_used(pos + 1, s.char_num))
 					{
-						pos += 2;
-						state_array rev(atoms, pos, end - pos);
+						const state_size_type rbend = skip_bracket(s.char_num, atomseq, pos);
 
-						if (reverse_atoms(rev, cvars) && (end - pos) == rev.size())
+						if (rbend != 0u)
 						{
-							if (s.quantifier.is_greedy)
-							{
-								atoms[pos - 2].reset(st_epsilon, epsilon_type::et_mfrfmrcg);
-								atoms[pos - 1].reset(st_epsilon, epsilon_type::et_mfrfmrcg);
-								atoms[end].type = st_epsilon;
-								atoms[end].char_num = epsilon_type::et_mfrfmrcg;
-								atoms[end].next2 = 0;
-							}
-							else
-							{
-								state_type &bro = atoms[pos - 2];
-								state_type &brp = atoms[pos - 1];
-								state_type &brc = atoms[end];
+							pos += 2;
 
-								bro.type = st_repeat_in_push;
-								brp.type = st_repeat_in_pop;
-								brc.type = st_check_0_width_repeat;
-
-								bro.char_num = this->number_of_repeats;
-								brp.char_num = this->number_of_repeats;
-								brc.char_num = this->number_of_repeats;
-								++this->number_of_repeats;
+							{
+								const int res = reverse_atoms(revgrp, atomseq, pos, rbend, cvars);
+								if (res < 1)
+									return res;
 							}
-							atoms.replace(pos, end - pos, rev);
-							pos += rev.size();
-							continue;
+							{
+								if (s.quantifier.is_greedy)
+								{
+									atomseq[pos - 2].reset(st_epsilon, epsilon_type::et_mfrfmrcg);
+									atomseq[pos - 1].reset(st_epsilon, epsilon_type::et_mfrfmrcg);
+									atomseq[rbend].type = st_epsilon;
+									atomseq[rbend].char_num = epsilon_type::et_mfrfmrcg;
+									atomseq[rbend].next2 = 0;
+								}
+								else
+								{
+									state_type &bro = atomseq[pos - 2];
+									state_type &brp = atomseq[pos - 1];
+									state_type &brc = atomseq[rbend];
+
+									bro.type = st_repeat_in_push;
+									brp.type = st_repeat_in_pop;
+									brc.type = st_check_0_width_repeat;
+
+									if (this->number_of_repeats > constants::max_u32value)
+										return false;	//  Treats as a failure of optimisation, not an error.
+
+									bro.char_num = this->number_of_repeats;
+									brp.char_num = this->number_of_repeats;
+									brc.char_num = this->number_of_repeats;
+									++this->number_of_repeats;
+								}
+								atomseq.replace(pos, rbend - pos, revgrp);
+								pos = rbend;
+								continue;
+							}
 						}
 					}
-				}
-				return false;
+					return 0;
 
-			case st_epsilon:
-				if (s.char_num == epsilon_type::et_ncgopen)
-				{
-					state_size_type end = skip_group(atoms, pos);
-
-					if (end != 0u)
+				case st_epsilon:
+					if (s.char_num == epsilon_type::et_ncgopen)
 					{
-						++pos;
-						state_array rev(atoms, pos, end - pos);
+						state_size_type grend = skip_group(atomseq, pos);
 
-						if (reverse_atoms(rev, cvars) && (end - pos) == rev.size())
+						if (grend != 0u)
 						{
-							atoms.replace(pos, end - pos, rev);
-							pos += rev.size();
-							continue;
-						}
-					}
-					return false;
-				}
-				else if ((s.char_num == epsilon_type::et_ccastrsk || s.char_num == epsilon_type::et_dfastrsk)
-					&& s.next2 != 0 && !s.quantifier.is_greedy)
-				{
-					s.next2 = s.next1;
-					s.next1 = 1;
-					s.quantifier.is_greedy = 1u;
-				}
-				continue;
+							++pos;
 
-			case st_check_counter:
-				if (pos + 3 < atoms.size())
-				{
-					if (!s.quantifier.is_greedy)
+							{
+								const int res = reverse_atoms(revgrp, atomseq, pos, grend, cvars);
+								if (res < 1)
+									return res;
+							}
+							{
+								atomseq.replace(pos, grend - pos, revgrp);
+								pos = grend;
+								continue;
+							}
+						}
+						return 0;
+					}
+					else if ((s.char_num == epsilon_type::et_ccastrsk || s.char_num == epsilon_type::et_dfastrsk)
+						&& s.next2 != 0 && !s.quantifier.is_greedy)
 					{
 						s.next2 = s.next1;
 						s.next1 = 1;
 						s.quantifier.is_greedy = 1u;
 					}
 					continue;
-				}
-				return false;
 
-			default:;
+				case st_check_counter:
+					if (pos + 3 < atomseq.size())
+					{
+						if (!s.quantifier.is_greedy)
+						{
+							s.next2 = s.next1;
+							s.next1 = 1;
+							s.quantifier.is_greedy = 1u;
+						}
+						continue;
+					}
+					return 0;
+
+				default:;
+				}
 			}
+
+			cur = boundary;
+			revNFAs.insert(0, atomseq);
 		}
-		return true;
+		return revNFAs.size() == orglen ? 1 : 0;
 	}
 
 	state_size_type find_atom_boundary(const state_array &NFAs, state_size_type cur, const state_size_type end, const bool separate) const
@@ -20539,7 +20625,7 @@ private:
 		return begin != charatomseq_endpos ? charatomseq_endpos : 0u;
 	}
 
-	bool find_better_es(state_size_type cur, const cvars_type &cvars)
+	int find_better_es(state_size_type cur, const cvars_type &cvars)
 	{
 		const state_array &NFAs = this->NFA_states;
 		state_size_type betterpos = 0u;
@@ -20586,7 +20672,7 @@ private:
 				break;
 
 			nextcc.clear();
-			const bool canbe0length = gather_nextchars(nextcc, cur, 0u, false);
+			const int canbe0length = gather_nextchars(nextcc, cur, 0u, false);
 
 			if (canbe0length)
 				break;
@@ -20614,7 +20700,7 @@ private:
 			cur = boundary;
 		}
 
-		return (charcount > 1u) ? (create_rewinder(betterpos, needs_rerun, cvars), true) : false;
+		return (charcount > 1u) ? create_rewinder(betterpos, needs_rerun, cvars) : 0;
 	}
 
 #endif	//  !defined(SRELLDBG_NO_MPREWINDER)
@@ -20630,7 +20716,6 @@ public:	//  For debug.
 //  ... "rei_compiler.hpp"]
 //  ["regex_sub_match.hpp" ...
 
-//  28.9, class template sub_match:
 template <class BidirectionalIterator>
 class sub_match : public std::pair<BidirectionalIterator, BidirectionalIterator>
 {
@@ -20710,14 +20795,11 @@ public:
 	{
 		this->first = br.core.open_at;
 		this->second = br.core.close_at;
-		this->matched = br.counter != 0;
+		this->matched = br.counter.no != 0;
 	}
 };
 
-//  28.9.2, sub_match non-member operators:
-//  [7.9.2] sub_match non-member operators
-
-//  Compares sub_match & with sub_match &.
+//  const reference, const reference.
 template <class BiIter>
 bool operator==(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
 {
@@ -20754,7 +20836,7 @@ bool operator>(const sub_match<BiIter> &lhs, const sub_match<BiIter> &rhs)
 	return lhs.compare(rhs) > 0;	//  6
 }
 
-//  Compares basic_string & with sub_match &.
+//  basic_string, const reference.
 template <class BiIter, class ST, class SA>
 bool operator==(
 	const std::basic_string<typename std::iterator_traits<BiIter>::value_type, ST, SA> &lhs,
@@ -20809,7 +20891,7 @@ bool operator<=(
 	return !(rhs < lhs);	//  12
 }
 
-//  Compares sub_match & with basic_string &.
+//  const reference, basic_string.
 template <class BiIter, class ST, class SA>
 bool operator==(
 	const sub_match<BiIter> &lhs,
@@ -20864,7 +20946,7 @@ bool operator<=(
 	return !(rhs < lhs);	//  18
 }
 
-//  Compares iterator_traits::value_type * with sub_match &.
+//  pointer, const reference.
 template <class BiIter>
 bool operator==(
 	typename std::iterator_traits<BiIter>::value_type const *lhs,
@@ -20919,7 +21001,7 @@ bool operator<=(
 	return !(rhs < lhs);	//  24
 }
 
-//  Compares sub_match & with iterator_traits::value_type *.
+//  const reference, pointer.
 template <class BiIter>
 bool operator==(
 	const sub_match<BiIter> &lhs,
@@ -20974,7 +21056,7 @@ bool operator<=(
 	return !(rhs < lhs);	//  30
 }
 
-//  Compares iterator_traits::value_type & with sub_match &.
+//  charT, const reference.
 template <class BiIter>
 bool operator==(
 	typename std::iterator_traits<BiIter>::value_type const &lhs,
@@ -21029,7 +21111,7 @@ bool operator<=(
 	return !(rhs < lhs);	//  36
 }
 
-//  Compares sub_match & with iterator_traits::value_type &.
+//  const reference, charT.
 template <class BiIter>
 bool operator==(
 	const sub_match<BiIter> &lhs,
@@ -21133,7 +21215,6 @@ typedef ssub_match u8cssub_match;
 //  ... "regex_sub_match.hpp"]
 //  ["regex_match_results.hpp" ...
 
-//  28.10, class template match_results:
 template <class BidirectionalIterator, class Allocator = std::allocator<sub_match<BidirectionalIterator> > >
 class match_results
 {
@@ -21142,8 +21223,12 @@ public:
 	typedef sub_match<BidirectionalIterator> value_type;
 	typedef const value_type & const_reference;
 	typedef const_reference reference;
-//	typedef implementation defined const_iterator;
-	typedef typename std::vector<value_type, Allocator>::const_iterator const_iterator;
+#if defined(SRELL_HAS_TYPE_TRAITS)
+	typedef typename re_detail::container_type<value_type, Allocator, std::is_trivially_copyable<BidirectionalIterator>::value>::type sub_match_array;
+#else
+	typedef typename re_detail::container_type<BidirectionalIterator, value_type, Allocator>::type sub_match_array;
+#endif
+	typedef typename sub_match_array::const_iterator const_iterator;
 	typedef const_iterator iterator;
 	typedef typename std::iterator_traits<BidirectionalIterator>::difference_type difference_type;
 
@@ -21159,8 +21244,6 @@ public:
 
 public:
 
-	//  28.10.1, construct/copy/destroy:
-	//  [7.10.1] construct/copy/destroy
 	explicit match_results(const Allocator &a = Allocator()) : ready_(0u), sub_matches_(a)
 	{
 	}
@@ -21215,14 +21298,11 @@ public:
 
 //	~match_results();
 
-	//  28.10.2, state:
 	bool ready() const
 	{
 		return (ready_ & 1u) ? true : false;
 	}
 
-	//  28.10.3, size:
-	//  [7.10.2] size
 	size_type size() const
 	{
 		return sub_matches_.size();
@@ -21231,7 +21311,6 @@ public:
 	size_type max_size() const
 	{
 		return sub_matches_.max_size();
-//		return static_cast<size_type>(~0) / sizeof (value_type);
 	}
 
 	bool empty() const
@@ -21239,8 +21318,6 @@ public:
 		return size() == 0;
 	}
 
-	//  28.10.4, element access:
-	//  [7.10.3] element access
 	difference_type length(const size_type sub = 0) const
 	{
 		return (*this)[sub].length();
@@ -21365,8 +21442,6 @@ public:
 		return sub_matches_.end();
 	}
 
-	//  28.10.5, format:
-	//  [7.10.4] format
 	template <class OutputIter>
 	OutputIter format(
 		OutputIter out,
@@ -21387,102 +21462,91 @@ public:
 				if (*fmt_first != static_cast<char_type>(re_detail::meta_char::mc_dollar))	//  '$'
 				{
 					*out++ = *fmt_first++;
+					continue;
 				}
+
+				++fmt_first;
+				if (fmt_first == fmt_last)
+				{
+					*out++ = re_detail::meta_char::mc_dollar;	//  '$';
+				}
+				else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_amp))	//  '&', $&
+				{
+					out = std::copy(m0.first, m0.second, out);
+					++fmt_first;
+				}
+				else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_grav))	//  '`', $`, prefix.
+				{
+					out = std::copy(this->prefix().first, this->prefix().second, out);
+					++fmt_first;
+				}
+				else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_apos))	//  '\'', $', suffix.
+				{
+					out = std::copy(this->suffix().first, this->suffix().second, out);
+					++fmt_first;
+				}
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+				else if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_lt) && !no_groupnames)	//  '<', $<
+				{
+					const char_type *const lt_pos = fmt_first;
+
+					for (++fmt_first;; ++fmt_first)
+					{
+						if (fmt_first == fmt_last)
+						{
+							fmt_first = lt_pos;
+							*out++ = re_detail::meta_char::mc_dollar;	//  '$';
+							break;
+						}
+
+						if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_gt))
+						{
+							const re_detail::ui_l32 backref_number = lookup_backref_number(lt_pos + 1, fmt_first);
+
+							if (backref_number != gnamemap_type::notfound)
+							{
+								const value_type &mn = (*this)[backref_number];
+
+								if (mn.matched)
+									out = std::copy(mn.first, mn.second, out);
+							}
+							++fmt_first;
+							break;
+						}
+					}
+				}
+#endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 				else
 				{
-					++fmt_first;
-					if (fmt_first == fmt_last)
-					{
-						*out++ = re_detail::meta_char::mc_dollar;	//  '$';
-					}
-					else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_amp))	//  '&', $&
-					{
-						out = std::copy(m0.first, m0.second, out);
-						++fmt_first;
-					}
-					else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_grav))	//  '`', $`, prefix.
-					{
-						out = std::copy(this->prefix().first, this->prefix().second, out);
-						++fmt_first;
-					}
-					else if (*fmt_first == static_cast<char_type>(re_detail::char_other::co_apos))	//  '\'', $', suffix.
-					{
-						out = std::copy(this->suffix().first, this->suffix().second, out);
-						++fmt_first;
-					}
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-					else if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_lt) && !no_groupnames)	//  '<', $<
-					{
-						const char_type *const current_backup = fmt_first;
-						bool replaced = false;
+					const char_type *const afterdollar_pos = fmt_first;
+					size_type backref_number = 0;
 
-						if (++fmt_first == fmt_last)
-							;	//  Do nothing.
-						else
+					if (fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
+					{
+						backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
+
+						if (++fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
 						{
-							const char_type *const name_begin = fmt_first;
-
-							for (;; ++fmt_first)
-							{
-								if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_gt))
-								{
-									const re_detail::ui_l32 backref_number = lookup_backref_number(name_begin, fmt_first);
-
-									if (backref_number != gnamemap_type::notfound)
-									{
-										const value_type &mn = (*this)[backref_number];
-
-										if (mn.matched)
-											out = std::copy(mn.first, mn.second, out);
-//										replaced = true;
-									}
-									replaced = true;
-									++fmt_first;
-									break;
-								}
-								if (fmt_first == fmt_last)
-									break;
-							}
-						}
-						if (!replaced)
-						{
-							fmt_first = current_backup;
-							*out++ = re_detail::meta_char::mc_dollar;	//  '$';
+							backref_number *= 10;
+							backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
+							++fmt_first;
 						}
 					}
-#endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
+
+					if (backref_number && backref_number < this->size())
+					{
+						const value_type &mn = (*this)[backref_number];
+
+						if (mn.matched)
+							out = std::copy(mn.first, mn.second, out);
+					}
 					else
 					{
-						const char_type *const backup_pos = fmt_first;
-						size_type backref_number = 0;
+						*out++ = re_detail::meta_char::mc_dollar;	//  '$';
 
-						if (fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
-						{
-							backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
-
-							if (++fmt_first != fmt_last && *fmt_first >= static_cast<char_type>(re_detail::char_alnum::ch_0) && *fmt_first <= static_cast<char_type>(re_detail::char_alnum::ch_9))	//  '0'-'9'
-							{
-								backref_number *= 10;
-								backref_number += *fmt_first - re_detail::char_alnum::ch_0;	//  '0';
-								++fmt_first;
-							}
-						}
-
-						if (backref_number && backref_number < this->size())
-						{
-							const value_type &mn = (*this)[backref_number];
-
-							if (mn.matched)
-								out = std::copy(mn.first, mn.second, out);
-						}
-						else
-						{
-							*out++ = re_detail::meta_char::mc_dollar;	//  '$';
-
-							fmt_first = backup_pos;
-							if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_dollar))
-								++fmt_first;
-						}
+						fmt_first = afterdollar_pos;
+						if (*fmt_first == static_cast<char_type>(re_detail::meta_char::mc_dollar))
+							++fmt_first;
 					}
 				}
 			}
@@ -21521,20 +21585,25 @@ public:
 		return result;
 	}
 
-	//  28.10.6, allocator:
-	//  [7.10.5] allocator
 	allocator_type get_allocator() const
 	{
 		return allocator_type();
 	}
 
-	//  28.10.7, swap:
-	//  [7.10.6] swap
 	void swap(match_results &that)
 	{
-		const match_results tmp(that);
-		that = *this;
-		*this = tmp;
+		{
+			const re_detail::ui_l32 tmp(ready_);
+			ready_ = that.ready_;
+			that.ready_ = tmp;
+		}
+		sub_matches_.swap(that.sub_matches_);
+		prefix_.swap(that.prefix_);
+		suffix_.swap(that.suffix_);
+		std::swap(base_, that.base_);
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+		gnames_.swap(that.gnames_);
+#endif
 	}
 
 	regex_constants::error_type ecode() const
@@ -21566,22 +21635,21 @@ public:	//  For internal.
 
 //	template <typename charT>
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool set_match_results_(const gnamemap_type &gnames)
+	bool set_match_results_(const re_detail::ui_l32 num_of_brackets, const gnamemap_type &gnames)
 #else
-	bool set_match_results_()
+	bool set_match_results_(const re_detail::ui_l32 num_of_brackets)
 #endif
 	{
-		sub_matches_.resize(sstate_.bracket.size());
-//		value_type &m0 = sub_matches_[0];
+		sub_matches_.resize(num_of_brackets);
 
 		sub_matches_[0].matched = true;
 
-		for (re_detail::ui_l32 i = 1; i < static_cast<re_detail::ui_l32>(sstate_.bracket.size()); ++i)
+		for (re_detail::ui_l32 i = 1; i < num_of_brackets; ++i)
 			sub_matches_[i].set_(sstate_.bracket[i]);
 
 		base_ = sstate_.lblim;
 		prefix_.first = sstate_.srchbegin;
-		prefix_.second = sub_matches_[0].first = sstate_.bracket[0].core.open_at;
+		prefix_.second = sub_matches_[0].first = sstate_.curbegin;
 		suffix_.first = sub_matches_[0].second = sstate_.ssc.iter;
 		suffix_.second = sstate_.srchend;
 
@@ -21643,7 +21711,7 @@ public:	//  For internal.
 		prefix_.first = prefix_.second = mf;
 	}
 
-	bool mark_as_failed_(const re_detail::ui_l32 reason)
+	bool set_as_failed_(const re_detail::ui_l32 reason)
 	{
 		ready_ = reason ? (reason << 1) : 1u;
 		return false;
@@ -21664,12 +21732,7 @@ private:
 
 	re_detail::ui_l32 lookup_backref_number(const char_type *begin, const char_type *const end) const
 	{
-		typename gnamemap_type::gname_string key(end - begin);
-
-		for (std::size_t i = 0; begin != end; ++begin, ++i)
-			key[i] = *begin;
-
-		const re_detail::ui_l32 *list = gnames_[key];
+		const re_detail::ui_l32 *list = gnames_[typename gnamemap_type::view_type(begin, end - begin)];
 		re_detail::ui_l32 gno = gnamemap_type::notfound;
 
 		if (list)
@@ -21696,8 +21759,6 @@ public:	//  For debug.
 
 private:
 
-	typedef std::vector<value_type, Allocator> sub_match_array;
-
 	re_detail::ui_l32 ready_;
 	sub_match_array sub_matches_;
 	value_type prefix_;
@@ -21710,8 +21771,6 @@ private:
 #endif
 };
 
-//  28.10.7, match_results swap:
-//  [7.10.6] match_results swap
 template <class BidirectionalIterator, class Allocator>
 void swap(
 	match_results<BidirectionalIterator, Allocator> &m1,
@@ -21721,7 +21780,6 @@ void swap(
 	m1.swap(m2);
 }
 
-//  28.10.8, match_results comparisons
 template <class BidirectionalIterator, class Allocator>
 bool operator==(
 	const match_results<BidirectionalIterator, Allocator> &m1,
@@ -21842,59 +21900,73 @@ public:
 				if (this->bmdata->do_casesensitivesearch(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
 #endif	//  !defined(SRELL_NO_ICASE)
 					return results.set_match_results_bmh_();
-
-				goto NOT_FOUND;
 			}
+			else
 #endif	//  !defined(SRELLDBG_NO_BMH)
-
-			sstate.init_for_automaton(this->number_of_brackets, this->number_of_counters, this->number_of_repeats);
-
-			if (sstate.flags & regex_constants::match_continuous)
 			{
-				sstate.entry_state = this->NFA_states[0].next_state2;
+				sstate.init_for_automaton(this->number_of_brackets, this->number_of_counters, this->number_of_repeats);
+				{
+					if (sstate.flags & regex_constants::match_continuous)
+					{
+						sstate.entry_state = this->NFA_states[0].next_state2;
 
-				sstate.ssc.iter = sstate.nextpos;
+						sstate.ssc.iter = sstate.nextpos;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
-				sstate.reset();
+						sstate.reset();
 #else
-				sstate.reset(this->limit_counter);
+						sstate.reset(this->limit_counter);
 #endif
-				reason = !this->is_ricase() ? run_automaton<false, false>(sstate) : run_automaton<true, false>(sstate);
-
-				goto CHECK_REASON;
-			}
-
-			sstate.entry_state = this->NFA_states[0].next_state1;
+#if !defined(SRELL_NO_ICASE)
+						reason = !this->is_ricase() ? run_automaton<false, false>(sstate) : run_automaton<true, false>(sstate);
+#else
+						reason = run_automaton<false, false>(sstate);
+#endif
+					}
+					else
+					{
+						sstate.entry_state = this->NFA_states[0].next_state1;
 
 #if !defined(SRELLDBG_NO_SCFINDER)
-			if (this->NFA_states[0].char_num <= utf_traits::maxcpvalue)
-			{
-				reason = !this->is_ricase() ? do_search_sc<false>(sstate, ci_checker()) : do_search_sc<true>(sstate, ci_checker());
-
-				goto CHECK_REASON;
-			}
-#endif	//  !defined(SRELLDBG_NO_SCFINDER)
-
+						if (this->NFA_states[0].char_num <= utf_traits::maxcpvalue)
+						{
 #if !defined(SRELL_NO_ICASE)
-			reason = !this->is_ricase() ? do_search<false>(sstate, maybe_cic()) : do_search<true>(sstate, maybe_cic());
+							reason = !this->is_ricase() ? do_search_sc<false>(sstate, ci_checker()) : do_search_sc<true>(sstate, ci_checker());
 #else
-			reason = do_search<false>(results, maybe_cic());
+							reason = do_search_sc<false>(sstate, ci_checker());
 #endif
-			CHECK_REASON:
-			if (reason == 1)
-			{
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-				return results.set_match_results_(this->namedcaptures);
+						}
+						else
+#endif	//  !defined(SRELLDBG_NO_SCFINDER)
+						{
+#if !defined(SRELL_NO_ICASE)
+							reason = !this->is_ricase() ? do_search<false>(sstate, maybe_cic()) : do_search<true>(sstate, maybe_cic());
 #else
-				return results.set_match_results_();
+							reason = do_search<false>(sstate, maybe_cic());
+#endif
+						}
+					}
+
+					if (reason == 1)
+					{
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+						return results.set_match_results_(this->number_of_brackets, this->namedcaptures);
+#else
+						return results.set_match_results_(this->number_of_brackets);
+#endif
+					}
+				}
+
+#if !defined(SRELL_NO_THROW)
+				if (reason)
+				{
+					if (!(this->soflags & regex_constants::quiet))
+						throw regex_error(static_cast<regex_constants::error_type>(reason));
+				}
 #endif
 			}
 		}
-#if !defined(SRELLDBG_NO_BMH)
-		NOT_FOUND:
-#endif
-		return results.mark_as_failed_(reason);
+		return results.set_as_failed_(reason);
 	}
 
 private:
@@ -21917,11 +21989,12 @@ SRELL_NO_VCWARNING_END
 			if (numofranges <= 16)
 			{
 				const int maxsize = sizeof (char_type2) == 1 ? 16 : 8;
-				const __m128i sranges = _mm_loadu_si128(reinterpret_cast<const __m128i *>(this->simdranges));
+				const __m128i sranges = this->simdranges;
 
 				for (; (sstate.srchend - sstate.nextpos) >= maxsize;)
 				{
-					const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(&*sstate.nextpos));
+					__m128i data;
+					std::memcpy(&data, &*sstate.nextpos, 16);
 					const int pos = _mm_cmpestri(sranges, numofranges, data, maxsize, sizeof (char_type2) == 1 ? 4 : 5);
 
 					if (pos == maxsize)
@@ -22019,7 +22092,13 @@ SRELL_NO_VCWARNING_END
 	#else
 				const ui_l32 firstchar = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 
-				if (!this->firstchar_class.is_included(firstchar))
+				const re_quantifier &r0q = this->NFA_states[0].quantifier;
+
+#if !defined(SRELLDBG_NO_CCPOS)
+				if (!this->character_class.is_included(r0q.atleast, r0q.atmost, firstchar))
+#else
+				if (!this->character_class.is_included(r0q.is_greedy, firstchar))
+#endif
 					continue;
 	#endif
 #endif	//  defined(SRELLDBG_NO_1STCHRCLS)
@@ -22210,10 +22289,7 @@ SRELL_NO_VCWARNING_END
 	};
 
 	template <const bool icase, const bool reverse, typename BidirectionalIterator>
-	ui_l32 run_automaton
-	(
-		re_search_state</*charT, */BidirectionalIterator> &sstate
-	) const
+	ui_l32 run_automaton(re_search_state<BidirectionalIterator> &sstate) const
 	{
 		typedef casehelper<ui_l32, icase> casehelper_type;
 		typedef typename re_object_core<charT, traits>::state_type state_type;
@@ -22223,54 +22299,37 @@ SRELL_NO_VCWARNING_END
 		typedef typename ss_type::submatch_type submatch_type;
 		typedef typename ss_type::counter_type counter_type;
 		typedef typename ss_type::position_type position_type;
-		ui_l32 is_matched;
 
 		goto START;
 
-		JUDGE:
-		if (is_matched)
-		{
-			MATCHED:
-			sstate.ssc.state = sstate.ssc.state->next_state1;
-		}
-		else
-		{
-			NOT_MATCHED:
+		NOT_MATCHED:
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
-			if (--sstate.failure_counter)
-			{
+		if (--sstate.failure_counter)
+		{
 #endif
-				NOT_MATCHED0:
-				if (sstate.bt_size() > sstate.btstack_size)
-				{
-					sstate.pop_bt(sstate.ssc);
+			NOT_MATCHED0:
+			if (sstate.bt_size() > sstate.btstack_size)
+			{
+				sstate.pop_bt(sstate.ssc);
 
-					sstate.ssc.state = sstate.ssc.state->next_state2;
-				}
-				else
-					return 0;
-
-#if !defined(SRELL_NO_LIMIT_COUNTER)
+				sstate.ssc.state = sstate.ssc.state->next_state2;
 			}
 			else
-#if defined(SRELL_NO_THROW)
-				return static_cast<int>(regex_constants::error_complexity);
-#else
-				throw regex_error(regex_constants::error_complexity);
-#endif
-#endif
-		}
+				return 0;
 
-//		START:
+#if !defined(SRELL_NO_LIMIT_COUNTER)
+		}
+		else
+			return static_cast<ui_l32>(regex_constants::error_complexity);
+#endif
+
 		for (;;)
 		{
 			START:
 
-			switch (sstate.ssc.state->type)
+			if (sstate.ssc.state->type == st_character)
 			{
-			case st_character:
-
 SRELL_NO_VCWARNING(4127)
 				if (!reverse)
 SRELL_NO_VCWARNING_END
@@ -22281,21 +22340,26 @@ SRELL_NO_VCWARNING_END
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
 						const ui_l32 uchar = casehelper_type::canonicalise(utf_traits::codepoint_inc(sstate.ssc.iter, sstate.srchend));
-						RETRY_CF:
-
-						if (sstate.ssc.state->char_num == uchar)
-							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (sstate.ssc.state->next_state2)
+						for (;;)
 						{
-							sstate.ssc.state = sstate.ssc.state->next_state2;
+#endif
+							if (sstate.ssc.state->char_num == uchar)
+								goto MATCHED;
 
-							if (sstate.ssc.state->type == st_character)
-								goto RETRY_CF;
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+							if (sstate.ssc.state->next_state2)
+							{
+								sstate.ssc.state = sstate.ssc.state->next_state2;
 
-							sstate.ssc.iter = prevpos;
-							continue;
+								if (sstate.ssc.state->type == st_character)
+									continue;
+
+								sstate.ssc.iter = prevpos;
+								goto START2;
+							}
+							break;
 						}
 #endif
 					}
@@ -22315,21 +22379,26 @@ SRELL_NO_VCWARNING_END
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
 						const ui_l32 uchar = casehelper_type::canonicalise(utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim));
-						RETRY_CB:
-
-						if (sstate.ssc.state->char_num == uchar)
-							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (sstate.ssc.state->next_state2)
+						for (;;)
 						{
-							sstate.ssc.state = sstate.ssc.state->next_state2;
+#endif
+							if (sstate.ssc.state->char_num == uchar)
+								goto MATCHED;
 
-							if (sstate.ssc.state->type == st_character)
-								goto RETRY_CB;
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+							if (sstate.ssc.state->next_state2)
+							{
+								sstate.ssc.state = sstate.ssc.state->next_state2;
 
-							sstate.ssc.iter = prevpos;
-							continue;
+								if (sstate.ssc.state->type == st_character)
+									continue;
+
+								sstate.ssc.iter = prevpos;
+								goto START2;
+							}
+							break;
 						}
 #endif
 					}
@@ -22342,9 +22411,12 @@ SRELL_NO_VCWARNING_END
 #endif
 				}
 				goto NOT_MATCHED;
+			}
 
-			case st_character_class:
+			START2:
 
+			if (sstate.ssc.state->type == st_character_class)
+			{
 SRELL_NO_VCWARNING(4127)
 				if (!reverse)
 SRELL_NO_VCWARNING_END
@@ -22355,7 +22427,6 @@ SRELL_NO_VCWARNING_END
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
 						const ui_l32 uchar = utf_traits::codepoint_inc(sstate.ssc.iter, sstate.srchend);
-//						RETRY_CCF:
 
 #if !defined(SRELLDBG_NO_CCPOS)
 						if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, uchar))
@@ -22368,9 +22439,6 @@ SRELL_NO_VCWARNING_END
 						if (sstate.ssc.state->next_state2)
 						{
 							sstate.ssc.state = sstate.ssc.state->next_state2;
-
-//							if (sstate.ssc.state->type == st_character_class)
-//								goto RETRY_CCF;
 
 							sstate.ssc.iter = prevpos;
 							continue;
@@ -22393,7 +22461,6 @@ SRELL_NO_VCWARNING_END
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
 #endif
 						const ui_l32 uchar = utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
-//						RETRY_CCB:
 
 #if !defined(SRELLDBG_NO_CCPOS)
 						if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, uchar))
@@ -22406,9 +22473,6 @@ SRELL_NO_VCWARNING_END
 						if (sstate.ssc.state->next_state2)
 						{
 							sstate.ssc.state = sstate.ssc.state->next_state2;
-
-//							if (sstate.ssc.state->type == st_character_class)
-//								goto RETRY_CCB;
 
 							sstate.ssc.iter = prevpos;
 							continue;
@@ -22424,37 +22488,38 @@ SRELL_NO_VCWARNING_END
 #endif
 				}
 				goto NOT_MATCHED;
+			}
 
-			case st_epsilon:
-
+			if (sstate.ssc.state->type == st_epsilon)
+			{
 #if defined(SRELLDBG_NO_SKIP_EPSILON)
 				if (sstate.ssc.state->next_state2)
 #endif
 				{
-					sstate.push_bt(sstate.ssc);
+					sstate.push_bt_wc(sstate.ssc);
 				}
 
+				MATCHED:
 				sstate.ssc.state = sstate.ssc.state->next_state1;
 				continue;
+			}
 
-			default:
-				switch (sstate.ssc.state->type)
-				{
-
+			switch (sstate.ssc.state->type)
+			{
 			case st_check_counter:
 				{
 					ST_CHECK_COUNTER:
-					const ui_l32 counter = sstate.counter[sstate.ssc.state->char_num];
+					const counter_type counter = sstate.counter[sstate.ssc.state->char_num];
 
-					if (counter < sstate.ssc.state->quantifier.atleast)
+					if (counter.no < sstate.ssc.state->quantifier.atleast)
 					{
 						++sstate.ssc.state;
 					}
 					else
 					{
-						if (counter < sstate.ssc.state->quantifier.atmost || sstate.ssc.state->quantifier.is_infinity())
+						if (counter.no < sstate.ssc.state->quantifier.atmost || sstate.ssc.state->quantifier.is_infinity())
 						{
-							sstate.push_bt(sstate.ssc);
+							sstate.push_bt_wc(sstate.ssc);
 							sstate.ssc.state = sstate.ssc.state->next_state1;
 						}
 						else
@@ -22470,28 +22535,30 @@ SRELL_NO_VCWARNING_END
 
 			case st_increment_counter:
 				{
-					ui_l32 &counter = sstate.counter[sstate.ssc.state->char_num];
+					counter_type &counter = sstate.counter[sstate.ssc.state->char_num];
 
-					if (counter != constants::infinity)
+					if (counter.no != constants::infinity)
 					{
-						++counter;
+						++counter.no;
 						if (sstate.ssc.state->next_state2)
-							sstate.push_bt(sstate.ssc);
+							sstate.push_bt_wc(sstate.ssc);
 					}
 				}
 				goto MATCHED;
 
 			case st_decrement_counter:
-				--sstate.counter[sstate.ssc.state->char_num];
+				--sstate.counter[sstate.ssc.state->char_num].no;
 				goto NOT_MATCHED0;
 
 			case st_save_and_reset_counter:
 				{
-					counter_type &c = sstate.counter[sstate.ssc.state->char_num];
+					counter_type &counter = sstate.counter[sstate.ssc.state->char_num];
 
-					sstate.push_c(c);
+					sstate.expand(sizeof counter + sizeof sstate.ssc);
+
+					sstate.push_c(counter);
 					sstate.push_bt(sstate.ssc);
-					c = 0;
+					counter.no = 0;
 				}
 				sstate.ssc.state = sstate.ssc.state->next_state1;
 				goto ST_CHECK_COUNTER;
@@ -22502,7 +22569,17 @@ SRELL_NO_VCWARNING_END
 
 			case st_roundbracket_open:	//  '(':
 				{
-					ST_ROUNDBRACKET_OPEN:
+					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
+					ui_l32 extra = (bracket.counter.no + 1) != 0 ? 0 : 2;	//  To skip 0 and 1 after -1.
+					const re_quantifier &sq = sstate.ssc.state->quantifier;
+					const typename ss_type::btstack_size_type addsize = (sq.atleast <= sq.atmost ? ((sizeof (submatchcore_type) + sizeof (counter_type)) * (sq.atmost - sq.atleast + 1)) : 0) + sizeof (submatchcore_type) + sizeof sstate.ssc;
+
+					TWOMORE:
+					sstate.expand(addsize);
+
+					sstate.push_sm(bracket.core);
+					++bracket.counter.no;
+
 					for (ui_l32 brno = sstate.ssc.state->quantifier.atleast; brno <= sstate.ssc.state->quantifier.atmost; ++brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
@@ -22510,19 +22587,17 @@ SRELL_NO_VCWARNING_END
 						sstate.push_sm(inner_bracket.core);
 						sstate.push_c(inner_bracket.counter);
 						inner_bracket.core.open_at = inner_bracket.core.close_at = sstate.srchend;
-						inner_bracket.counter = 0;
+						inner_bracket.counter.no = 0;
 						//  ECMAScript spec (3-5.1) 15.10.2.5, NOTE 3.
 						//  ECMAScript 2018 (ES9) 21.2.2.5.1, Note 3.
 					}
-
-					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
-
-					sstate.push_sm(bracket.core);
-
 					sstate.push_bt(sstate.ssc);
 
-					if (++bracket.counter == 0)
-						goto ST_ROUNDBRACKET_OPEN;
+					if (extra)
+					{
+						--extra;
+						goto TWOMORE;
+					}
 
 					(!reverse ? bracket.core.open_at : bracket.core.close_at) = sstate.ssc.iter;
 				}
@@ -22530,11 +22605,6 @@ SRELL_NO_VCWARNING_END
 
 			case st_roundbracket_pop:	//  '/':
 				{
-					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
-
-					--bracket.counter;
-					sstate.pop_sm(bracket.core);
-
 					for (ui_l32 brno = sstate.ssc.state->quantifier.atmost; brno >= sstate.ssc.state->quantifier.atleast; --brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
@@ -22542,6 +22612,11 @@ SRELL_NO_VCWARNING_END
 						sstate.pop_c(inner_bracket.counter);
 						sstate.pop_sm(inner_bracket.core);
 					}
+
+					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
+
+					--bracket.counter.no;
+					sstate.pop_sm(bracket.core);
 				}
 				goto NOT_MATCHED0;
 
@@ -22558,18 +22633,19 @@ SRELL_NO_VCWARNING_END
 					{
 						if (sstate.ssc.state->next_state1->type != st_check_counter)
 						{
-							if (bracket.counter > 1)
-								goto NOT_MATCHED0;	//  ECMAScript spec 15.10.2.5, note 4.
+							//  .atleast is 0 (*) or 1 (+). To rewind correctly, if .counter being
+							//  equal to -1 is incremented the next value must be 2, skipping 0 and 1.
+							if (bracket.counter.no > sstate.ssc.state->quantifier.atleast)
+								goto NOT_MATCHED0;
 
 							sstate.ssc.state = sstate.ssc.state->next_state2;
 								//  Accepts 0 width match and exits.
 						}
-						else
+						else	//  A pair with check_counter.
 						{
-							//  A pair with check_counter.
 							const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
 
-							if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
+							if (counter.no > sstate.ssc.state->quantifier.atleast)
 								goto NOT_MATCHED0;	//  Takes a captured string in the previous loop.
 
 							sstate.ssc.state = sstate.ssc.state->next_state1;
@@ -22583,6 +22659,9 @@ SRELL_NO_VCWARNING_END
 			case st_repeat_in_push:
 				{
 					position_type &r = sstate.repeat[sstate.ssc.state->char_num];
+					const re_quantifier &sq = sstate.ssc.state->quantifier;
+
+					sstate.expand(sizeof r + (sq.atleast <= sq.atmost ? ((sizeof (submatchcore_type) + sizeof (counter_type)) * (sq.atmost - sq.atleast + 1)) : 0) + sizeof sstate.ssc);
 
 					sstate.push_rp(r);
 					r = sstate.ssc.iter;
@@ -22594,7 +22673,7 @@ SRELL_NO_VCWARNING_END
 						sstate.push_sm(inner_bracket.core);
 						sstate.push_c(inner_bracket.counter);
 						inner_bracket.core.open_at = inner_bracket.core.close_at = sstate.srchend;
-						inner_bracket.counter = 0;
+						inner_bracket.counter.no = 0;
 						//  ECMAScript 2019 (ES10) 21.2.2.5.1, Note 3.
 					}
 					sstate.push_bt(sstate.ssc);
@@ -22621,7 +22700,7 @@ SRELL_NO_VCWARNING_END
 				{
 					const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
 
-					if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
+					if (counter.no > sstate.ssc.state->next_state1->quantifier.atleast)
 						goto NOT_MATCHED0;
 
 					sstate.ssc.state = sstate.ssc.state->next_state1;
@@ -22634,18 +22713,13 @@ SRELL_NO_VCWARNING_END
 			case st_backreference:	//  '\\':
 				{
 					const submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
+					const submatchcore_type &brc = bracket.core;
 
-					if (bracket.counter == 0)	//  Undefined.
+					if (bracket.counter.no == 0 || brc.open_at == brc.close_at)	//  Undefined or "".
 					{
-						ESCAPE_FROM_ZERO_WIDTH_MATCH:
 						sstate.ssc.state = sstate.ssc.state->next_state2;
 						continue;
 					}
-
-					const submatchcore_type &brc = bracket.core;
-
-					if (brc.open_at == brc.close_at)
-						goto ESCAPE_FROM_ZERO_WIDTH_MATCH;
 
 SRELL_NO_VCWARNING(4127)
 					if (!reverse)
@@ -22711,8 +22785,11 @@ SRELL_NO_VCWARNING_END
 			case st_lookaround_open:
 				{
 					const state_type *const lostate = sstate.ssc.state;
+					const re_quantifier *const losq = &lostate->quantifier;
 
-					for (ui_l32 brno = lostate->quantifier.atleast; brno <= lostate->quantifier.atmost; ++brno)
+					sstate.expand((losq->atleast <= losq->atmost ? ((sizeof (submatchcore_type) + sizeof (counter_type)) * (losq->atmost - losq->atleast + 1)) : 0) + sizeof sstate.ssc);
+
+					for (ui_l32 brno = losq->atleast; brno <= losq->atmost; ++brno)
 					{
 						const submatch_type &sm = sstate.bracket[brno];
 						sstate.push_sm(sm.core);
@@ -22722,32 +22799,29 @@ SRELL_NO_VCWARNING_END
 					const typename ss_type::bottom_state backup_bottom(sstate.btstack_size, sstate);
 					const BidirectionalIterator orgpos = sstate.ssc.iter;
 
-					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
+					if (losq->atleast <= losq->atmost)
 						sstate.push_bt(sstate.ssc);
 
 #if !defined(SRELLDBG_NO_MPREWINDER)
-					if (lostate->quantifier.is_greedy >= 2)
-					{
-						sstate.push_rp(sstate.lblim);
+					if (losq->is_greedy >= 2)
 						sstate.lblim = sstate.srchbegin;
-					}
 #endif
 
 					sstate.btstack_size = sstate.bt_size();
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+					ui_l32 is_matched;
 
 //					if (lostate->reverse)
 					{
-						for (ui_l32 i = 0; i < lostate->quantifier.is_greedy; ++i)
+						for (ui_l32 i = 0; i < losq->is_greedy; ++i)
 						{
-							if (!(sstate.ssc.iter == sstate.lblim))
+							if (sstate.ssc.iter == sstate.lblim)
 							{
-								utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
-								continue;
+								is_matched = 0;
+								goto AFTER_LOOKAROUND;
 							}
-							is_matched = false;
-							goto AFTER_LOOKAROUND;
+							utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
 						}
 					}
 #endif
@@ -22755,17 +22829,14 @@ SRELL_NO_VCWARNING_END
 
 					//  sstate.ssc.state is no longer pointing to lookaround_open!
 
-					is_matched =
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-						(lostate->quantifier.is_greedy == 0 ? run_automaton<icase, false>(sstate) : run_automaton<icase, true>(sstate));
+					const ui_l32 is_matched = (losq->is_greedy == 0 ? run_automaton<icase, false>(sstate) : run_automaton<icase, true>(sstate));
 #else
-						run_automaton<icase, false>(sstate);
+					is_matched = run_automaton<icase, false>(sstate);
 #endif
 
-#if defined(SRELL_NO_THROW)
 					if (is_matched >> 1)
 						return is_matched;
-#endif
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 					AFTER_LOOKAROUND:
@@ -22773,11 +22844,11 @@ SRELL_NO_VCWARNING_END
 					sstate.bt_resize(sstate.btstack_size);
 
 #if !defined(SRELLDBG_NO_MPREWINDER)
-					if (lostate->quantifier.is_greedy >= 2)
+					if (losq->is_greedy >= 2)
 					{
-						sstate.pop_rp(sstate.lblim);
+						sstate.lblim = sstate.reallblim;
 						if (is_matched)
-							sstate.bracket[0].core.open_at = sstate.ssc.iter;
+							sstate.curbegin = sstate.ssc.iter;
 					}
 #endif
 
@@ -22786,19 +22857,17 @@ SRELL_NO_VCWARNING_END
 #endif
 					{
 #if !defined(SRELLDBG_NO_MPREWINDER)
-						if (lostate->quantifier.is_greedy < 3)
+						if (losq->is_greedy < 3)
 #endif
 							sstate.ssc.iter = orgpos;
 					}
 
 					backup_bottom.restore(sstate.btstack_size, sstate);
 
-					is_matched ^= lostate->flags;	//  is_not.
-
-					if (is_matched)
+					if (is_matched ^ lostate->flags)
 					{
 #if !defined(SRELLDBG_NO_MPREWINDER)
-						if (lostate->quantifier.is_greedy == 3)
+						if (losq->is_greedy == 3)
 							sstate.ssc.state = this->NFA_states[0].next_state2;
 						else
 #endif
@@ -22806,7 +22875,7 @@ SRELL_NO_VCWARNING_END
 						continue;
 					}
 
-					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
+					if (losq->atleast <= losq->atmost)
 						sstate.pop_bt(sstate.ssc);
 					sstate.ssc.state = lostate->next_state2;
 				}
@@ -22864,58 +22933,63 @@ SRELL_NO_VCWARNING_END
 				goto NOT_MATCHED;
 
 			case st_boundary:	//  '\b' '\B'
-				is_matched = sstate.ssc.state->flags;	//  is_not.
-//				is_matched = sstate.ssc.state->char_num == char_alnum::ch_B;
-
-				//  First, suppose the previous character is not \w but \W.
-
-				if (sstate.ssc.iter == sstate.srchend)
 				{
-					if (sstate.flags & regex_constants::match_not_eow)
-						is_matched = is_matched ? 0u : 1u;
-				}
-				else
-				{
-					BidirectionalIterator la(sstate.ssc.iter);
-#if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, utf_traits::codepoint_inc(la, sstate.srchend)))
-#else
-					if (this->character_class.is_included(sstate.ssc.state->char_num, utf_traits::codepoint_inc(la, sstate.srchend)))
-#endif
+					ui_l32 is_matched = sstate.ssc.state->flags;	//  is_not.
+//					is_matched = sstate.ssc.state->char_num == char_alnum::ch_B;
+
+					//  First, suppose the previous character is not \w but \W.
+
+					if (sstate.ssc.iter == sstate.srchend)
 					{
-						is_matched = is_matched ? 0u : 1u;
+						if (sstate.flags & regex_constants::match_not_eow)
+							is_matched ^= 1u;
 					}
-				}
-				//      \W/last     \w
-				//  \b  false       true
-				//  \B  true        false
-
-				//  Second, if the actual previous character is \w, flip is_matched.
-
-				if (sstate.ssc.iter == sstate.lblim && !(sstate.reallblim != sstate.lblim || (sstate.flags & regex_constants::match_prev_avail) != 0))
-				{
-					if (sstate.flags & regex_constants::match_not_bow)
-						is_matched = is_matched ? 0u : 1u;
-				}
-				else
-				{
-					BidirectionalIterator lb(sstate.ssc.iter);
-					//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
-#if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, utf_traits::dec_codepoint(lb, sstate.reallblim)))
-#else
-					if (this->character_class.is_included(sstate.ssc.state->char_num, utf_traits::dec_codepoint(lb, sstate.reallblim)))
-#endif
+					else
 					{
-						is_matched = is_matched ? 0u : 1u;
+						BidirectionalIterator la(sstate.ssc.iter);
+#if !defined(SRELLDBG_NO_CCPOS)
+						if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, utf_traits::codepoint_inc(la, sstate.srchend)))
+#else
+						if (this->character_class.is_included(sstate.ssc.state->char_num, utf_traits::codepoint_inc(la, sstate.srchend)))
+#endif
+						{
+							is_matched ^= 1u;
+						}
 					}
-				}
-				//  \b                          \B
-				//  pre cur \W/last \w          pre cur \W/last \w
-				//  \W/base false   true        \W/base true    false
-				//  \w      true    false       \w      false   true
+					//      \W/last     \w
+					//  \b  false       true
+					//  \B  true        false
 
-				goto JUDGE;
+					//  Second, if the actual previous character is \w, flip is_matched.
+
+					if (sstate.ssc.iter == sstate.lblim && !(sstate.reallblim != sstate.lblim || (sstate.flags & regex_constants::match_prev_avail) != 0))
+					{
+						if (sstate.flags & regex_constants::match_not_bow)
+							is_matched ^= 1u;
+					}
+					else
+					{
+						BidirectionalIterator lb(sstate.ssc.iter);
+						//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
+#if !defined(SRELLDBG_NO_CCPOS)
+						if (this->character_class.is_included(sstate.ssc.state->quantifier.atleast, sstate.ssc.state->quantifier.atmost, utf_traits::dec_codepoint(lb, sstate.reallblim)))
+#else
+						if (this->character_class.is_included(sstate.ssc.state->char_num, utf_traits::dec_codepoint(lb, sstate.reallblim)))
+#endif
+						{
+							is_matched ^= 1u;
+						}
+					}
+					//  \b                          \B
+					//  pre cur \W/last \w          pre cur \W/last \w
+					//  \W/base false   true        \W/base true    false
+					//  \w      true    false       \w      false   true
+
+					if (is_matched)
+						goto MATCHED;
+
+					goto NOT_MATCHED;
+				}
 
 			case st_success:	//  == lookaround_close.
 //				if (is_recursive)
@@ -22924,7 +22998,7 @@ SRELL_NO_VCWARNING_END
 
 				if
 				(
-					(!(sstate.flags & regex_constants::match_not_null) || !(sstate.ssc.iter == sstate.bracket[0].core.open_at))
+					(!(sstate.flags & regex_constants::match_not_null) || !(sstate.ssc.iter == sstate.curbegin))
 					&&
 					(!(sstate.flags & regex_constants::match_match_) || sstate.ssc.iter == sstate.srchend)
 				)
@@ -22939,7 +23013,7 @@ SRELL_NO_VCWARNING_END
 				if (!(sstate.ssc.iter == sstate.srchend))
 					++sstate.nextpos;
 #else	//  defined(SRELLDBG_NO_1STCHRCLS) || defined(SRELLDBG_NO_BITSET)
-				if (sstate.ssc.iter != sstate.bracket[0].core.open_at)
+				if (sstate.ssc.iter != sstate.curbegin)
 				{
 					sstate.nextpos = sstate.ssc.iter;
 					if (!(sstate.ssc.iter == sstate.srchend))
@@ -22951,12 +23025,7 @@ SRELL_NO_VCWARNING_END
 
 			default:
 				//  Reaching here means that this->NFA_states is corrupted.
-#if defined(SRELL_NO_THROW)
-				return static_cast<int>(regex_constants::error_internal);
-#else
-				throw regex_error(regex_constants::error_internal);
-#endif
-				}
+				return static_cast<ui_l32>(regex_constants::error_internal);
 			}
 		}
 	}
@@ -22968,7 +23037,6 @@ SRELL_NO_VCWARNING_END
 //  ... "rei_algorithm.hpp"]
 //  ["basic_regex.hpp" ...
 
-//  28.8, class template basic_regex:
 template <class charT, class traits = regex_traits<charT> >
 class basic_regex : public re_detail::re_object<charT, traits>
 {
@@ -22981,8 +23049,6 @@ public:
 	typedef regex_constants::syntax_option_type flag_type;
 	typedef typename traits::locale_type locale_type;
 
-	//  28.8.1, constants:
-	//  [7.8.1] constants
 	static const regex_constants::syntax_option_type icase = regex_constants::icase;
 	static const regex_constants::syntax_option_type nosubs = regex_constants::nosubs;
 	static const regex_constants::syntax_option_type optimize = regex_constants::optimize;
@@ -22998,9 +23064,9 @@ public:
 	static const regex_constants::syntax_option_type sticky = regex_constants::sticky;
 	static const regex_constants::syntax_option_type dotall = regex_constants::dotall;
 	static const regex_constants::syntax_option_type unicodesets = regex_constants::unicodesets;
+	static const regex_constants::syntax_option_type vmode = regex_constants::vmode;
+	static const regex_constants::syntax_option_type quiet = regex_constants::quiet;
 
-	//  28.8.2, construct/copy/destroy:
-	//  [7.8.2] construct/copy/destroy
 	basic_regex()
 	{
 	}
@@ -23078,8 +23144,6 @@ public:
 		return assign(p);
 	}
 
-	//  28.8.3, assign:
-	//  [7.8.3] assign
 	basic_regex &assign(const basic_regex &right)
 	{
 		re_detail::re_object_core<charT, traits>::operator=(right);
@@ -23116,7 +23180,17 @@ public:
 #if defined(SRELL_STRICT_IMPL)
 		basic_regex tmp;
 		tmp.compile(first, last, f);
+#if !defined(SRELL_NO_THROW)
 		tmp.swap(*this);
+#else
+		if (tmp.ecode() == 0)
+			tmp.swap(*this);
+		else
+		{
+			this->soflags &= re_detail::masks::somask;
+			this->soflags |= tmp.soflags & re_detail::masks::errmask;
+		}
+#endif
 #else
 		this->compile(first, last, f);
 #endif
@@ -23130,8 +23204,6 @@ public:
 	}
 #endif
 
-	//  28.8.4, const operations:
-	//  [7.8.4] const operations
 	unsigned mark_count() const
 	{
 		return this->number_of_brackets - 1;
@@ -23139,23 +23211,19 @@ public:
 
 	flag_type flags() const
 	{
-		return this->soflags;
+		return static_cast<flag_type>(this->soflags & re_detail::masks::somask);
 	}
 
-	//  28.8.5, locale:
-	//  [7.8.5] locale
-	locale_type imbue(locale_type loc)
+	locale_type imbue(locale_type /* loc */)
 	{
-		return this->traits_inst.imbue(loc);
+		return locale_type();
 	}
 
 	locale_type getloc() const
 	{
-		return this->traits_inst.getloc();
+		return locale_type();
 	}
 
-	//  28.8.6, swap:
-	//  [7.8.6] swap
 	void swap(basic_regex &e)
 	{
 		re_detail::re_object_core<charT, traits>::swap(e);
@@ -23168,23 +23236,24 @@ public:
 
 #if !defined(SRELL_NO_APIEXT)
 
-	template <typename BidirectionalIterator, typename Allocator>
+	//  Undocumented APIs in the following overloads are experimental,
+	//  which may be removed without notice.
+
+	template <typename BidirectionalIterator, typename MA>
 	bool match(
 		const BidirectionalIterator begin,
 		const BidirectionalIterator end,
-		match_results<BidirectionalIterator, Allocator> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		match_results<BidirectionalIterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return base_type::search(begin, end, begin, m, flags | regex_constants::match_continuous | regex_constants::match_match_);
 	}
 
-	template <typename Allocator>
+	template <typename MA>
 	bool match(
 		const charT *const str,
-		match_results<const charT *, Allocator> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		match_results<const charT *, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return this->match(str, str + std::char_traits<charT>::length(str), m, flags);
 	}
@@ -23193,41 +23262,64 @@ public:
 	bool match(
 		const std::basic_string<charT, ST, SA> &s,
 		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return this->match(s.begin(), s.end(), m, flags);
 	}
+	template <typename ST, typename SA, typename MA>
+	bool match(
+		const std::basic_string<charT, ST, SA> &s,
+		match_results<const charT *, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
+	{
+		return this->match(s.data(), s.data() + s.size(), m, flags);
+	}
 
-	template <typename BidirectionalIterator, typename Allocator>
+	template <typename BidirectionalIterator, typename MA>
 	bool search(
 		const BidirectionalIterator begin,
 		const BidirectionalIterator end,
 		const BidirectionalIterator lookbehind_limit,
-		match_results<BidirectionalIterator, Allocator> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		match_results<BidirectionalIterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return base_type::search(begin, end, lookbehind_limit, m, flags);
 	}
 
-	template <typename BidirectionalIterator, typename Allocator>
+	template <class ST, class SA, class MA>
+	bool search(
+		const std::basic_string<charT, ST, SA> &s,
+		const std::size_t start,
+		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
+	{
+		return base_type::search(s.begin() + start, s.end(), s.begin(), m, flags);
+	}
+	template <class ST, class SA, class MA>
+	bool search(
+		const std::basic_string<charT, ST, SA> &s,
+		const std::size_t start,
+		match_results<const charT *, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
+	{
+		return base_type::search(s.data() + start, s.data() + s.size(), s.data(), m, flags);
+	}
+
+	template <typename BidirectionalIterator, typename MA>
 	bool search(
 		const BidirectionalIterator begin,
 		const BidirectionalIterator end,
-		match_results<BidirectionalIterator, Allocator> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		match_results<BidirectionalIterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return base_type::search(begin, end, begin, m, flags);
 	}
 
-	template <typename Allocator>
+	template <typename MA>
 	bool search(
 		const charT *const str,
-		match_results<const charT *, Allocator> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		match_results<const charT *, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return this->search(str, str + std::char_traits<charT>::length(str), m, flags);
 	}
@@ -23236,10 +23328,17 @@ public:
 	bool search(
 		const std::basic_string<charT, ST, SA> &s,
 		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
-		const regex_constants::match_flag_type flags = regex_constants::match_default
-	) const
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
 		return this->search(s.begin(), s.end(), m, flags);
+	}
+	template <typename ST, typename SA, typename MA>
+	bool search(
+		const std::basic_string<charT, ST, SA> &s,
+		match_results<const charT *, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default) const
+	{
+		return this->search(s.data(), s.data() + s.size(), m, flags);
 	}
 
 private:
@@ -23277,8 +23376,11 @@ template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::dotall;
 template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::unicodesets;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::vmode;
+template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::quiet;
 
-//  28.8.6, basic_regex swap:
 template <class charT, class traits>
 void swap(basic_regex<charT, traits> &lhs, basic_regex<charT, traits> &rhs)
 {
@@ -23314,7 +23416,6 @@ typedef basic_regex<char, u8regex_traits<char> > u8cregex;
 //  ... "basic_regex.hpp"]
 //  ["regex_iterator.hpp" ...
 
-//  28.12.1, class template regex_iterator:
 template <class BidirectionalIterator, class charT = typename std::iterator_traits<BidirectionalIterator>::value_type, class traits = regex_traits<charT> >
 class regex_iterator
 {
@@ -23771,7 +23872,7 @@ public:
 	//  otherwise (if true) returns [match_[0].second, end).
 	//  This function is intended to be called after iterating is
 	//  finished, to receive the range of suffix() of the last match.
-	//  If iterating is aborted during processing (e.g. pushing to a
+	//  If iterating is broken off during processing (e.g. pushing to a
 	//  list container) captured subsequences (match_[n] where n >= 1),
 	//  then should be called with only_after_match being true,
 	//  otherwise [prefix().first, prefix().second) would be duplicated.
@@ -23829,7 +23930,7 @@ public:
 
 	//  Returns the final subsequence immediately following the last
 	//  match range. This should be called after iterating is complete
-	//  or aborted.
+	//  or broken off.
 	//  Unlike remainder() above, a boolean value corresponding to
 	//  only_after_match is automatically calculated.
 	const typename value_type::value_type &split_remainder()
@@ -23929,16 +24030,13 @@ typedef regex_iterator2<std::string::const_iterator, u8cregex> u8csregex_iterato
 //  ... "regex_iterator.hpp"]
 //  ["regex_algorithm.hpp" ...
 
-//  28.11.2, function template regex_match:
-//  [7.11.2] Function template regex_match
 template <class BidirectionalIterator, class Allocator, class charT, class traits>
 bool regex_match(
 	const BidirectionalIterator first,
 	const BidirectionalIterator last,
 	match_results<BidirectionalIterator, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return e.search(first, last, first, m, flags | regex_constants::match_continuous | regex_constants::match_match_);
 }
@@ -23948,8 +24046,7 @@ bool regex_match(
 	const BidirectionalIterator first,
 	const BidirectionalIterator last,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 //  4 Effects: Behaves "as if" by constructing an instance of
 //  match_results<BidirectionalIterator> what, and then returning the
@@ -23965,10 +24062,18 @@ bool regex_match(
 	const charT *const str,
 	match_results<const charT *, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return regex_match(str, str + std::char_traits<charT>::length(str), m, e, flags);
+}
+
+template <class charT, class traits>
+bool regex_match(
+	const charT *const str,
+	const basic_regex<charT, traits> &e,
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
+{
+	return regex_match(str, str + std::char_traits<charT>::length(str), e, flags);
 }
 
 template <class ST, class SA, class Allocator, class charT, class traits>
@@ -23976,28 +24081,16 @@ bool regex_match(
 	const std::basic_string<charT, ST, SA> &s,
 	match_results<typename std::basic_string<charT, ST, SA>::const_iterator, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return regex_match(s.begin(), s.end(), m, e, flags);
-}
-
-template <class charT, class traits>
-bool regex_match(
-	const charT *const str,
-	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
-{
-	return regex_match(str, str + std::char_traits<charT>::length(str), e, flags);
 }
 
 template <class ST, class SA, class charT, class traits>
 bool regex_match(
 	const std::basic_string<charT, ST, SA> &s,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return regex_match(s.begin(), s.end(), e, flags);
 }
@@ -24009,8 +24102,7 @@ bool regex_search(
 	const BidirectionalIterator lookbehind_limit,
 	match_results<BidirectionalIterator, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return e.search(first, last, lookbehind_limit, m, flags);
 }
@@ -24021,8 +24113,7 @@ bool regex_search(
 	const BidirectionalIterator last,
 	const BidirectionalIterator lookbehind_limit,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 //  6 Effects: Behaves "as if" by constructing an object what of type
 //  match_results<iterator> and then returning the result of
@@ -24032,16 +24123,24 @@ bool regex_search(
 	return regex_search(first, last, lookbehind_limit, what, e, flags);
 }
 
-//  28.11.3, function template regex_search:
-//  7.11.3 regex_search [tr.re.alg.search]
+template <class ST, class SA, class Allocator, class charT, class traits>
+bool regex_search(
+	const std::basic_string<charT, ST, SA> &s,
+	const std::size_t start,
+	match_results<typename std::basic_string<charT, ST, SA>::const_iterator, Allocator> &m,
+	const basic_regex<charT, traits> &e,
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
+{
+	return e.search(s.begin() + start, s.end(), s.begin(), m, flags);
+}
+
 template <class BidirectionalIterator, class Allocator, class charT, class traits>
 bool regex_search(
 	const BidirectionalIterator first,
 	const BidirectionalIterator last,
 	match_results<BidirectionalIterator, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return e.search(first, last, first, m, flags);
 }
@@ -24051,8 +24150,7 @@ bool regex_search(
 	const BidirectionalIterator first,
 	const BidirectionalIterator last,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 //  6 Effects: Behaves "as if" by constructing an object what of type
 //  match_results<iterator> and then returning the result of
@@ -24067,8 +24165,7 @@ bool regex_search(
 	const charT *const str,
 	match_results<const charT *, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return regex_search(str, str + std::char_traits<charT>::length(str), m, e, flags);
 }
@@ -24077,20 +24174,9 @@ template <class charT, class traits>
 bool regex_search(
 	const charT *const str,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return regex_search(str, str + std::char_traits<charT>::length(str), e, flags);
-}
-
-template <class ST, class SA, class charT, class traits>
-bool regex_search(
-	const std::basic_string<charT, ST, SA> &s,
-	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
-{
-	return regex_search(s.begin(), s.end(), e, flags);
 }
 
 template <class ST, class SA, class Allocator, class charT, class traits>
@@ -24098,14 +24184,20 @@ bool regex_search(
 	const std::basic_string<charT, ST, SA> &s,
 	match_results<typename std::basic_string<charT, ST, SA>::const_iterator, Allocator> &m,
 	const basic_regex<charT, traits> &e,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	return regex_search(s.begin(), s.end(), m, e, flags);
 }
 
-//  28.11.4, function template regex_replace:
-//  [7.11.4] Function template regex_replace
+template <class ST, class SA, class charT, class traits>
+bool regex_search(
+	const std::basic_string<charT, ST, SA> &s,
+	const basic_regex<charT, traits> &e,
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
+{
+	return regex_search(s.begin(), s.end(), e, flags);
+}
+
 template <class OutputIterator, class BidirectionalIterator, class traits, class charT, class ST, class SA>
 OutputIterator regex_replace(
 	OutputIterator out,
@@ -24113,8 +24205,7 @@ OutputIterator regex_replace(
 	const BidirectionalIterator last,
 	const basic_regex<charT, traits> &e,
 	const std::basic_string<charT, ST, SA> &fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	typedef regex_iterator<BidirectionalIterator, charT, traits> iterator_type;
 
@@ -24151,8 +24242,7 @@ OutputIterator regex_replace(
 	const BidirectionalIterator last,
 	const basic_regex<charT, traits> &e,
 	const charT *const fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	//  Strictly speaking, this should be implemented as a version different
 	//  from the above with changing the line i->format(out, fmt, flags) to
@@ -24168,8 +24258,7 @@ std::basic_string<charT, ST, SA> regex_replace(
 	const std::basic_string<charT, ST, SA> &s,
 	const basic_regex<charT, traits> &e,
 	const std::basic_string<charT, FST, FSA> &fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	std::basic_string<charT, ST, SA> result;
 
@@ -24182,8 +24271,7 @@ std::basic_string<charT, ST, SA> regex_replace(
 	const std::basic_string<charT, ST, SA> &s,
 	const basic_regex<charT, traits> &e,
 	const charT *const fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	std::basic_string<charT, ST, SA> result;
 
@@ -24196,8 +24284,7 @@ std::basic_string<charT> regex_replace(
 	const charT *const s,
 	const basic_regex<charT, traits> &e,
 	const std::basic_string<charT, ST, SA> &fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	std::basic_string<charT> result;
 
@@ -24210,8 +24297,7 @@ std::basic_string<charT> regex_replace(
 	const charT *const s,
 	const basic_regex<charT, traits> &e,
 	const charT *const fmt,
-	const regex_constants::match_flag_type flags = regex_constants::match_default
-)
+	const regex_constants::match_flag_type flags = regex_constants::match_default)
 {
 	std::basic_string<charT> result;
 
@@ -24222,7 +24308,6 @@ std::basic_string<charT> regex_replace(
 //  ... "regex_algorithm.hpp"]
 //  ["regex_token_iterator.hpp" ...
 
-//  28.12.2, class template regex_token_iterator:
 template <class BidirectionalIterator, class charT = typename std::iterator_traits<BidirectionalIterator>::value_type, class traits = regex_traits<charT> >
 class regex_token_iterator
 {
@@ -24244,11 +24329,11 @@ public:
 		const BidirectionalIterator a,
 		const BidirectionalIterator b,
 		const regex_type &re,
-		int submatch = 0,
+		const int submatch = 0,
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(1, submatch)
+	) : position_(a, b, re, m), result_(NULL), subs_(2)
 	{
-		post_constructor_(a, b);
+		post_constructor_(a, b, &submatch, 1);
 	}
 
 	regex_token_iterator(
@@ -24257,9 +24342,9 @@ public:
 		const regex_type &re,
 		const std::vector<int> &submatches,
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(submatches)
+	) : position_(a, b, re, m), result_(NULL), subs_(submatches.size() + 1)
 	{
-		post_constructor_(a, b);
+		post_constructor_(a, b, submatches.data(), submatches.size());
 	}
 
 #if defined(__cpp_initializer_lists)
@@ -24267,11 +24352,11 @@ public:
 		const BidirectionalIterator a,
 		const BidirectionalIterator b,
 		const regex_type &re,
-		std::initializer_list<int> submatches,
+		const std::initializer_list<int> submatches,
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(submatches)
+	) : position_(a, b, re, m), result_(NULL), subs_(submatches.size() + 1)
 	{
-		post_constructor_(a, b);
+		post_constructor_(a, b, submatches.begin(), submatches.size());
 	}
 #endif
 
@@ -24282,9 +24367,9 @@ public:
 		const regex_type &re,
 		const int (&submatches)[N],
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position_(a, b, re, m), result_(NULL), subs_(submatches, submatches + N)
+	) : position_(a, b, re, m), result_(NULL), subs_(N + 1)
 	{
-		post_constructor_(a, b);
+		post_constructor_(a, b, submatches, N);
 	}
 
 	regex_token_iterator(const regex_token_iterator &that)
@@ -24344,13 +24429,11 @@ public:
 		{
 			if (++this->N_ >= subs_.size())
 			{
-				position_iterator eos_iterator;
-
-				this->N_ = 0;
+				this->N_ = 1;
 				suffix_ = position_->suffix();
-				if (++position_ == eos_iterator)
+				if ((++position_)->size() == 0)
 				{
-					result_ = (suffix_.matched && minus1_in_subs_()) ? &suffix_ : NULL;
+					result_ = (suffix_.matched && subs_[0] == -1) ? &suffix_ : NULL;
 					return *this;
 				}
 			}
@@ -24366,21 +24449,32 @@ public:
 		return tmp;
 	}
 
+	regex_constants::error_type ecode() const
+	{
+		return position_->ecode();
+	}
+
 private:
 
-	void post_constructor_(const BidirectionalIterator a, const BidirectionalIterator b)
+	void post_constructor_(const BidirectionalIterator a, const BidirectionalIterator b, const int *const data, const std::size_t num)
 	{
-		position_iterator eos_iterator;
+		this->N_ = 1;
 
-		this->N_ = 0;
+		subs_[0] = 0;
+		for (std::size_t i = 0; i < num; ++i)
+		{
+			this->subs_[i + 1] = data[i];
+			if (data[i] == -1)
+				subs_[0] = -1;
+		}
 
-		if (position_ != eos_iterator && subs_.size())
+		if (position_->size() && this->N_ < subs_.size())
 		{
 			result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
 			return;
 		}
 
-		if (minus1_in_subs_())
+		if (subs_[0] == -1)
 		{
 			suffix_.matched = a != b;
 
@@ -24395,15 +24489,6 @@ private:
 		result_ = NULL;
 	}
 
-	bool minus1_in_subs_() const
-	{
-		for (std::size_t i = 0; i < subs_.size(); ++i)
-			if (subs_[i] == -1)
-				return true;
-
-		return false;
-	}
-
 private:
 
 	typedef regex_iterator<BidirectionalIterator, charT, traits> position_iterator;
@@ -24411,7 +24496,7 @@ private:
 	const value_type *result_;
 	value_type suffix_;
 	std::size_t N_;
-	std::vector<int> subs_;
+	re_detail::simple_array<int> subs_;
 };
 
 typedef regex_token_iterator<const char *> cregex_token_iterator;

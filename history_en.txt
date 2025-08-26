@@ -1,3 +1,64 @@
+20250814; version 4.068:
+  * Updated unicode/updataout3.cpp:
+    1. Added a new option to decide whether string literals are escaped
+       or not at runtime, instead of compile-time.
+    2. This file had been unable to be compiled since version 4.065
+       because of the name change of an internal function in SRELL.
+
+20250608; version 4.067:
+  * Adjusted internal memory handling.
+  * Various minor improvements.
+
+20250518; version 4.066:
+  * Fixed three minor issues being inconsistent with the ECMAScript
+    specification:
+    1. In the result of searching /()*/ against "", $1 was "" instead of
+       being unmatched.
+    2. No error was thrown even if \0 was followed by any digit.
+    3. No error was thrown even if the regex sequence ended with "\c".
+  * Added the "quiet" flag to syntax_option_type.
+  * Added the "vmode" flag as an alias to "unicodesets" to
+    syntax_option_type.
+  * Combined eight points of throwing an exception into one in the
+    matching algorithm function.
+  * Fixed several wrong expected results in conftest.
+  * Various minor fixes.
+
+20250420; version 4.065:
+  * Improved internal memory handling.
+  * Add ecode() to regex_token_iterator for SRELL_NO_THROW.
+  * Several improvements on the matching algorithm function.
+  * Improvements on match_results::format().
+  * Replaced reinterpret_cast that had been used inappropriately with
+    more proper code.
+  * Improved the pattern compiler so that SRELL_STRICT_IMPL and
+    SRELL_NO_THROW can be defined together.
+  * Fixed the pattern compiler to throw error_backref when a
+    backreference number greater than the total number of capturing
+    bracket pairs in the regex expression is used, instead of ignoring
+    it silently.
+  * Fixed the bug in the pattern compiler which caused an flag
+    modification in an outer group not to be inherited to its inner
+    groups when the inner ones have their own modifiers. E.g.,
+    (?i:a(?s:a)) had not matched "AA".
+  * Added a new overload to regex_search that searches in
+    std::basic_string, in which the start position can be specified.
+  * Added the overload same as above also to basic_regex.search().
+  * Added consideratioins for extreme cases in pattern compiling:
+    * If any total number of capturing groups, repetitions that need an
+      internal counter, or 0-width match checkers reaches 0xFFFFFFFF,
+      now error_complexity is thrown.
+    * When parsing nested groups and/or character classes (only in the
+      v-flags mode), if the total depth of their levels exceeds
+      SRELL_MAX_DEPTH (the default value is 256), error_complexity is
+      thrown to avoid a stack overflow.
+  * Fixed a problem that caused a compilation error when SRELL_NO_ICASE
+    was defined.
+  * Removed one of API extensions, which takes three iterators and does
+    not take match_results as parameters, from overloads of
+    regex_search().
+  * Preparations for SRELL_NO_THROW level 2.
+
 20250214; version 4.064:
   * Fixed a bug that caused memory corruption when u32regex's pattern
     compiler is used with SIMD support being enabled.

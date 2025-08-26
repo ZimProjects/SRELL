@@ -1,3 +1,56 @@
+20250814; version 4.068:
+  ・unicode/updataout3.cppを更新。
+    1. 文字列リテラルを\xエスケープするか否かを、コンパイル時ではなく実
+       行時に選択できるようオプションを追加。
+    2. Version 4.065でSRELLの内部函数の名前を変更した影響でコンパイルで
+       きなくなっていた問題を修正。
+
+20250608; version 4.067:
+  ・内部のメモリ処理の調整。
+  ・その他改良など。
+
+20250518; version 4.066:
+  ・ECMAScriptの仕様に準拠していない振る舞いが3箇所あったので修正。
+    1. "" に対して /()*/ で検索した時、$1がundefined相当にならず "" にな
+       っていた。
+    2. \0の後ろに数字が続いていてもエラーにならなかった。
+    3. 正規表現が\cで終わっていてもエラーにならなかった。
+  ・syntax_option_typeにquietフラグを追加。
+  ・syntax_option_typeに既存のunicodesetsフラグの別名としてvmodeフラグを
+    追加。
+  ・照合用函数内に8箇所あったthrowする箇所を1箇所に統合。
+  ・conftestのexpectedが数ヶ所間違っていたので修正。
+  ・その他細々とした修正など。
+
+20250420; version 4.065:
+  ・内部のメモリ処理の改良。
+  ・SRELL_NO_THROW定義時用に、regex_token_iteratorにもecode()メンバ函数
+    を追加。
+  ・照合用函数の改良。
+  ・match_results::format()の改良。
+  ・reinterpret_castの正しくない使い方をしていた箇所を修正。
+  ・SRELL_STRICT_IMPLとSRELL_NO_THROWとを同時に定義できるように改良。
+  ・後方参照番号が正規表現中に出現する括弧の総数を超えていてもエラーにな
+    らず暗黙のうちに無視されていた問題を修正。
+  ・Modifiersが入れ子で使われると外側のフラグ変更が内側のグループに継承
+    されていなかった問題を修正。たとえば (?i:a(?s:a)) は "AA" にマッチし
+    ませんでした。
+  ・std::basic_stringを検索対象とするregex_search()に、検索開始位置を指
+    定できるoverloadを追加。
+  ・上と同じoverloadをbasic_regex.search()にも追加。
+  ・パターンコンパイル時における極端な状況への配慮を追加：
+    ・括弧の総数、内部カウンタを必要とする繰り返しの総数、0幅チェッカの
+      総数、このどれかが32bit値の最大値に達した場合にはerror_complexity
+      をthrowするようにしました。
+    ・入れ子になっているグループや文字クラス（Vフラグモード時のみ）をパ
+      ーズする時、階層の深さの累計がSRELL_MAX_DEPTH（初期値は256）を超え
+      たらスタック溢れ防止のためerror_complexityをthrowするようにしまし
+      た。
+  ・SRELL_NO_ICASEをdefineするとコンパイルできなくなっていた問題を修正。
+  ・独自拡張のうち、3つのイテレータを引数に取り、かつmatch_resultsを引数
+    に取らないregex_search()のoverloadを廃止。
+  ・SRELL_NO_THROW level 2の下準備。
+
 20250214; version 4.064:
   ・SIMD利用可能時にu32regex型のパターンコンパイルを行うとメモリが破壊さ
     れてしまうバグを修正。

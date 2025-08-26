@@ -1,5 +1,5 @@
 //
-//  updataout.cpp: version 3.005 (2024/10/31).
+//  updataout.cpp: version 3.006 (2025/08/03).
 //
 //  This is a program that generates srell_updata3.h from:
 //    DerivedCoreProperties.txt
@@ -227,12 +227,14 @@ struct up_options
 	const char *indir;
 	int version;
 	int errorno;
+	bool noesc;
 
 	up_options(const int argc, const char *const *const argv)
 		: outfilename("srell_updata3.h")
 		, indir("")
 		, version(301)
 		, errorno(0)
+		, noesc(false)
 	{
 		for (int index = 1; index < argc; ++index)
 		{
@@ -254,12 +256,19 @@ struct up_options
 						goto NO_ARGUMENT;
 					indir = argv[++index];
 				}
+				else if (std::strcmp(option, "noesc") == 0)
+				{
+					if (index + 1 >= argc)
+						goto NO_ARGUMENT;
+					noesc = static_cast<int>(std::strtod(argv[++index], NULL)) ? true : false;
+				}
 				else if (std::strcmp(option, "?") == 0 || std::strcmp(option, "h") == 0)
 				{
 					std::fputs("Usage: updataout2 [options]\nOptions:\n", stdout);
 					std::fputs("  -i <DIRECTORY>\tSame as -id.\n", stdout);
 					std::fputs("  -id <DIRECTORY>\tAssume that input files exist in <DIRECTORY>.\n\t\t\t<DIRECTORY> must ends with '/' or '\\'.\n", stdout);
 					std::fputs("  -o <FILE>\t\tOutput to <FILE>.\n", stdout);
+					std::fputs("  -noesc [1|0]\t\tDo not escape literal strings.\n", stdout);
 					errorno = 1;
 					return;
 				}
@@ -346,7 +355,7 @@ public:
 			combine_pos(combined_pos, emoseq_properties, "bp", updata::emoseq_property_names);
 #endif
 
-			do_formatting(outdata, combined_properties, combined_pos, opts.version);
+			do_formatting(outdata, combined_properties, combined_pos, opts);
 
 			licensetext.append(1, '\n');
 			outdata.insert(0, licensetext);
@@ -774,7 +783,7 @@ private:
 						srell::cregex_iterator2 it(seqs.first, seqs.second, re_emsq2fmt, srell::regex_constants::match_continuous);
 						ui_l32 count = 2;
 
-						emsq[seqname].push_backncr(0);	//  Number of code points.
+						emsq[seqname].push_back_c(0);	//  Number of code points.
 						emsq[seqname].push_back(first);
 
 						for (; !it.done(); ++it, ++count)
@@ -789,13 +798,13 @@ private:
 					{
 						if (end.matched)
 						{
-							emsq[seqname].push_backncr(1);	//  Range.
+							emsq[seqname].push_back_c(1);	//  Range.
 							emsq[seqname].push_back(first);
 							emsq[seqname].push_back(static_cast<ui_l32>(std::strtol(end.first, NULL, 16)));
 						}
 						else
 						{
-							emsq[seqname].push_backncr(2);	//  Single code point.
+							emsq[seqname].push_back_c(2);	//  Single code point.
 							emsq[seqname].push_back(first);
 						}
 					}
@@ -808,11 +817,11 @@ private:
 			if (it->second.size() & 1)
 			{
 				std::printf("[Info] Padding added to \"%s\" (%u).\n", it->first.c_str(), static_cast<unsigned int>(it->second.size()));
-				it->second.push_backncr(0);
+				it->second.push_back_c(0);
 			}
 		}
 
-		emsq["RGI_Emoji"].push_backncr(compositeclass);	//  Dummy data.
+		emsq["RGI_Emoji"].push_back_c(compositeclass);	//  Dummy data.
 	}
 
 	void read_scripts(rangeholder &sc, std::string &licensetext, const char *const filename, const char *const indir)
@@ -998,8 +1007,8 @@ private:
 		u32array compclass;
 
 		//  Composite class.
-		compclass.push_backncr(compositeclass);
-		compclass.push_backncr(0);
+		compclass.push_back_c(compositeclass);
+		compclass.push_back_c(0);
 
 		elem.ptype = ptype;
 		for (; **aliasnames; ++aliasnames)
@@ -1178,7 +1187,7 @@ private:
 			data.erase(commapos, 1);
 	}
 
-	std::string create_pnametable(ui_l32 &count, const std::string &indent)
+	std::string create_pnametable(ui_l32 &count, const std::string &indent, const up_options &opts)
 	{
 		const char *const *pnames = updata::property_names;
 		std::string out;
@@ -1207,11 +1216,10 @@ private:
 		{
 			out.append(indent);
 			out.append("{ \"");
-#if !defined(NO_LITERAL_ESCAPING)
-			out.append(escape_string(it->first));
-#else
-			out.append(it->first);
-#endif
+			if (!opts.noesc)
+				out.append(escape_string(it->first));
+			else
+				out.append(it->first);
 			out.append("\", " + unishared::to_string(it->second) + " },\n");
 		}
 		return out;
@@ -1226,7 +1234,7 @@ private:
 		return tmp;
 	}
 
-	void do_formatting(std::string &out, const sortedrangeholder &alldata, const sortedseqholder &emsq, const int version)
+	void do_formatting(std::string &out, const sortedrangeholder &alldata, const sortedseqholder &emsq, const up_options &opts)
 	{
 		const std::size_t numofproperties = sizeof (updata::property_names) / sizeof (updata::property_names[0]) + 1;
 		const std::string template1("template <typename T1, typename T2, typename T3>\n");
@@ -1398,10 +1406,10 @@ private:
 #endif	//  !defined(SRELL_NO_VMODE)
 
 		ui_l32 basepos = 0u;
-		std::string pnames(create_pnametable(basepos, indent));
+		std::string pnames(create_pnametable(basepos, indent, opts));
 		u32pair posinfo[numofproperties];
 
-		sort_rangeno_table(posinfo, basepos, lookup_numbers, rangeno_map, indent);
+		sort_rangeno_table(posinfo, basepos, lookup_numbers, rangeno_map, indent, opts);
 		lookup_numbers.append(return_table);
 		merge_posinfo(lookup_ranges, posinfo, numofproperties, indent);
 		pnames.insert(0, template1 + "const T1 " + template2 + "propertynumbertable[] =\n{\n");
@@ -1427,10 +1435,10 @@ private:
 		out.append(template1 + "const T3 " + template2 + "rangetable[] =\n{\n");
 		out.append(join_dropcomma_append(rangetable, return_table));
 
-		out.append("#define SRELL_UPDATA_VERSION " + unishared::to_string(static_cast<unsigned int>(version)) + "\n");
+		out.append("#define SRELL_UPDATA_VERSION " + unishared::to_string(static_cast<unsigned int>(opts.version)) + "\n");
 	}
 
-	void sort_rangeno_table(u32pair *const posinfo, ui_l32 offset, std::string &lookup_numbers, const namenumber_mapper &rangeno_map, const std::string &indent)
+	void sort_rangeno_table(u32pair *const posinfo, ui_l32 offset, std::string &lookup_numbers, const namenumber_mapper &rangeno_map, const std::string &indent, const up_options &opts)
 	{
 		strings_type names;
 		name_mapper pvalues;
@@ -1454,11 +1462,10 @@ private:
 			{
 				const std::string &pname = names[0];
 				const std::string &pvalue = names[1];
-#if !defined(NO_LITERAL_ESCAPING)
-				pvalues[pname] += indent + "{ \"" + escape_string(pvalue) + "\", " + unishared::to_string(it->second) + " },\n";
-#else
-				pvalues[pname] += indent + "{ \"" + pvalue + "\", " + unishared::to_string(it->second) + " },\n";
-#endif
+				if (!opts.noesc)
+					pvalues[pname] += indent + "{ \"" + escape_string(pvalue) + "\", " + unishared::to_string(it->second) + " },\n";
+				else
+					pvalues[pname] += indent + "{ \"" + pvalue + "\", " + unishared::to_string(it->second) + " },\n";
 				++pcounts[pname];
 			}
 		}
