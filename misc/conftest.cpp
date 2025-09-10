@@ -1,6 +1,6 @@
 //
 //  Conformance test program for SRELL.
-//  Version 3.005 (2025/04/20)
+//  Version 3.006 (2025/08/23)
 //
 //  This needs to be compiled and run on a system that supports
 //  an ISO-646/US-ASCII compatible encoding.
@@ -15,19 +15,20 @@
 #include <map>
 #endif
 
+#define SRELL_HAS_U8TYPE
+#define SRELL_HAS_U1632TYPE
+
 #ifdef __cpp_unicode_characters
-#pragma message("[Info] char16_t and char32_t are supported by the compiler.")
+typedef char16_t u16char_type;
+typedef char32_t u32char_type;
 #else
 #define PRE_CPP11
-typedef unsigned short char16_t;
-typedef unsigned long char32_t;
-namespace std
-{
-	typedef basic_string<char16_t> u16string;
-	typedef basic_string<char32_t> u32string;
-}
-#define __cpp_unicode_characters
-#pragma message("[Info] char16_t and char32_t prepared for the pre-C++11 compiler.")
+#if defined(__clang_major__) && (__clang_major__ >= 19)
+#undef SRELL_HAS_U1632TYPE
+#else
+typedef unsigned short u16char_type;
+typedef unsigned long u32char_type;
+#endif
 #endif
 
 #ifdef __cpp_char8_t
@@ -42,22 +43,18 @@ typedef char8_t char_type;
 #define STR(x) u8##x
 #define STR0(x) u8##x u8"\0"
 #endif
-#pragma message("[Info] char8_t is supported by the compiler.")
+typedef char8_t u8char_type;
 #else
 #define PRE_CPP20
 typedef char char_type;
 #define RE(x) x
 #define STR(x) x
 #define STR0(x) x "\0"
-#include <string>
-typedef unsigned char char8_t;
-namespace std
-{
-	typedef basic_string<char8_t> u8string;
-}
-#define __cpp_char8_t
-#define __cpp_lib_char8_t
-#pragma message("[Info] char8_t prepared for the pre-C++20 compiler.")
+#if defined(__clang_major__) && (__clang_major__ >= 19)
+#undef SRELL_HAS_U8TYPE
+#else
+typedef unsigned char u8char_type;
+#endif
 #endif
 
 #include "../srell.hpp"
@@ -361,18 +358,22 @@ std::string convert_to_utf8c(const std::wstring &ws)
 #endif
 }
 
-std::string convert_to_utf8c(const std::basic_string<char8_t> &u8)
+#if defined(SRELL_HAS_U8TYPE)
+std::string convert_to_utf8c(const std::basic_string<u8char_type> &u8)
 {
 	return std::string(u8.begin(), u8.end());
 }
-std::string convert_to_utf8c(const std::basic_string<char16_t> &u16)
+#endif
+#if defined(SRELL_HAS_U1632TYPE)
+std::string convert_to_utf8c(const std::basic_string<u16char_type> &u16)
 {
 	return utf16_to_utf8c(u16);
 }
-std::string convert_to_utf8c(const std::basic_string<char32_t> &u32)
+std::string convert_to_utf8c(const std::basic_string<u32char_type> &u32)
 {
 	return utf32_to_utf8c(u32);
 }
+#endif
 
 namespace otherflags
 {
@@ -459,27 +460,6 @@ std::string parse_flagstring(
 	}
 }
 
-const char* get_errmsg(const srell::regex_constants::error_type e)
-{
-	static const char *errmsgs[] = {
-		"error_collate", "error_ctype", "error_escape", "error_backref", "error_brack"
-		, "error_paren", "error_brace", "error_badbrace", "error_range", "error_space"
-		, "error_badrepeat", "error_complexity", "error_stack"
-		, "error_utf8", "error_property", "error_noescape", "error_operator", "error_complement"
-		, "error_modifier"
-	};
-	if (e < 100)
-		return "none";
-
-	if (e < 200)
-		return errmsgs[e - 100];
-
-	if (e == 200)
-		return "error_lookbehind";
-
-	return "error_internal";
-}
-
 template <typename RegexType, typename CharT, typename UtfTag>
 bool conf_test(
 	const char_type *str1,
@@ -544,7 +524,7 @@ bool conf_test(
 
 		if (errortest)	//  Reaching here means that an exception has not been thrown.
 		{
-			std::fprintf(stdout, "\t/%s/\nResult: Failed (expected %u \"%s\", but no error thrown).\n\n", expfc.c_str(), offset, get_errmsg(offset));
+			std::fprintf(stdout, "\t/%s/\nResult: Failed (expected %u \"%s\", but no error thrown).\n\n", expfc.c_str(), offset, srell::regex_error(offset).what());
 			return false;
 		}
 
@@ -665,7 +645,7 @@ bool conf_test(
 	}
 	catch (const srell::regex_error &e)
 	{
-		std::fprintf(stdout, "Error (regex_error): %d \"%s\"\n  /%s/\n", e.code(), get_errmsg(e.code()), expfc.c_str());
+		std::fprintf(stdout, "Error (regex_error): %d \"%s\"\n  /%s/\n", e.code(), e.what(), expfc.c_str());
 
 		if (errortest)
 		{
@@ -675,7 +655,7 @@ bool conf_test(
 				return true;
 			}
 
-			std::fprintf(stdout, "Result: Failed... (expected: %u \"%s\")\n\n", offset, get_errmsg(offset));
+			std::fprintf(stdout, "Result: Failed... (expected: %u \"%s\")\n\n", offset, srell::regex_error(offset).what());
 		}
 		else
 			std::fprintf(stdout, "Result: Failed.\n\n");
@@ -713,14 +693,18 @@ bool conf_test(
 			>(str, exp, flagstr, num, expected, offset, max);
 #endif
 
+#if defined(SRELL_HAS_U8TYPE)
 	case constants::utf8:
-		return conf_test<srell::u8regex, char8_t, utf8_tag>(str, exp, flagstr, num, expected, offset, max);
+		return conf_test<srell::basic_regex<u8char_type, srell::u8regex_traits<u8char_type> >, u8char_type, utf8_tag>(str, exp, flagstr, num, expected, offset, max);
+#endif
 
+#if defined(SRELL_HAS_U1632TYPE)
 	case constants::utf16:
-		return conf_test<srell::u16regex, char16_t, utf16_tag>(str, exp, flagstr, num, expected, offset, max);
+		return conf_test<srell::basic_regex<u16char_type, srell::u16regex_traits<u16char_type> >, u16char_type, utf16_tag>(str, exp, flagstr, num, expected, offset, max);
 
 	case constants::utf32:
-		return conf_test<srell::u32regex, char32_t, utf32_tag>(str, exp, flagstr, num, expected, offset, max);
+		return conf_test<srell::basic_regex<u32char_type>, u32char_type, utf32_tag>(str, exp, flagstr, num, expected, offset, max);
+#endif
 
 	case constants::w:
 		return conf_test<srell::wregex, wchar_t, utf0_tag>(str, exp, flagstr, num, expected, offset, max);
@@ -751,8 +735,10 @@ struct options
 				{
 					if (std::strcmp(argv[1] + 4, "c") == 0)
 						utype = constants::utf8c;
+#if defined(SRELL_HAS_U8TYPE)
 					else if (argv[1][4] == 0)
 						utype = constants::utf8;
+#endif
 					else
 						goto UNKNOWN_TYPE;
 				}
@@ -763,8 +749,10 @@ struct options
 						utype = constants::utf16or32w;
 					else
 #endif
+#if defined(SRELL_HAS_U1632TYPE)
 					if (argv[1][5] == 0)
 						utype = constants::utf16;
+#endif
 					else
 						goto UNKNOWN_TYPE;
 				}
@@ -775,8 +763,10 @@ struct options
 						utype = constants::utf16or32w;
 					else
 #endif
+#if defined(SRELL_HAS_U1632TYPE)
 					if (argv[1][5] == 0)
 						utype = constants::utf32;
+#endif
 					else
 						goto UNKNOWN_TYPE;
 				}
@@ -793,9 +783,13 @@ struct options
 
 		PRINT_USAGE:
 		std::fputs("Usage: conftest testtype\n", stdout);
+#if defined(SRELL_HAS_U8TYPE)
 		std::fputs("    utf8    u8regex\n", stdout);
+#endif
+#if defined(SRELL_HAS_U1632TYPE)
 		std::fputs("    utf16   u16regex\n", stdout);
 		std::fputs("    utf32   u32regex\n", stdout);
+#endif
 		std::fputs("    utf8c   u8cregex (UTF-8 with char)\n", stdout);
 #if defined(SRELL_HAS_UTF16W)
 		std::fputs("    utf16w  u1632wregex (UTF-16 with wchar_t)\n", stdout);

@@ -1,5 +1,5 @@
 //
-//  updataout.cpp: version 3.006 (2025/08/03).
+//  updataout.cpp: version 3.007 (2025/08/23).
 //
 //  This is a program that generates srell_updata3.h from:
 //    DerivedCoreProperties.txt
@@ -1197,7 +1197,7 @@ private:
 		for (unsigned int i = 2; **pnames; ++pnames, ++i)
 		{
 			const std::string names(*pnames);
-			srell::sregex_iterator2 rei2(names, re_colon_);
+			srell::cregex_iterator2 rei2(names, re_colon_);
 
 			for (rei2.split_begin();; rei2.split_next())
 			{
@@ -1263,7 +1263,7 @@ private:
 
 		namenumber_mapper registered;
 		srell::re_detail::simple_array<ucprange> rangepos;
-		srell::sregex_iterator2 rei2;
+		srell::cregex_iterator2 rei2;
 
 		for (sortedrangeholder::size_type i = 0; i < alldata.size(); ++i)
 		{
@@ -1443,7 +1443,7 @@ private:
 		strings_type names;
 		name_mapper pvalues;
 		namenumber_mapper pcounts;
-		srell::sregex_iterator2 rei2;
+		srell::cregex_iterator2 rei2;
 
 		for (namenumber_mapper::const_iterator it = rangeno_map.begin(); it != rangeno_map.end(); ++it)
 		{

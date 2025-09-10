@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.068
+**  SRELL (std::regex-like library) version 4.069
 **
 **  Copyright (c) 2012-2025, Nozomu Katoo. All rights reserved.
 **
@@ -258,47 +258,50 @@ namespace srell
 
 	namespace regex_constants
 	{
-		typedef int error_type;
+		typedef unsigned int error_type;
 
-		static const error_type error_collate    = 100;
-		static const error_type error_ctype      = 101;
-		static const error_type error_escape     = 102;
-		static const error_type error_backref    = 103;
-		static const error_type error_brack      = 104;
-		static const error_type error_paren      = 105;
-		static const error_type error_brace      = 106;
-		static const error_type error_badbrace   = 107;
-		static const error_type error_range      = 108;
-		static const error_type error_space      = 109;
-		static const error_type error_badrepeat  = 110;
+		static const error_type error_collate = 100;
+		static const error_type error_ctype = 101;
+		static const error_type error_escape = 102;
+		static const error_type error_backref = 103;
+		static const error_type error_brack = 104;
+		static const error_type error_paren = 105;
+		static const error_type error_brace = 106;
+		static const error_type error_badbrace = 107;
+		static const error_type error_range = 108;
+		static const error_type error_space = 109;
+		static const error_type error_badrepeat = 110;
 		static const error_type error_complexity = 111;
-		static const error_type error_stack      = 112;
+		static const error_type error_stack = 112;
 
 		//  SRELL's extensions.
-		static const error_type error_utf8       = 113;
+		static const error_type error_utf8 = 113;
 			//  The expression contained an invalid UTF-8 sequence.
 
-		static const error_type error_property   = 114;
+		static const error_type error_property = 114;
 			//  The expression contained an invalid Unicode property name or value.
 
-		static const error_type error_noescape   = 115;
+		static const error_type error_noescape = 115;
 			//  (Only in v-mode) ( ) [ ] { } / - \ | need to be escaped in a character class.
 
-		static const error_type error_operator   = 116;
+		static const error_type error_operator = 116;
 			//  (Only in v-mode) A character class contained a reserved double punctuation
 			//  operator or different types of operators at the same level, such as [ab--cd].
 
 		static const error_type error_complement = 117;
 			//  (Only in v-mode) \P or a negated character class contained a property of strings.
 
-		static const error_type error_modifier   = 118;
+		static const error_type error_modifier = 118;
 			//  A specific flag modifier appeared more then once, or the un-bounded form
 			//  ((?ism-ism)) appeared at a position other than the beginning of the expression.
+
+		static const error_type error_first_ = error_collate;
+		static const error_type error_last_ = error_modifier;
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		static const error_type error_lookbehind = 200;
 #endif
-		static const error_type error_internal   = 999;
+		static const error_type error_internal = 999;
 	}
 	//  namespace regex_constants
 
@@ -310,7 +313,7 @@ class regex_error : public std::runtime_error
 public:
 
 	explicit regex_error(const regex_constants::error_type ecode)
-		: std::runtime_error("regex_error")	//  added for error C2512.
+		: std::runtime_error(what_(ecode))
 		, ecode_(ecode)
 	{
 	}
@@ -321,6 +324,25 @@ public:
 	}
 
 private:
+
+	const char* what_(const regex_constants::error_type e)
+	{
+		static const char *enames[] = {
+			"error_collate", "error_ctype", "error_escape", "error_backref", "error_brack"
+			, "error_paren", "error_brace", "error_badbrace", "error_range", "error_space"
+			, "error_badrepeat", "error_complexity", "error_stack"	//  13.
+			, "error_utf8", "error_property", "error_noescape", "error_operator", "error_complement"
+			, "error_modifier"	//  +6.
+			, "", "error_internal", "error_lookbehind"
+		};
+		const regex_constants::error_type num = regex_constants::error_last_ - regex_constants::error_first_ + 1;
+
+		return enames[e == 0
+			? num
+			: ((e - regex_constants::error_first_) < num
+				? (e - regex_constants::error_first_)
+				: (num + (e == 200 ? 2 : 1)))];
+	}
 
 	regex_constants::error_type ecode_;
 };
@@ -965,12 +987,34 @@ struct u16regex_traits : public regex_traits<charT>
 
 	namespace re_detail
 	{
-/*
- *  Similar to std::basic_string, except for:
- *    a. only allocates memory, does not initialise it.
- *    b. uses realloc() to avoid moving data as much as possible when
- *       resizing an allocated buffer.
- */
+
+template <typename charT>
+struct concon_view
+{
+	typedef std::size_t size_type;
+
+	const charT *data_;
+	size_type size_;
+
+	template <typename ContiguousContainer>
+	concon_view(const ContiguousContainer &c)
+//		requires std::contiguous_iterator<typename ContiguousContainer::iterator>
+		: data_(c.data()), size_(c.size()) {}
+
+	concon_view() : data_(NULL), size_(0) {}
+	concon_view(const charT *const p, const size_type s) : data_(p), size_(s) {}
+
+	const charT *data() const
+	{
+		return data_;
+	}
+	size_type size() const
+	{
+		return size_;
+	}
+};
+// concon_view
+
 template <typename ElemT, typename Alloc = std::allocator<ElemT> >
 class simple_array
 {
@@ -983,23 +1027,9 @@ public:
 	typedef ElemT *pointer;
 	typedef const ElemT *const_pointer;
 	typedef const_pointer const_iterator;
+	typedef concon_view<ElemT> sa_view;
 
 	static const size_type npos = static_cast<size_type>(-1);
-
-	struct sa_view
-	{
-		const_pointer data;
-		size_type size;
-
-		explicit sa_view(const const_pointer p = NULL, const size_type s = 0) : data(p), size(s)
-		{
-		}
-
-		sa_view(const simple_array &sa) : data(sa.data()), size(sa.size())
-		{
-		}
-	};
-	//  sa_view
 
 public:
 
@@ -1044,10 +1074,10 @@ public:
 
 	simple_array &operator=(const sa_view &v)
 	{
-		if (buffer_ != v.data)
+		if (buffer_ != v.data_)
 		{
-			resize(v.size);
-			std::memcpy(buffer_, v.data, v.size * sizeof (ElemT));
+			resize(v.size_);
+			std::memcpy(buffer_, v.data_, v.size_ * sizeof (ElemT));
 		}
 		return *this;
 	}
@@ -2074,8 +2104,8 @@ public:
 
 	void merge(const view_type &v)
 	{
-		for (size_type i = 0; i < v.size; ++i)
-			join(v.data[i]);
+		for (size_type i = 0; i < v.size_; ++i)
+			join(v.data_[i]);
 	}
 
 	bool same(ui_l32 pos, const ui_l32 count, const range_pairs &right) const
@@ -2932,7 +2962,7 @@ public:
 			const ui_l32 keysize = keysize_classno_[i];
 			const ui_l32 keynum = keysize_classno_[++i];
 
-			if (keysize == v.size && sameseq_(pos, v))
+			if (keysize == v.size_ && sameseq_(pos, v))
 				return &keysize_classno_[i];
 
 			pos += keysize;
@@ -3045,8 +3075,8 @@ private:
 
 	bool sameseq_(size_type pos, const view_type &v) const
 	{
-		for (size_type i = 0; i < v.size; ++i, ++pos)
-			if (pos >= names_.size() || names_[pos] != v.data[i])
+		for (size_type i = 0; i < v.size_; ++i, ++pos)
+			if (pos >= names_.size() || names_[pos] != v.data_[i])
 				return false;
 
 		return true;
@@ -8314,24 +8344,6 @@ public:
 		}
 	}
 
-#if !defined(SRELL_NO_APIEXT)
-
-	template <typename ST, typename SA>
-	operator std::basic_string<value_type, ST, SA>() const
-	{
-		typedef std::basic_string<value_type, ST, SA> string_type2;
-		return matched ? string_type2(this->first, this->second) : string_type2();
-	}
-
-	template <typename ST, typename SA>
-	std::basic_string<value_type, ST, SA> str() const
-	{
-		typedef std::basic_string<value_type, ST, SA> string_type2;
-		return matched ? string_type2(this->first, this->second) : string_type2();
-	}
-
-#endif	//  !defined(SRELL_NO_APIEXT)
-
 	void set_(const typename re_detail::re_submatch_type<BidirectionalIterator> &br)
 	{
 		this->first = br.core.open_at;
@@ -8713,46 +8725,6 @@ std::basic_ostream<charT, ST> &operator<<(std::basic_ostream<charT, ST> &os, con
 	return (os << m.str());
 }
 
-typedef sub_match<const char *> csub_match;
-typedef sub_match<const wchar_t *> wcsub_match;
-typedef sub_match<std::string::const_iterator> ssub_match;
-typedef sub_match<std::wstring::const_iterator> wssub_match;
-
-typedef csub_match u8ccsub_match;
-typedef ssub_match u8cssub_match;
-
-#if defined(WCHAR_MAX)
-	#if WCHAR_MAX >= 0x10ffff
-		typedef wcsub_match u32wcsub_match;
-		typedef wssub_match u32wssub_match;
-		typedef u32wcsub_match u1632wcsub_match;
-		typedef u32wssub_match u1632wssub_match;
-	#elif WCHAR_MAX >= 0xffff
-		typedef wcsub_match u16wcsub_match;
-		typedef wssub_match u16wssub_match;
-		typedef u16wcsub_match u1632wcsub_match;
-		typedef u16wssub_match u1632wssub_match;
-	#endif
-#endif
-
-#if defined(__cpp_unicode_characters)
-	typedef sub_match<const char16_t *> u16csub_match;
-	typedef sub_match<const char32_t *> u32csub_match;
-	typedef sub_match<std::u16string::const_iterator> u16ssub_match;
-	typedef sub_match<std::u32string::const_iterator> u32ssub_match;
-#endif
-
-#if defined(__cpp_char8_t)
-	typedef sub_match<const char8_t *> u8csub_match;
-#else
-	typedef u8ccsub_match u8csub_match;
-#endif
-#if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
-	typedef sub_match<std::u8string::const_iterator> u8ssub_match;
-#else
-	typedef u8cssub_match u8ssub_match;
-#endif
-
 //  ... "regex_sub_match.hpp"]
 //  ["regex_match_results.hpp" ...
 
@@ -8782,6 +8754,7 @@ public:
 	typedef Allocator allocator_type;
 	typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 	typedef std::basic_string<char_type> string_type;
+	typedef typename re_detail::concon_view<char_type> contiguous_container_view;
 
 public:
 
@@ -8871,7 +8844,7 @@ public:
 
 	string_type str(const size_type sub = 0) const
 	{
-		return string_type((*this)[sub]);
+		return (*this)[sub].str();
 	}
 
 	const_reference operator[](const size_type n) const
@@ -8881,28 +8854,6 @@ public:
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
-	//  Overload resolution helpers for values of signed types.
-	template <typename IntegerType>
-	difference_type length(const IntegerType sval) const
-	{
-		return length(static_cast<size_type>(sval));
-	}
-	template <typename IntegerType>
-	difference_type position(const IntegerType sval) const
-	{
-		return position(static_cast<size_type>(sval));
-	}
-	template <typename IntegerType>
-	string_type str(const IntegerType sval) const
-	{
-		return str(static_cast<size_type>(sval));
-	}
-	template <typename IntegerType>
-	const_reference operator[](const IntegerType sval) const
-	{
-		return operator[](static_cast<size_type>(sval));
-	}
-
 	difference_type length(const string_type &sub) const
 	{
 		return (*this)[sub].length();
@@ -8910,14 +8861,12 @@ public:
 
 	difference_type position(const string_type &sub) const
 	{
-		const_reference ref = (*this)[sub];
-
-		return std::distance(base_, ref.first);
+		return std::distance(base_, (*this)[sub].first);
 	}
 
 	string_type str(const string_type &sub) const
 	{
-		return string_type((*this)[sub]);
+		return (*this)[sub].str();
 	}
 
 	const_reference operator[](const string_type &sub) const
@@ -8927,24 +8876,32 @@ public:
 		return backrefno != gnamemap_type::notfound ? sub_matches_[backrefno] : unmatched_;
 	}
 
-	difference_type length(const char_type *sub) const
+	//  In the following 4 functions, CharType is substituted for char_type.
+	//  If there are overloads whose parameter is const char_type *, when
+	//  the argument is the literal 0, overload resolution fails between
+	//  const char_type * and size_type.
+
+	template <typename CharType>
+	difference_type length(const CharType *sub) const
 	{
 		return (*this)[sub].length();
 	}
 
-	difference_type position(const char_type *sub) const
+	template <typename CharType>
+	difference_type position(const CharType *sub) const
 	{
-		const_reference ref = (*this)[sub];
-
-		return std::distance(base_, ref.first);
+		return std::distance(base_, (*this)[sub].first);
 	}
 
-	string_type str(const char_type *sub) const
+	template <typename CharType>
+	string_type str(const CharType *sub) const
 	{
-		return string_type((*this)[sub]);
+		return (*this)[sub].str();
 	}
 
-	const_reference operator[](const char_type *sub) const
+	template <typename CharType>
+	const_reference operator[](const CharType *sub) const
+//		requires std::is_same_v<char_type, CharType>
 	{
 		const re_detail::ui_l32 backrefno = lookup_backref_number(sub, sub + std::char_traits<char_type>::length(sub));
 
@@ -9351,46 +9308,6 @@ bool operator!=(
 {
 	return !(m1 == m2);
 }
-
-typedef match_results<const char *> cmatch;
-typedef match_results<const wchar_t *> wcmatch;
-typedef match_results<std::string::const_iterator> smatch;
-typedef match_results<std::wstring::const_iterator> wsmatch;
-
-typedef cmatch u8ccmatch;
-typedef smatch u8csmatch;
-
-#if defined(WCHAR_MAX)
-	#if WCHAR_MAX >= 0x10ffff
-		typedef wcmatch u32wcmatch;
-		typedef wsmatch u32wsmatch;
-		typedef u32wcmatch u1632wcmatch;
-		typedef u32wsmatch u1632wsmatch;
-	#elif WCHAR_MAX >= 0xffff
-		typedef wcmatch u16wcmatch;
-		typedef wsmatch u16wsmatch;
-		typedef u16wcmatch u1632wcmatch;
-		typedef u16wsmatch u1632wsmatch;
-	#endif
-#endif
-
-#if defined(__cpp_unicode_characters)
-	typedef match_results<const char16_t *> u16cmatch;
-	typedef match_results<const char32_t *> u32cmatch;
-	typedef match_results<std::u16string::const_iterator> u16smatch;
-	typedef match_results<std::u32string::const_iterator> u32smatch;
-#endif
-
-#if defined(__cpp_char8_t)
-	typedef match_results<const char8_t *> u8cmatch;
-#else
-	typedef u8ccmatch u8cmatch;
-#endif
-#if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
-	typedef match_results<std::u8string::const_iterator> u8smatch;
-#else
-	typedef u8csmatch u8smatch;
-#endif
 
 //  ... "regex_match_results.hpp"]
 //  ["rei_algorithm.hpp" ...
@@ -10589,6 +10506,7 @@ public:
 	typedef typename traits::string_type string_type;
 	typedef regex_constants::syntax_option_type flag_type;
 	typedef typename traits::locale_type locale_type;
+	typedef typename re_detail::concon_view<charT> contiguous_container_view;
 
 	static const regex_constants::syntax_option_type icase = regex_constants::icase;
 	static const regex_constants::syntax_option_type nosubs = regex_constants::nosubs;
@@ -10777,9 +10695,6 @@ public:
 
 #if !defined(SRELL_NO_APIEXT)
 
-	//  Undocumented APIs in the following overloads are experimental,
-	//  which may be removed without notice.
-
 	template <typename BidirectionalIterator, typename MA>
 	bool match(
 		const BidirectionalIterator begin,
@@ -10807,13 +10722,13 @@ public:
 	{
 		return this->match(s.begin(), s.end(), m, flags);
 	}
-	template <typename ST, typename SA, typename MA>
+	template <typename MA>
 	bool match(
-		const std::basic_string<charT, ST, SA> &s,
+		const contiguous_container_view c,
 		match_results<const charT *, MA> &m,
 		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
-		return this->match(s.data(), s.data() + s.size(), m, flags);
+		return this->match(c.data_, c.data_ + c.size_, m, flags);
 	}
 
 	template <typename BidirectionalIterator, typename MA>
@@ -10836,14 +10751,14 @@ public:
 	{
 		return base_type::search(s.begin() + start, s.end(), s.begin(), m, flags);
 	}
-	template <class ST, class SA, class MA>
+	template <class MA>
 	bool search(
-		const std::basic_string<charT, ST, SA> &s,
+		const contiguous_container_view c,
 		const std::size_t start,
 		match_results<const charT *, MA> &m,
 		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
-		return base_type::search(s.data() + start, s.data() + s.size(), s.data(), m, flags);
+		return base_type::search(c.data_ + start, c.data_ + c.size_, c.data_, m, flags);
 	}
 
 	template <typename BidirectionalIterator, typename MA>
@@ -10873,13 +10788,13 @@ public:
 	{
 		return this->search(s.begin(), s.end(), m, flags);
 	}
-	template <typename ST, typename SA, typename MA>
+	template <typename MA>
 	bool search(
-		const std::basic_string<charT, ST, SA> &s,
+		const contiguous_container_view c,
 		match_results<const charT *, MA> &m,
 		const regex_constants::match_flag_type flags = regex_constants::match_default) const
 	{
-		return this->search(s.data(), s.data() + s.size(), m, flags);
+		return this->search(c.data_, c.data_ + c.size_, m, flags);
 	}
 
 private:
@@ -10927,32 +10842,6 @@ void swap(basic_regex<charT, traits> &lhs, basic_regex<charT, traits> &rhs)
 {
 	lhs.swap(rhs);
 }
-
-typedef basic_regex<char> regex;
-typedef basic_regex<wchar_t> wregex;
-
-typedef basic_regex<char, u8regex_traits<char> > u8cregex;
-
-#if defined(WCHAR_MAX)
-	#if WCHAR_MAX >= 0x10ffff
-		typedef wregex u32wregex;
-		typedef u32wregex u1632wregex;
-	#elif WCHAR_MAX >= 0xffff
-		typedef basic_regex<wchar_t, u16regex_traits<wchar_t> > u16wregex;
-		typedef u16wregex u1632wregex;
-	#endif
-#endif
-
-#if defined(__cpp_unicode_characters)
-	typedef basic_regex<char16_t> u16regex;
-	typedef basic_regex<char32_t> u32regex;
-#endif
-
-#if defined(__cpp_char8_t)
-	typedef basic_regex<char8_t> u8regex;
-#else
-	typedef u8cregex u8regex;
-#endif
 
 //  ... "basic_regex.hpp"]
 //  ["regex_iterator.hpp" ...
@@ -11126,46 +11015,6 @@ private:
 	typedef typename traits::utf_traits utf_traits;
 };
 
-typedef regex_iterator<const char *> cregex_iterator;
-typedef regex_iterator<const wchar_t *> wcregex_iterator;
-typedef regex_iterator<std::string::const_iterator> sregex_iterator;
-typedef regex_iterator<std::wstring::const_iterator> wsregex_iterator;
-
-typedef regex_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
-typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
-
-#if defined(WCHAR_MAX)
-	#if WCHAR_MAX >= 0x10ffff
-		typedef wcregex_iterator u32wcregex_iterator;
-		typedef wsregex_iterator u32wsregex_iterator;
-		typedef u32wcregex_iterator u1632wcregex_iterator;
-		typedef u32wsregex_iterator u1632wsregex_iterator;
-	#elif WCHAR_MAX >= 0xffff
-		typedef regex_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
-		typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
-		typedef u16wcregex_iterator u1632wcregex_iterator;
-		typedef u16wsregex_iterator u1632wsregex_iterator;
-	#endif
-#endif
-
-#if defined(__cpp_unicode_characters)
-	typedef regex_iterator<const char16_t *> u16cregex_iterator;
-	typedef regex_iterator<const char32_t *> u32cregex_iterator;
-	typedef regex_iterator<std::u16string::const_iterator> u16sregex_iterator;
-	typedef regex_iterator<std::u32string::const_iterator> u32sregex_iterator;
-#endif
-
-#if defined(__cpp_char8_t)
-	typedef regex_iterator<const char8_t *> u8cregex_iterator;
-#else
-	typedef u8ccregex_iterator u8cregex_iterator;
-#endif
-#if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
-	typedef regex_iterator<std::u8string::const_iterator> u8sregex_iterator;
-#else
-	typedef u8csregex_iterator u8sregex_iterator;
-#endif
-
 #if !defined(SRELL_NO_APIEXT)
 
 template <typename BidirectionalIterator, typename BasicRegex = basic_regex<typename std::iterator_traits<BidirectionalIterator>::value_type, regex_traits<typename std::iterator_traits<BidirectionalIterator>::value_type> >, typename MatchResults = match_results<BidirectionalIterator> >
@@ -11180,6 +11029,7 @@ public:
 	typedef const value_type *pointer;
 	typedef const value_type &reference;
 	typedef std::input_iterator_tag iterator_category;
+	typedef typename regex_type::contiguous_container_view contiguous_container_view;
 
 	regex_iterator2() {}
 
@@ -11188,21 +11038,33 @@ public:
 		const BidirectionalIterator e,
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
-		: begin_(b), end_(e), pregex_(&re)
 	{
-		rewind(m);
+		assign(b, e, b, re, m);
 	}
-
-	template <typename ST, typename SA>
 	regex_iterator2(
-		const std::basic_string<char_type, ST, SA> &s,
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const BidirectionalIterator lookbehind_limit,
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
-		: begin_(pos0_(s, BidirectionalIterator()))
-		, end_(pos1_(s, BidirectionalIterator()))
-		, pregex_(&re)
 	{
-		rewind(m);
+		assign(begin, end, lookbehind_limit, re, m);
+	}
+
+	regex_iterator2(
+		const contiguous_container_view c,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		assign(c, 0, re, m);
+	}
+	regex_iterator2(
+		const contiguous_container_view c,
+		const std::size_t start,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		assign(c, start, re, m);
 	}
 
 	regex_iterator2(const regex_iterator2 &right)
@@ -11221,8 +11083,8 @@ public:
 				this->end_ = right.end_;
 				this->pregex_ = right.pregex_;
 				this->flags_ = right.flags_;
-				this->prevmatch_empty_ = right.prevmatch_empty_;
 				this->submatch_ = right.submatch_;
+				this->prevmatch_empty_ = right.prevmatch_empty_;
 			}
 		}
 		return *this;
@@ -11237,12 +11099,13 @@ public:
 			&& this->end_ == right.end_
 			&& this->pregex_ == right.pregex_
 			&& this->flags_ == right.flags_
-			&& this->match_[0] == right.match_[0];
+			&& this->match_[0] == right.match_[0]
+			&& this->submatch_ == right.submatch_
+			&& this->prevmatch_empty_ == right.prevmatch_empty_;
 	}
 
 	bool operator!=(const regex_iterator2 &right) const
 	{
-//		return !(*this == right);
 		return !operator==(right);
 	}
 
@@ -11261,50 +11124,53 @@ public:
 		return match_.size() == 0;
 	}
 
-	bool empty() const
-	{
-		return begin_ == end_;
-	}
-
 	void assign(
 		const BidirectionalIterator b,
 		const BidirectionalIterator e,
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
 	{
-		begin_ = b;
-		end_ = e;
-		pregex_ = &re;
-		rewind(m);
+		assign(b, e, b, re, m);
 	}
-	template <typename ST, typename SA>
 	void assign(
-		const std::basic_string<char_type, ST, SA> &s,
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const BidirectionalIterator lookbehind_limit,
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
 	{
-		begin_ = pos0_(s, BidirectionalIterator());
-		end_ = pos1_(s, BidirectionalIterator());
+		begin_ = lookbehind_limit;
+		end_ = end;
 		pregex_ = &re;
-		rewind(m);
-	}
-	void assign(const regex_iterator2 &right)
-	{
-		operator=(right);
-	}
-
-	void rewind(const regex_constants::match_flag_type m = regex_constants::match_default)
-	{
 		flags_ = m;
+		submatch_ = 0u;
 
-		if (regex_search(begin_, end_, begin_, match_, *pregex_, flags_))
+		if (re.search(begin, end_, begin_, match_, flags_))
 		{
 			prevmatch_empty_ = match_[0].first == match_[0].second;
 		}
 		else
 			match_.set_prefix1_(begin_);
+	}
 
-		submatch_ = 0u;
+	void assign(
+		const contiguous_container_view c,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		assign(c, 0, re, m);
+	}
+	void assign(
+		const contiguous_container_view c,
+		const std::size_t start,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		assign(pos0_(c, BidirectionalIterator()) + start, pos1_(c, BidirectionalIterator()), pos0_(c, BidirectionalIterator()), re, m);
+	}
+	void assign(const regex_iterator2 &right)
+	{
+		operator=(right);
 	}
 
 	regex_iterator2 &operator++()
@@ -11324,8 +11190,7 @@ public:
 				utf_traits::codepoint_inc(start, end_);
 			}
 
-			flags_ |= regex_constants::match_prev_avail;
-			if (regex_search(start, end_, begin_, match_, *pregex_, flags_))
+			if (pregex_->search(start, end_, begin_, match_, flags_ | regex_constants::match_prev_avail))
 				prevmatch_empty_ = match_[0].first == match_[0].second;
 
 			match_.update_prefix1_(prevend);
@@ -11346,20 +11211,27 @@ public:
 	//  [entire_string.begin(), entire_string.end()) with replacement,
 	//  and adjusts all the internal iterators accordingly.
 	template <typename ST, typename SA>
-	void replace(std::basic_string<char_type, ST, SA> &entire_string, const std::basic_string<char_type, ST, SA> &replacement)
+	void replace(std::basic_string<char_type, ST, SA> &entire_string, const contiguous_container_view replacement)
+	{
+		replace(entire_string, replacement.data_, replacement.size_);
+	}
+
+	template <typename ST, typename SA>
+	void replace(std::basic_string<char_type, ST, SA> &entire_string, const char_type *const replacement, const std::size_t replen)
 	{
 		typedef std::basic_string<char_type, ST, SA> string_type;
+		typedef typename string_type::size_type size_type;
 
 		if (match_.size())
 		{
 			const BidirectionalIterator oldbegin = pos0_(entire_string, BidirectionalIterator());
-			const typename string_type::size_type oldbeginoffset = begin_ - oldbegin;
-			const typename string_type::size_type oldendoffset = end_ - oldbegin;
-			const typename string_type::size_type pos = match_[0].first - oldbegin;
-			const typename string_type::size_type count = match_[0].second - match_[0].first;
-			const typename match_type::difference_type addition = replacement.size() - match_.length(0);
+			const size_type oldbeginoffset = begin_ - oldbegin;
+			const size_type oldendoffset = end_ - oldbegin;
+			const size_type pos = match_[0].first - oldbegin;
+			const size_type count = match_[0].second - match_[0].first;
+			const typename match_type::difference_type addition = replen - match_.length(0);
 
-			entire_string.replace(pos, count, replacement);
+			entire_string.replace(pos, count, replacement, replen);
 
 			const BidirectionalIterator newbegin = pos0_(entire_string, BidirectionalIterator());
 
@@ -11383,9 +11255,7 @@ public:
 	template <typename ST, typename SA>
 	void replace(std::basic_string<char_type, ST, SA> &entire_string, const char_type *const replacement)
 	{
-		typedef std::basic_string<char_type, ST, SA> string_type;
-
-		replace(entire_string, string_type(replacement));
+		replace(entire_string, replacement, std::char_traits<char_type>::length(replacement));
 	}
 
 	//  For split.
@@ -11437,8 +11307,7 @@ public:
 	//    list.push_back(it.split_remainder());
 
 	//  Moves to a first subsequence for which split_ready() returns
-	//  true. This should be called only once before beginning iterating
-	//  (or after calling rewind()).
+	//  true. This should be called only once before beginning iterating.
 	bool split_begin()
 	{
 		if (split_ready())
@@ -11451,7 +11320,7 @@ public:
 	//  Moves to a next subsequence for which split_ready() returns
 	//  true.
 	//  This function is intended to be used instead of the ordinary
-	//  increment operator (++).
+	//  increment operator++().
 	bool split_next()
 	{
 		if (++submatch_ >= match_.size())
@@ -11521,50 +11390,9 @@ private:
 	const regex_type *pregex_;
 	regex_constants::match_flag_type flags_;
 	match_type match_;
-	bool prevmatch_empty_;
 	typename match_type::size_type submatch_;
-
+	bool prevmatch_empty_;
 };
-
-typedef regex_iterator2<const char *> cregex_iterator2;
-typedef regex_iterator2<const wchar_t *> wcregex_iterator2;
-typedef regex_iterator2<std::string::const_iterator> sregex_iterator2;
-typedef regex_iterator2<std::wstring::const_iterator> wsregex_iterator2;
-
-typedef regex_iterator2<const char *, u8cregex> u8ccregex_iterator2;
-typedef regex_iterator2<std::string::const_iterator, u8cregex> u8csregex_iterator2;
-
-#if defined(WCHAR_MAX)
-	#if (WCHAR_MAX >= 0x10ffff)
-		typedef wcregex_iterator2 u32wcregex_iterator2;
-		typedef wsregex_iterator2 u32wsregex_iterator2;
-		typedef u32wcregex_iterator2 u1632wcregex_iterator2;
-		typedef u32wsregex_iterator2 u1632wsregex_iterator2;
-	#elif (WCHAR_MAX >= 0xffff)
-		typedef regex_iterator2<const wchar_t *, u16wregex> u16wcregex_iterator2;
-		typedef regex_iterator2<std::wstring::const_iterator, u16wregex> u16wsregex_iterator2;
-		typedef u16wcregex_iterator2 u1632wcregex_iterator2;
-		typedef u16wsregex_iterator2 u1632wsregex_iterator2;
-	#endif
-#endif
-
-#if defined(__cpp_unicode_characters)
-	typedef regex_iterator2<const char16_t *> u16cregex_iterator2;
-	typedef regex_iterator2<const char32_t *> u32cregex_iterator2;
-	typedef regex_iterator2<std::u16string::const_iterator> u16sregex_iterator2;
-	typedef regex_iterator2<std::u32string::const_iterator> u32sregex_iterator2;
-#endif
-
-#if defined(__cpp_char8_t)
-	typedef regex_iterator2<const char8_t *> u8cregex_iterator2;
-#else
-	typedef u8ccregex_iterator2 u8cregex_iterator2;
-#endif
-#if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
-	typedef regex_iterator2<std::u8string::const_iterator> u8sregex_iterator2;
-#else
-	typedef u8csregex_iterator2 u8sregex_iterator2;
-#endif
 
 #endif	//  !defined(SRELL_NO_APIEXT)
 
@@ -12040,6 +11868,42 @@ private:
 	re_detail::simple_array<int> subs_;
 };
 
+//  ... "regex_token_iterator.hpp"]
+
+typedef sub_match<const char *> csub_match;
+typedef sub_match<const wchar_t *> wcsub_match;
+typedef sub_match<std::string::const_iterator> ssub_match;
+typedef sub_match<std::wstring::const_iterator> wssub_match;
+typedef csub_match u8ccsub_match;
+typedef ssub_match u8cssub_match;
+
+typedef match_results<const char *> cmatch;
+typedef match_results<const wchar_t *> wcmatch;
+typedef match_results<std::string::const_iterator> smatch;
+typedef match_results<std::wstring::const_iterator> wsmatch;
+typedef cmatch u8ccmatch;
+typedef smatch u8csmatch;
+
+typedef basic_regex<char> regex;
+typedef basic_regex<wchar_t> wregex;
+typedef basic_regex<char, u8regex_traits<char> > u8cregex;
+
+typedef regex_iterator<const char *> cregex_iterator;
+typedef regex_iterator<const wchar_t *> wcregex_iterator;
+typedef regex_iterator<std::string::const_iterator> sregex_iterator;
+typedef regex_iterator<std::wstring::const_iterator> wsregex_iterator;
+
+typedef regex_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
+typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
+
+typedef regex_iterator2<const char *> cregex_iterator2;
+typedef regex_iterator2<const wchar_t *> wcregex_iterator2;
+typedef regex_iterator2<std::string::const_iterator> sregex_iterator2;
+typedef regex_iterator2<std::wstring::const_iterator> wsregex_iterator2;
+
+typedef regex_iterator2<const char *, u8cregex> u8ccregex_iterator2;
+typedef regex_iterator2<std::string::const_iterator, u8cregex> u8csregex_iterator2;
+
 typedef regex_token_iterator<const char *> cregex_token_iterator;
 typedef regex_token_iterator<const wchar_t *> wcregex_token_iterator;
 typedef regex_token_iterator<std::string::const_iterator> sregex_token_iterator;
@@ -12049,12 +11913,58 @@ typedef regex_token_iterator<const char *, std::iterator_traits<const char *>::v
 typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_token_iterator;
 
 #if defined(WCHAR_MAX)
-	#if WCHAR_MAX >= 0x10ffff
+	#if (WCHAR_MAX >= 0x10ffff)
+		typedef wcsub_match u32wcsub_match;
+		typedef wssub_match u32wssub_match;
+		typedef u32wcsub_match u1632wcsub_match;
+		typedef u32wssub_match u1632wssub_match;
+
+		typedef wcmatch u32wcmatch;
+		typedef wsmatch u32wsmatch;
+		typedef u32wcmatch u1632wcmatch;
+		typedef u32wsmatch u1632wsmatch;
+
+		typedef wregex u32wregex;
+		typedef u32wregex u1632wregex;
+
+		typedef wcregex_iterator u32wcregex_iterator;
+		typedef wsregex_iterator u32wsregex_iterator;
+		typedef u32wcregex_iterator u1632wcregex_iterator;
+		typedef u32wsregex_iterator u1632wsregex_iterator;
+
+		typedef wcregex_iterator2 u32wcregex_iterator2;
+		typedef wsregex_iterator2 u32wsregex_iterator2;
+		typedef u32wcregex_iterator2 u1632wcregex_iterator2;
+		typedef u32wsregex_iterator2 u1632wsregex_iterator2;
+
 		typedef wcregex_token_iterator u32wcregex_token_iterator;
 		typedef wsregex_token_iterator u32wsregex_token_iterator;
 		typedef u32wcregex_token_iterator u1632wcregex_token_iterator;
 		typedef u32wsregex_token_iterator u1632wsregex_token_iterator;
-	#elif WCHAR_MAX >= 0xffff
+	#elif (WCHAR_MAX >= 0xffff)
+		typedef wcsub_match u16wcsub_match;
+		typedef wssub_match u16wssub_match;
+		typedef u16wcsub_match u1632wcsub_match;
+		typedef u16wssub_match u1632wssub_match;
+
+		typedef wcmatch u16wcmatch;
+		typedef wsmatch u16wsmatch;
+		typedef u16wcmatch u1632wcmatch;
+		typedef u16wsmatch u1632wsmatch;
+
+		typedef basic_regex<wchar_t, u16regex_traits<wchar_t> > u16wregex;
+		typedef u16wregex u1632wregex;
+
+		typedef regex_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
+		typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
+		typedef u16wcregex_iterator u1632wcregex_iterator;
+		typedef u16wsregex_iterator u1632wsregex_iterator;
+
+		typedef regex_iterator2<const wchar_t *, u16wregex> u16wcregex_iterator2;
+		typedef regex_iterator2<std::wstring::const_iterator, u16wregex> u16wsregex_iterator2;
+		typedef u16wcregex_iterator2 u1632wcregex_iterator2;
+		typedef u16wsregex_iterator2 u1632wsregex_iterator2;
+
 		typedef regex_token_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_token_iterator;
 		typedef regex_token_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_token_iterator;
 		typedef u16wcregex_token_iterator u1632wcregex_token_iterator;
@@ -12063,6 +11973,29 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 #endif
 
 #if defined(__cpp_unicode_characters)
+	typedef sub_match<const char16_t *> u16csub_match;
+	typedef sub_match<const char32_t *> u32csub_match;
+	typedef sub_match<std::u16string::const_iterator> u16ssub_match;
+	typedef sub_match<std::u32string::const_iterator> u32ssub_match;
+
+	typedef match_results<const char16_t *> u16cmatch;
+	typedef match_results<const char32_t *> u32cmatch;
+	typedef match_results<std::u16string::const_iterator> u16smatch;
+	typedef match_results<std::u32string::const_iterator> u32smatch;
+
+	typedef basic_regex<char16_t> u16regex;
+	typedef basic_regex<char32_t> u32regex;
+
+	typedef regex_iterator<const char16_t *> u16cregex_iterator;
+	typedef regex_iterator<const char32_t *> u32cregex_iterator;
+	typedef regex_iterator<std::u16string::const_iterator> u16sregex_iterator;
+	typedef regex_iterator<std::u32string::const_iterator> u32sregex_iterator;
+
+	typedef regex_iterator2<const char16_t *> u16cregex_iterator2;
+	typedef regex_iterator2<const char32_t *> u32cregex_iterator2;
+	typedef regex_iterator2<std::u16string::const_iterator> u16sregex_iterator2;
+	typedef regex_iterator2<std::u32string::const_iterator> u32sregex_iterator2;
+
 	typedef regex_token_iterator<const char16_t *> u16cregex_token_iterator;
 	typedef regex_token_iterator<const char32_t *> u32cregex_token_iterator;
 	typedef regex_token_iterator<std::u16string::const_iterator> u16sregex_token_iterator;
@@ -12070,17 +12003,46 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 #endif
 
 #if defined(__cpp_char8_t)
+	#if defined(__cpp_lib_char8_t)
+	#define SRELLTMP_U8S_CI std::u8string::const_iterator
+	#else
+	#define SRELLTMP_U8S_CI std::basic_string<char8_t>::const_iterator
+	#endif
+	typedef sub_match<const char8_t *> u8csub_match;
+	typedef sub_match<SRELLTMP_U8S_CI> u8ssub_match;
+
+	typedef match_results<const char8_t *> u8cmatch;
+	typedef match_results<SRELLTMP_U8S_CI> u8smatch;
+
+	typedef basic_regex<char8_t> u8regex;
+
+	typedef regex_iterator<const char8_t *> u8cregex_iterator;
+	typedef regex_iterator<SRELLTMP_U8S_CI> u8sregex_iterator;
+
+	typedef regex_iterator2<const char8_t *> u8cregex_iterator2;
+	typedef regex_iterator2<SRELLTMP_U8S_CI> u8sregex_iterator2;
+
 	typedef regex_token_iterator<const char8_t *> u8cregex_token_iterator;
+	typedef regex_token_iterator<SRELLTMP_U8S_CI> u8sregex_token_iterator;
+	#undef SRELLTMP_U8S_CI
 #else
+	typedef u8ccsub_match u8csub_match;
+	typedef u8cssub_match u8ssub_match;
+
+	typedef u8ccmatch u8cmatch;
+	typedef u8csmatch u8smatch;
+
+	typedef u8cregex u8regex;
+
+	typedef u8ccregex_iterator u8cregex_iterator;
+	typedef u8csregex_iterator u8sregex_iterator;
+
+	typedef u8ccregex_iterator2 u8cregex_iterator2;
+	typedef u8csregex_iterator2 u8sregex_iterator2;
+
 	typedef u8ccregex_token_iterator u8cregex_token_iterator;
-#endif
-#if defined(__cpp_char8_t) && defined(__cpp_lib_char8_t)
-	typedef regex_token_iterator<std::u8string::const_iterator> u8sregex_token_iterator;
-#else
 	typedef u8csregex_token_iterator u8sregex_token_iterator;
 #endif
-
-//  ... "regex_token_iterator.hpp"]
 
 }		//  namespace srell
 #endif	//  SRELL_REGEX_TEMPLATE_LIBRARY
