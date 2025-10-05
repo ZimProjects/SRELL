@@ -1,3 +1,15 @@
+20250928; version 4.090:
+  * Improved memory efficiency in lookup for Unicode property names and
+    values.
+  * Removed the code intended for the no bad_alloc mode
+    (SRELL_NO_THROW 2), as supporting it was postponed indefinitely.
+
+20250920; version 4.080:
+  * Implemented the nosubs option.
+
+20250914; version 4.070:
+  * Added v and y to unbounded flag modifiers.
+
 20250910; version 4.069:
   * Updated ucfdata2.h and updata3.h to support Unicode 17.0.0.
   * Modified what() of regex_error to return an error name instead of
@@ -453,7 +465,7 @@
   * Minor improvements of ^ and $ in the multiline mode and \b, \B.
 
 20221124; version 4.007:
-  * Added support for the un-bounded flag modifiers ((?ims-ims)), which
+  * Added support for the unbounded flag modifiers ((?ims-ims)), which
     are available only at the beginning of a regular expression (the
     same as Python 3.11).
     Note: This feature is not defined in the ECMAScript specification

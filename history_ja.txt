@@ -1,3 +1,14 @@
+20250928; version 4.090:
+  ・Unicode property名を引く時のメモリ使用効率を改良。
+  ・bad_allocなしモード（SRELL_NO_THROW 2）対応無期限延期につき、関連コ
+    ードを削除。
+
+20250920; version 4.080:
+  ・nosubsフラグを実装。
+
+20250914; version 4.070:
+  ・埋込フラグ (?ims-ims) にvとyとを追加。
+
 20250910; version 4.069:
   ・ucfdata2.h, updata3.hをUnicode 17.0.0対応に更新。
   ・regex_errorのwhat()がエラー名を返すように変更。

@@ -1,4 +1,4 @@
-//  Generated on 2025/05/18.
+//  Generated on 2025/09/18.
 
 struct testdata
 {
@@ -891,6 +891,73 @@ testdata tests[] = {
 	STR0("")
 },
 {
+	0, "UBModifiers 07: (?v) 01.\n",
+	"",
+	RE("(?v)[\\q{ab|cd}]"),
+	STR("abcd"),
+	0, 1,
+	STR0("ab")
+},
+{
+	0, "UBModifiers 08: (?-v) 01.\n",
+	"vE",
+	RE("(?-v)[\\q{ab|cd}]"),
+	STR("abcd"),
+	srell::regex_constants::error_escape, 0,
+	STR0("")
+},
+{
+	0, "UBModifiers 09: (?y) 01.\n",
+	"",
+	RE("(?y)e"),
+	STR("abcde"),
+	0, 0,
+	STR0("")
+},
+{
+	0, "UBModifiers 10: (?-y) 01.\n",
+	"",
+	RE("(?-y)e"),
+	STR("abcde"),
+	0, 1,
+	STR0("e")
+},
+{
+	0, "UBModifiers 11: (?n) 01.\n",
+	"N",
+	RE("(?n)(\\d)(?<a>.)"),
+	STR("abcd0123"),
+	0, 2,
+	STR0("01")
+	STR0("1 <a>")
+},
+{
+	0, "UBModifiers 12: (?-n) 01.\n",
+	"nN",
+	RE("(?-n)(\\d)(?<a>.)"),
+	STR("abcd0123"),
+	0, 3,
+	STR0("01")
+	STR0("0")
+	STR0("1 <a>")
+},
+{
+	0, "UBModifiers 13: Unknown flag 01 (?z).\n",
+	"E",
+	RE("(?z)"),
+	STR(""),
+	srell::regex_constants::error_paren, 0,
+	STR0("")
+},
+{
+	0, "UBModifiers 14: Unknown flag 02 (?-z).\n",
+	"E",
+	RE("(?-z)"),
+	STR(""),
+	srell::regex_constants::error_paren, 0,
+	STR0("")
+},
+{
 	0, "Modifiers 01: m-flag #1.\n",
 	"",
 	RE("(?m:[^]*?$)"),
@@ -965,6 +1032,22 @@ testdata tests[] = {
 	STR("AA"),
 	0, 1,
 	STR0("AA")
+},
+{
+	0, "Modifiers 10: Unsupported flag #1.\n",
+	"E",
+	RE("(?v:abc)"),
+	STR("abc"),
+	srell::regex_constants::error_paren, 0,
+	STR0("")
+},
+{
+	0, "Modifiers 11: Unsupported flag #2.\n",
+	"E",
+	RE("(?-v:abc)"),
+	STR("abc"),
+	srell::regex_constants::error_paren, 0,
+	STR0("")
 },
 	//  Optimisations' side effect check.
 	//  gather_nextchars().

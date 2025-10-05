@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.069
+**  SRELL (std::regex-like library) version 4.090
 **
 **  Copyright (c) 2012-2025, Nozomu Katoo. All rights reserved.
 **
@@ -42,10 +42,11 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstddef>
-#include <memory>
+#include <new>
 #include <utility>
 #include <vector>
 #include <iterator>
+#include <memory>
 #include <algorithm>
 
 #if !defined(SRELL_NO_UNISTACK) && (defined(__cplusplus) && (__cplusplus >= 201103L)) || (defined(_MSC_VER) && (_MSC_VER >= 1900))
@@ -141,27 +142,27 @@ namespace srell
 	{
 		enum syntax_option_type
 		{
-			icase      = 1 << 1,
-			nosubs     = 1 << 2,
-			optimize   = 1 << 3,
-			collate    = 0,
+			icase = 1 << 1,
+			nosubs = 1 << 2,
+			optimize = 1 << 3,
+			collate = 0,
 			ECMAScript = 1 << 0,
-			basic      = 0,
-			extended   = 0,
-			awk        = 0,
-			grep       = 0,
-			egrep      = 0,
-			multiline  = 1 << 4,
+			multiline = 1 << 4,
+			basic = 0,
+			extended = 0,
+			awk = 0,
+			grep = 0,
+			egrep = 0,
 
-			//  SRELL's extension.
-			sticky      = 1 << 5,
-			dotall      = 1 << 6,	//  singleline.
+			//  SRELL's extensions.
+			sticky = 1 << 5,
+			dotall = 1 << 6,	//  singleline.
 			unicodesets = 1 << 7,
-			vmode       = unicodesets,
-			quiet       = 1 << 8,
+			vmode = unicodesets,
+			quiet = 1 << 8,
 
 			//  For internal use.
-			back_       = 1 << 9,
+			back_ = 1 << 9,
 			pflagsmask_ = (1 << 9) - 1
 		};
 
@@ -203,23 +204,23 @@ namespace srell
 	{
 		enum match_flag_type
 		{
-			match_default     = 0,
-			match_not_bol     = 1 << 0,
-			match_not_eol     = 1 << 1,
-			match_not_bow     = 1 << 2,
-			match_not_eow     = 1 << 3,
-			match_any         = 0,
-			match_not_null    = 1 << 4,
-			match_continuous  = 1 << 5,
-			match_prev_avail  = 1 << 6,
+			match_default = 0,
+			match_not_bol = 1 << 0,
+			match_not_eol = 1 << 1,
+			match_not_bow = 1 << 2,
+			match_not_eow = 1 << 3,
+			match_any = 0,
+			match_not_null = 1 << 4,
+			match_continuous = 1 << 5,
+			match_prev_avail = 1 << 6,
 
-			format_default    = 0,
-			format_sed        = 0,
-			format_no_copy    = 1 << 7,
+			format_default = 0,
+			format_sed = 0,
+			format_no_copy = 1 << 7,
 			format_first_only = 1 << 8,
 
 			//  For internal use.
-			match_match_      = 1 << 9
+			match_match_ = 1 << 9
 		};
 
 		inline match_flag_type operator&(const match_flag_type left, const match_flag_type right)
@@ -525,6 +526,7 @@ private:
 			static const ui_l32 ch_v = 0x76;	//  'v'
 			static const ui_l32 ch_w = 0x77;	//  'w'
 			static const ui_l32 ch_x = 0x78;	//  'x'
+			static const ui_l32 ch_y = 0x79;	//  'y'
 			static const ui_l32 ch_z = 0x7a;	//  'z'
 		}
 		//  char_alnum
@@ -1015,7 +1017,7 @@ struct concon_view
 };
 // concon_view
 
-template <typename ElemT, typename Alloc = std::allocator<ElemT> >
+template <typename ElemT>
 class simple_array
 {
 public:
@@ -1026,7 +1028,6 @@ public:
 	typedef const ElemT &const_reference;
 	typedef ElemT *pointer;
 	typedef const ElemT *const_pointer;
-	typedef const_pointer const_iterator;
 	typedef concon_view<ElemT> sa_view;
 
 	static const size_type npos = static_cast<size_type>(-1);
@@ -1034,32 +1035,27 @@ public:
 public:
 
 	simple_array()
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(NULL), size_(0), capacity_(0)
 	{
 	}
 
 	simple_array(const size_type initsize)
-		: buffer_(static_cast<pointer>(std::malloc(initsize * sizeof (ElemT)))), size_(initsize), capacity_p1_(initsize + 1)
+		: buffer_(static_cast<pointer>(std::malloc(initsize * sizeof (ElemT)))), size_(initsize), capacity_(initsize)
 	{
 		if (buffer_ == NULL)
 			throw std::bad_alloc();
 	}
 
 	simple_array(const simple_array &right)
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(NULL), size_(0), capacity_(0)
 	{
 		operator=(right);
 	}
 
 	simple_array(const sa_view &v)
-		: buffer_(NULL), size_(0), capacity_p1_(1)
+		: buffer_(NULL), size_(0), capacity_(0)
 	{
 		operator=(v);
-	}
-
-	simple_array(Alloc)
-		: buffer_(NULL), size_(0), capacity_p1_(1)
-	{
 	}
 
 	simple_array &operator=(const simple_array &right)
@@ -1067,7 +1063,7 @@ public:
 		if (this != &right)
 		{
 			resize(right.size_);
-			std::memcpy(static_cast<void *>(buffer_), right.buffer_, right.size_ * sizeof (ElemT));
+			std::memcpy(buffer_, right.buffer_, right.size_ * sizeof (ElemT));
 		}
 		return *this;
 	}
@@ -1086,10 +1082,10 @@ public:
 	simple_array(simple_array &&right) SRELL_NOEXCEPT
 		: buffer_(right.buffer_)
 		, size_(right.size_)
-		, capacity_p1_(right.capacity_p1_)
+		, capacity_(right.capacity_)
 	{
 		right.size_ = 0;
-		right.capacity_p1_ = 1;
+		right.capacity_ = 0;
 		right.buffer_ = NULL;
 	}
 
@@ -1101,11 +1097,11 @@ public:
 				std::free(this->buffer_);
 
 			this->size_ = right.size_;
-			this->capacity_p1_ = right.capacity_p1_;
+			this->capacity_ = right.capacity_;
 			this->buffer_ = right.buffer_;
 
 			right.size_ = 0;
-			right.capacity_p1_ = 1;
+			right.capacity_ = 0;
 			right.buffer_ = NULL;
 		}
 		return *this;
@@ -1140,9 +1136,15 @@ public:
 		size_ = 0;
 	}
 
+	void reset()
+	{
+		if (size_)
+			std::memset(buffer_, 0, size_ * sizeof (ElemT));
+	}
+
 	void resize(const size_type newsize)
 	{
-		if (newsize >= capacity_p1_)
+		if (newsize > capacity_)
 			reserve_<16>(newsize);
 
 		size_ = newsize;
@@ -1155,6 +1157,11 @@ public:
 		resize(newsize);
 		for (; oldsize < size_; ++oldsize)
 			buffer_[oldsize] = type;
+	}
+
+	void shrink(const size_type newsize)
+	{
+		size_ = newsize;
 	}
 
 	reference operator[](const size_type pos)
@@ -1171,7 +1178,7 @@ public:
 	{
 		const size_type oldsize = size_;
 
-		if (++size_ >= capacity_p1_)
+		if (++size_ > capacity_)
 			reserve_<16>(size_);
 
 		buffer_[oldsize] = n;
@@ -1324,23 +1331,9 @@ public:
 		return buffer_;
 	}
 
-	const_iterator begin() const
-	{
-		return buffer_;
-	}
-	const_iterator end() const
-	{
-		return buffer_ + size_;
-	}
-
 	size_type max_size() const
 	{
 		return maxsize_;
-	}
-
-	bool no_alloc_failure() const
-	{
-		return capacity_p1_ > 0;
 	}
 
 	void swap(simple_array &right)
@@ -1349,15 +1342,15 @@ public:
 		{
 			const pointer tmpbuffer = this->buffer_;
 			const size_type tmpsize = this->size_;
-			const size_type tmpcapacity = this->capacity_p1_;
+			const size_type tmpcapacity = this->capacity_;
 
 			this->buffer_ = right.buffer_;
 			this->size_ = right.size_;
-			this->capacity_p1_ = right.capacity_p1_;
+			this->capacity_ = right.capacity_;
 
 			right.buffer_ = tmpbuffer;
 			right.size_ = tmpsize;
-			right.capacity_p1_ = tmpcapacity;
+			right.capacity_ = tmpcapacity;
 		}
 	}
 
@@ -1369,7 +1362,7 @@ protected:
 		if (newsize <= maxsize_)
 		{
 			const pointer oldbuffer = buffer_;
-			const size_type capa2 = newsize >= minsize ? capacity_p1_ << 1 : minsize;
+			const size_type capa2 = newsize >= minsize ? capacity_ << 1 : minsize;
 
 			if (newsize < capa2)
 			{
@@ -1378,16 +1371,15 @@ protected:
 					newsize = maxsize_;
 			}
 
-			buffer_ = static_cast<pointer>(std::realloc(static_cast<void *>(buffer_), newsize * sizeof (ElemT)));
-			capacity_p1_ = newsize + 1;
+			buffer_ = static_cast<pointer>(std::realloc(buffer_, newsize * sizeof (ElemT)));
+			capacity_ = newsize;
 
 			if (buffer_ != NULL)
 				return;
 
 			std::free(oldbuffer);
 //			buffer_ = NULL;
-			size_ = 0;
-			capacity_p1_ = 1;
+			size_ = capacity_ = 0;
 		}
 		throw std::bad_alloc();
 	}
@@ -1410,20 +1402,24 @@ protected:
 
 	pointer buffer_;
 	size_type size_;
-	size_type capacity_p1_;
+	size_type capacity_;
 
 	static const size_type maxsize_ = npos / sizeof (ElemT) / 2;
 };
-template <typename ElemT, typename Alloc>
-const typename simple_array<ElemT, Alloc>::size_type simple_array<ElemT, Alloc>::npos;
+template <typename ElemT>
+const typename simple_array<ElemT>::size_type simple_array<ElemT>::npos;
 //  simple_array
+
+typedef simple_array<ui_l32> u32array;
+typedef concon_view<ui_l32> u32view;
+typedef u32array::size_type u32size_type;
 
 struct simple_stack : protected simple_array<char>
 {
 	using simple_array<char>::size_type;
 	using simple_array<char>::clear;
 	using simple_array<char>::size;
-	using simple_array<char>::resize;
+	using simple_array<char>::shrink;
 
 	template <typename T>
 	void push_back_t_nc(const T &n)
@@ -1437,7 +1433,7 @@ struct simple_stack : protected simple_array<char>
 	{
 		const size_type newsize = size_ + sizeof (T);
 
-		if (newsize >= capacity_p1_)
+		if (newsize > capacity_)
 			reserve_<256>(newsize);
 
 		std::memcpy(buffer_ + size_, &n, sizeof (T));
@@ -1451,16 +1447,11 @@ struct simple_stack : protected simple_array<char>
 		std::memcpy(&t, buffer_ + size_, sizeof (T));
 	}
 
-	void resize(const size_type newsize)
-	{
-		size_ = newsize;
-	}
-
 	void expand(const size_type add)
 	{
 		const size_type newsize = size_ + add;
 
-		if (newsize >= capacity_p1_)
+		if (newsize > capacity_)
 			reserve_<256>(newsize);
 	}
 };
@@ -1508,17 +1499,25 @@ class bitset : private bitsetbase<Bits>
 public:
 
 	bitset()
-		: buffer_(NULL)
+		: buffer_(static_cast<array_type *>(std::malloc(size_in_byte_)))
 	{
-		ensure_alloc_();
-		std::memset(buffer_, 0, size_in_byte_);
+		if (buffer_ != NULL)
+		{
+			reset();
+			return;
+		}
+		throw std::bad_alloc();
 	}
 
 	bitset(const bitset &right)
-		: buffer_(NULL)
+		: buffer_(static_cast<array_type *>(std::malloc(size_in_byte_)))
 	{
-		ensure_alloc_();
-		std::memcpy(buffer_, right.buffer_, size_in_byte_);
+		if (buffer_ != NULL)
+		{
+			operator=(right);
+			return;
+		}
+		throw std::bad_alloc();
 	}
 
 #if defined(__cpp_rvalue_references)
@@ -1533,7 +1532,6 @@ public:
 	{
 		if (this != &right)
 		{
-			ensure_alloc_();
 			std::memcpy(buffer_, right.buffer_, size_in_byte_);
 		}
 		return *this;
@@ -1560,15 +1558,10 @@ public:
 			std::free(buffer_);
 	}
 
-	void clear()
+	bitset &reset()
 	{
-		ensure_alloc_();
 		std::memset(buffer_, 0, size_in_byte_);
-	}
-
-	std::size_t size() const
-	{
-		return buffer_ != NULL ? Bits : 0;
+		return *this;
 	}
 
 	bitset &reset(const std::size_t bit)
@@ -1599,18 +1592,6 @@ public:
 	}
 
 private:
-
-	void ensure_alloc_()
-	{
-		if (buffer_ != NULL)
-			return;
-
-		buffer_ = static_cast<array_type *>(std::malloc(size_in_byte_));
-		if (buffer_ != NULL)
-			return;
-
-		throw std::bad_alloc();
-	}
 
 	static const std::size_t bitmask_ = base_type::bits_per_elem_ - 1;
 	static const std::size_t arraylength_ = (Bits + bitmask_) / base_type::bits_per_elem_;
@@ -1781,9 +1762,9 @@ public:
 
 	typedef simple_array<char> pstring;
 
-	static ui_l32 lookup_property(const pstring &name, const pstring &value)
+	static ui_l32 lookup_property(const u32view name, const u32view value)
 	{
-		up_type ptype = name.size() > 1 ? lookup_property_name(name) : up_constants::uptype_gc;
+		up_type ptype = name.size_ > 0 ? lookup_property_name(name) : up_constants::uptype_gc;
 		const posinfo *pos = &updata::positiontable[ptype];
 		ui_l32 pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 
@@ -1830,12 +1811,12 @@ private:
 	typedef up_internal::posinfo posinfo;
 	typedef up_internal::updata updata;
 
-	static up_type lookup_property_name(const pstring &name)
+	static up_type lookup_property_name(const u32view name)
 	{
 		return lookup_property_value(name, 1, updata::propertynumbertable[0].pno);
 	}
 
-	static ui_l32 lookup_property_value(const pstring &value, const ui_l32 offset, ui_l32 count)
+	static ui_l32 lookup_property_value(const u32view value, const ui_l32 offset, ui_l32 count)
 	{
 		const pnameno_map_type *base = &updata::propertynumbertable[offset];
 
@@ -1861,15 +1842,15 @@ private:
 		return upid_error;
 	}
 
-	static int compare(const pstring &value, pname_type pname)
+	static int compare(const u32view value, pname_type pname)
 	{
-		for (pstring::size_type i = 0;; ++i, ++pname)
+		for (u32view::size_type i = 0;; ++i, ++pname)
 		{
-			if (value[i] == 0)
-				return (*pname == 0) ? 0 : (value[i] < *pname ? -1 : 1);
+			if (i == value.size_)
+				return (*pname == 0) ? 0 : -1;
 
-			if (value[i] != *pname)
-				return value[i] < *pname ? -1 : 1;
+			if (value.data_[i] != static_cast<ui_l32>(*pname))
+				return value.data_[i] < static_cast<ui_l32>(*pname) ? -1 : 1;
 		}
 	}
 
@@ -2170,7 +2151,7 @@ public:
 			(*this)[wpos].set(begin, constants::unicode_max_codepoint);
 		}
 		else
-			this->resize(wpos);
+			this->shrink(wpos);
 	}
 
 	bool is_overlap(const range_pairs &right) const
@@ -2621,15 +2602,6 @@ public:
 	}
 #endif
 
-	bool no_alloc_failure() const
-	{
-		return char_class_.no_alloc_failure() && char_class_pos_.no_alloc_failure()
-#if !defined(SRELLDBG_NO_CCPOS)
-			&& char_class_el_.no_alloc_failure() && char_class_pos_el_.no_alloc_failure()
-#endif
-		;
-	}
-
 	bool is_included(const ui_l32 class_number, const ui_l32 c) const
 	{
 //		return char_class_.is_included(char_class_pos_[class_number], c);
@@ -2647,7 +2619,8 @@ public:
 
 	void reset()
 	{
-		setup_predefinedclass();
+		char_class_.shrink(20);
+		char_class_pos_.shrink(number_of_predefcls);
 
 #if !defined(SRELLDBG_NO_CCPOS)
 		char_class_el_.clear();
@@ -2716,9 +2689,9 @@ public:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	ui_l32 get_propertynumber(const pstring &pname, const pstring &pvalue) const
+	ui_l32 get_propertynumber(const u32view pname, const u32view pvalue) const
 	{
-		const ui_l32 pno = static_cast<ui_l32>(unicode_property::lookup_property(pname, pvalue));
+		const ui_l32 pno = unicode_property::lookup_property(pname, pvalue);
 
 		return (pno != up_constants::error_property) ? pno : up_constants::error_property;
 	}
@@ -2748,7 +2721,7 @@ public:
 		return unicode_property::is_pos(pno);
 	}
 
-	bool get_prawdata(simple_array<ui_l32> &seq, ui_l32 property_number)
+	bool get_prawdata(u32array &seq, ui_l32 property_number)
 	{
 		if (property_number != up_constants::error_property)
 		{
@@ -2843,23 +2816,9 @@ private:
 			{ 14, 4 },	//  word.
 			{ 14, 6 }	//  icase_word.
 		};
-		const std::size_t numofranges = sizeof allranges / sizeof (range_pair);
 
-		if (char_class_.size() >= numofranges)
-			char_class_.resize(numofranges);
-		else
-		{
-//			char_class_.clear();
-			char_class_.append_newpairs(allranges, numofranges);
-		}
-
-		if (char_class_pos_.size() >= number_of_predefcls)
-			char_class_pos_.resize(number_of_predefcls);
-		else
-		{
-//			char_class_pos_.clear();
-			char_class_pos_.append(offsets, number_of_predefcls);
-		}
+		char_class_.append_newpairs(allranges, sizeof allranges / sizeof (range_pair));
+		char_class_pos_.append(offsets, sizeof offsets / sizeof (range_pair));
 	}
 
 private:
@@ -2948,11 +2907,6 @@ public:
 		keysize_classno_.clear();
 	}
 
-	bool no_alloc_failure() const
-	{
-		return names_.no_alloc_failure() && keysize_classno_.no_alloc_failure();
-	}
-
 	const ui_l32 *operator[](const view_type &v) const
 	{
 		ui_l32 pos = 0;
@@ -2994,7 +2948,7 @@ public:
 		return keysize_classno_.size() ? keysize_classno_[0] : 0;
 	}
 
-	int push_back(const gname_string &gname, const ui_l32 gno, const simple_array<ui_l32> &dupranges)
+	bool push_back(const gname_string &gname, const ui_l32 gno, const u32array &dupranges)
 	{
 		const ui_l32 *list = operator[](gname);
 
@@ -3011,7 +2965,7 @@ public:
 			keysize_classno_[curpos++] = static_cast<ui_l32>(gname.size());
 			keysize_classno_[curpos++] = 1;
 			keysize_classno_[curpos] = gno;
-			return 1;
+			return true;
 		}
 
 		const size_type offset = list - keysize_classno_.data();
@@ -3021,17 +2975,17 @@ public:
 		{
 			const ui_l32 no = list[i];
 
-			for (typename simple_array<ui_l32>::size_type j = 0;; ++j)
+			for (u32size_type j = 0;; ++j)
 			{
 				if (j >= dupranges.size())
-					return 0;
+					return false;
 
 				if (no < dupranges[j])
 				{
 					if (j & 1)
 						break;
 
-					return 0;
+					return false;
 				}
 			}
 		}
@@ -3040,7 +2994,7 @@ public:
 
 		keysize_classno_.insert(offset + newkeynum, gno);
 
-		return 1;
+		return true;
 	}
 
 	ui_l32 assign_number(const gname_string &gname, const ui_l32 gno)
@@ -3083,7 +3037,7 @@ private:
 	}
 
 	gname_string names_;
-	simple_array<ui_l32> keysize_classno_;
+	u32array keysize_classno_;
 
 public:	//  For debug.
 
@@ -3354,7 +3308,7 @@ struct re_compiler_state
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 	groupname_mapper<charT> unresolved_gnames;
-	simple_array<ui_l32> dupranges;
+	u32array dupranges;
 #endif
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -3406,6 +3360,11 @@ struct re_compiler_state
 		return false;
 #endif
 	}
+
+	bool is_nosubs() const
+	{
+		return (soflags & regex_constants::nosubs) ? true : false;
+	}
 };
 //  re_compiler_state
 
@@ -3454,32 +3413,8 @@ struct re_submatch_type
 };
 
 #if defined(SRELL_HAS_TYPE_TRAITS)
-
-template <typename T, typename Alloc, const bool>
-struct container_type
-{
-	typedef std::vector<T, Alloc> type;
-};
-template <typename T, typename Alloc>
-struct container_type<T, Alloc, true>
-{
-	typedef simple_array<T, Alloc> type;
-};
-
 template <typename BidirectionalIterator, const bool>
 #else
-
-template <typename Iter, typename T, typename Alloc>
-struct container_type
-{
-	typedef std::vector<T, Alloc> type;
-};
-template <typename Iter, typename T, typename Alloc>
-struct container_type<const Iter *, T, Alloc>
-{
-	typedef simple_array<T, Alloc> type;
-};
-
 template <typename BidirectionalIterator>
 #endif	//   defined(SRELL_HAS_TYPE_TRAITS)
 struct re_search_state_types
@@ -3641,7 +3576,7 @@ public:
 	}
 	void bt_resize(const btstack_size_type s)
 	{
-		bt_stack.resize(s);
+		bt_stack.shrink(s);
 	}
 
 	void expand(const btstack_size_type addlen)
@@ -3894,14 +3829,7 @@ public:
 		repseq_.clear();
 	}
 
-	bool no_alloc_failure() const
-	{
-		return u32string_.no_alloc_failure()
-			&& bmtable_.no_alloc_failure()
-			&& repseq_.no_alloc_failure();
-	}
-
-	void setup(const simple_array<ui_l32> &u32s, const bool icase)
+	void setup(const u32array &u32s, const bool icase)
 	{
 		u32string_ = u32s;
 		setup_();
@@ -4130,7 +4058,7 @@ public:	//  For debug.
 
 private:
 
-	simple_array<ui_l32> u32string_;
+	u32array u32string_;
 	simple_array<std::size_t> bmtable_;
 	simple_array<charT> repseq_;
 };
@@ -4147,8 +4075,8 @@ private:
 
 struct posdata_holder
 {
-	simple_array<ui_l32> indices;
-	simple_array<ui_l32> seqs;
+	u32array indices;
+	u32array seqs;
 	range_pairs ranges;
 	range_pair length;
 
@@ -4185,7 +4113,7 @@ struct posdata_holder
 
 	void do_union(const posdata_holder &right)
 	{
-		simple_array<ui_l32> curseq;
+		u32array curseq;
 
 		ranges.merge(right.ranges);
 
@@ -4266,7 +4194,7 @@ struct posdata_holder
 	{
 		const ui_l32 maxlen = static_cast<ui_l32>(indices.size() <= right.indices.size() ? indices.size() : right.indices.size());
 		posdata_holder newpos;
-		simple_array<ui_l32> curseq;
+		u32array curseq;
 
 		ranges.split_ranges(newpos.ranges, right.ranges);
 		ranges.swap(newpos.ranges);
@@ -4315,10 +4243,10 @@ struct posdata_holder
 		check_lengths();
 	}
 
-	void split_seqs_and_ranges(const simple_array<ui_l32> &inseqs, const bool icase, const bool back)
+	void split_seqs_and_ranges(const u32array &inseqs, const bool icase, const bool back)
 	{
 		const ui_l32 max = static_cast<ui_l32>(inseqs.size());
-		simple_array<ui_l32> curseq;
+		u32array curseq;
 
 		clear();
 
@@ -4362,7 +4290,7 @@ struct posdata_holder
 
 				if (icase)
 				{
-					for (simple_array<ui_l32>::size_type i = 0; i < curseq.size(); ++i)
+					for (u32size_type i = 0; i < curseq.size(); ++i)
 					{
 						const ui_l32 cf = unicode_case_folding::try_casefolding(curseq[i]);
 
@@ -4614,7 +4542,7 @@ protected:
 
 #if !defined(SRELLDBG_NO_1STCHRCLS)
 	#if !defined(SRELLDBG_NO_BITSET)
-		firstchar_class_bs.clear();
+		firstchar_class_bs.reset();
 	#endif
 #endif
 
@@ -4922,9 +4850,6 @@ private:
 #endif
 	typedef typename state_array::size_type state_size_type;
 
-	typedef simple_array<ui_l32> u32array;
-	typedef typename u32array::size_type u32array_size_type;
-
 	typedef re_compiler_state<charT> cvars_type;
 
 	template <typename InputIterator>
@@ -5089,12 +5014,8 @@ private:
 					return false;
 
 				if (pos.may_contain_strings())
-				{
-					ADD_POS:
-					transform_seqdata(piece, pos, cvars);
-					astate.quantifier.set(pos.length.first, pos.length.second);
-					goto AFTER_PIECE_SET;
-				}
+					goto ADD_POS;
+
 				tmpcc.swap(pos.ranges);
 
 				astate.char_num = tmpcc.consists_of_one_character((regex_constants::icase & this->soflags & cvars.soflags) ? true : false);
@@ -5174,7 +5095,6 @@ private:
 //					astate.type = st_eol;	//  '\z'
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-				//  Prepared for named captures.
 				case char_alnum::ch_k:	//  'k':
 					if (curpos == end || *curpos != meta_char::mc_lt)
 						return this->set_error(regex_constants::error_escape);
@@ -5197,7 +5117,12 @@ private:
 						return false;
 
 					if (pos.may_contain_strings())
-						goto ADD_POS;
+					{
+						ADD_POS:
+						transform_seqdata(piece, pos, cvars);
+						astate.quantifier.set(pos.length.first, pos.length.second);
+						goto AFTER_PIECE_SET;
+					}
 
 					if (astate.type == st_character_class)
 						astate.char_num = this->character_class.register_newclass(pos.ranges);
@@ -5382,10 +5307,6 @@ private:
 
 		if (*curpos == meta_char::mc_query)	//  '?'
 		{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-			bool lookbehind = false;
-#endif
-
 			if (++curpos == end)
 				return this->set_error(regex_constants::error_paren);
 
@@ -5406,24 +5327,20 @@ private:
 					if (groupname.size() == 0)
 						return false;
 
-					const int res = this->namedcaptures.push_back(groupname, this->number_of_brackets, cvars.dupranges);
-
-					if (res == 0)
+					if (!this->namedcaptures.push_back(groupname, this->number_of_brackets, cvars.dupranges))
 						return this->set_error(regex_constants::error_backref);
 
-					goto AFTER_EXTRB;
+					goto CGROUP;
 #else
 					return this->set_error(regex_constants::error_paren);
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 				}
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-				lookbehind = true;
-#endif
+				//  "(?<=" or "(?<!"
 			}
 			else
 				rbstate.quantifier.is_greedy = 0;
-				//  Sets .is_greedy to 0 for other assertions than lookbehinds. The automaton
-				//  checks .is_greedy to know whether lookbehinds or other assertions.
+				//  0: Other than lookbehind assertions.
+				//  1: Lookbehind.
 
 			switch (rbstate.char_num)
 			{
@@ -5433,7 +5350,7 @@ private:
 
 			case meta_char::mc_eq:	//  '=':
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-				cvars.soflags = lookbehind ? (cvars.soflags | regex_constants::back_) : (cvars.soflags & ~regex_constants::back_);
+				cvars.soflags = rbstate.quantifier.is_greedy ? (cvars.soflags | regex_constants::back_) : (cvars.soflags & ~regex_constants::back_);
 #endif
 
 #if defined(SRELL_ENABLE_GT)
@@ -5451,11 +5368,11 @@ private:
 
 			default:
 				{
-					const u32array_size_type boffset = curpos - cvars.begin;
+					const u32size_type boffset = curpos - cvars.begin;
+					ui_l32 to_be_modified = 0;
 					ui_l32 modified = 0;
 					ui_l32 localflags = cvars.soflags;
 					bool negate = false;
-					bool flagerror = false;
 
 					for (;;)
 					{
@@ -5465,10 +5382,14 @@ private:
 						case meta_char::mc_colon:	//  ':':
 							//  (?ims-ims:...)
 							if (modified)
-								goto COLON_FOUND;
+							{
+								if (modified & (regex_constants::unicodesets | regex_constants::sticky | regex_constants::nosubs))
+									goto ERROR_PAREN;
 
-							flagerror = true;
-							break;
+								goto COLON_FOUND;
+							}
+							//  "(?-:"
+							goto ERROR_MODIFIER;
 #endif
 #if !defined(SRELL_NO_UBMOD)
 						case meta_char::mc_rbracl:	//  ')':
@@ -5482,73 +5403,68 @@ private:
 									this->soflags &= ~regex_constants::icase;
 #endif
 								}
+								else if (modified & regex_constants::sticky)
+									goto ERROR_MODIFIER;
 
 								if (boffset == 2)	//  Restricts so that unbounded forms (?ims-ims) can be used only at the beginning of an expression.
 								{
-									rbstate.type = st_roundbracket_close;
 									++curpos;
 									return true;
 								}
 							}
-							flagerror = true;	//  "(?)" or "(?-)"
-							break;
+							//  "(?)" or "(?-)"
+							goto ERROR_MODIFIER;
 #endif
 						case meta_char::mc_minus:	//  '-':
-							(negate ? flagerror : negate) = true;
+							if (negate)
+								goto ERROR_MODIFIER;
+							negate = true;
 							break;
 
 						case char_alnum::ch_i:	//  'i':
-							if (modified & regex_constants::icase)
-								flagerror = true;
-							modified |= regex_constants::icase;
-							if (!negate)
-								localflags |= regex_constants::icase;
-							else
-								localflags &= ~regex_constants::icase;
-							break;
+							to_be_modified = regex_constants::icase;
+							goto TRY_MODIFICATION;
 
 						case char_alnum::ch_m:	//  'm':
-							if (modified & regex_constants::multiline)
-								flagerror = true;
-							modified |= regex_constants::multiline;
-							if (!negate)
-								localflags |= regex_constants::multiline;
-							else
-								localflags &= ~regex_constants::multiline;
-							break;
+							to_be_modified = regex_constants::multiline;
+							goto TRY_MODIFICATION;
 
 						case char_alnum::ch_s:	//  's':
-							if (modified & regex_constants::dotall)
-								flagerror = true;
-							modified |= regex_constants::dotall;
-							if (!negate)
-								localflags |= regex_constants::dotall;
-							else
-								localflags &= ~regex_constants::dotall;
-							break;
-
-#if 0
-//  Although ECMAScript does not support v-flag modification, SRELL can.
+							to_be_modified = regex_constants::dotall;
+							goto TRY_MODIFICATION;
 
 						case char_alnum::ch_v:	//  'v':
-							if (modified & regex_constants::unicodesets)
-								flagerror = true;
-							modified |= regex_constants::unicodesets;
-							if (!negate)
-								localflags |= regex_constants::unicodesets;
-							else
-								localflags &= ~regex_constants::unicodesets;
-							break;
-#endif
+							to_be_modified = regex_constants::unicodesets;
+							goto TRY_MODIFICATION;
+
+						case char_alnum::ch_y:	//  'y':
+							to_be_modified = regex_constants::sticky;
+							goto TRY_MODIFICATION;
+
+						case char_alnum::ch_n:	//  'n':
+							to_be_modified = regex_constants::nosubs;
+							goto TRY_MODIFICATION;
+
 						default:
+							ERROR_PAREN:
 							return this->set_error(regex_constants::error_paren);
+
+							TRY_MODIFICATION:
+							if (modified & to_be_modified)
+							{
+								ERROR_MODIFIER:
+								return this->set_error(regex_constants::error_modifier);
+							}
+
+							modified |= to_be_modified;
+							if (!negate)
+								localflags |= to_be_modified;
+							else
+								localflags &= ~to_be_modified;
 						}
 
-						if (flagerror)
-							return this->set_error(regex_constants::error_modifier);
-
 						if (++curpos == end)
-							return this->set_error(regex_constants::error_paren);
+							goto ERROR_PAREN;
 
 						rbstate.char_num = *curpos;
 					}
@@ -5560,37 +5476,45 @@ private:
 				//@fallthrough@
 
 			case meta_char::mc_colon:
-				rbstate.type = st_epsilon;
-				rbstate.char_num = epsilon_type::et_ncgopen;
-				rbstate.quantifier.atleast = this->number_of_brackets;
+				++curpos;
+				goto NCGROUP;
 			}
 
 			++curpos;
 			piece.push_back(rbstate);
 		}
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-		AFTER_EXTRB:
-#endif
-
-		if (rbstate.type == st_roundbracket_open)
+		else
 		{
-			if (this->number_of_brackets > constants::max_u32value)
-				return this->set_error(regex_constants::error_complexity);
+			if (cvars.is_nosubs())
+			{
+				NCGROUP:
+				rbstate.type = st_epsilon;
+				rbstate.char_num = epsilon_type::et_ncgopen;
+				rbstate.quantifier.atleast = this->number_of_brackets;
+			}
+			else
+			{
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+				CGROUP:
+#endif
+				if (this->number_of_brackets > constants::max_u32value)
+					return this->set_error(regex_constants::error_complexity);
 
-			rbstate.char_num = this->number_of_brackets++;
-			rbstate.next1 = 2;
-			rbstate.next2 = 1;
-			rbstate.quantifier.atleast = this->number_of_brackets;
-			piece.push_back(rbstate);
+				rbstate.char_num = this->number_of_brackets++;
+				rbstate.next1 = 2;
+				rbstate.next2 = 1;
+				rbstate.quantifier.atleast = this->number_of_brackets;
+				piece.push_back(rbstate);
 
-			rbstate.type  = st_roundbracket_pop;
-			rbstate.next1 = 0;
-			rbstate.next2 = 0;
+				rbstate.type  = st_roundbracket_pop;
+				rbstate.next1 = 0;
+				rbstate.next2 = 0;
+			}
 			piece.push_back(rbstate);
 		}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-		const typename u32array::size_type dzsize = cvars.dupranges.size();
+		const u32size_type dzsize = cvars.dupranges.size();
 #endif
 
 		if (++cvars.depth > SRELL_MAX_DEPTH)
@@ -6282,18 +6206,18 @@ private:
 
 			case char_alnum::ch_p:	//  \p{...}
 			{
-				pstring pname;
-				pstring pvalue;
+				u32view pname;
+				u32view pvalue;
 
 				if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 					return this->set_error(regex_constants::error_property);
 
-				const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
+				const bool digit_found = get_property_name_or_value(pvalue, ++curpos, end);
 
-				if (!pvalue.size())
+				if (pvalue.size() == 0)
 					return this->set_error(regex_constants::error_property);
 
-				if (!digit_seen)
+				if (!digit_found)
 				{
 					if (curpos == end)
 						return this->set_error(regex_constants::error_property);
@@ -6302,7 +6226,7 @@ private:
 					{
 						pname = pvalue;
 						get_property_name_or_value(pvalue, ++curpos, end);
-						if (!pvalue.size())
+						if (pvalue.size() == 0)
 							return this->set_error(regex_constants::error_property);
 					}
 				}
@@ -6311,9 +6235,6 @@ private:
 					return this->set_error(regex_constants::error_property);
 
 				++curpos;
-
-				pname.push_back_c(0);
-				pvalue.push_back_c(0);
 
 				eastate.char_num = this->character_class.get_propertynumber(pname, pvalue);
 
@@ -6498,11 +6419,11 @@ private:
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
+	bool get_property_name_or_value(u32view &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
 	{
 		bool number_found = false;
 
-		name_or_value.clear();
+		name_or_value.data_ = curpos;
 
 		for (;; ++curpos)
 		{
@@ -6521,9 +6442,9 @@ private:
 				number_found = true;
 			else
 				break;
-
-			name_or_value.append(1, static_cast<typename pstring::value_type>(curchar));
 		}
+
+		name_or_value.size_ = curpos - name_or_value.data_;
 
 		//  A string containing a digit cannot be a property name.
 		return number_found;
@@ -6622,7 +6543,7 @@ private:
 
 				if (offset != seqend)
 				{
-					branch.resize(seqlen + 1);
+					branch.shrink(seqlen + 1);
 					branch[seqlen] = jumpstate;
 
 					for (ui_l32 count = 0; offset < seqend; ++offset)
@@ -6844,10 +6765,10 @@ private:
 	bool check_backreferences(cvars_type &cvars)
 	{
 		const state_size_type orgsize = this->NFA_states.size();
-		simple_array<bool> gno_found;
+		simple_array<char> gno_found(this->number_of_brackets);
 		state_array additions;
 
-		gno_found.resize(this->number_of_brackets, false);
+		gno_found.reset();
 
 		for (state_size_type backrefpos = 1; backrefpos < orgsize; ++backrefpos)
 		{
@@ -6855,7 +6776,7 @@ private:
 
 			if (brs.type == st_roundbracket_close)
 			{
-				gno_found[brs.char_num] = true;
+				gno_found[brs.char_num] = 1;
 			}
 			else if (brs.type == st_backreference)
 			{
@@ -6951,7 +6872,7 @@ private:
 	{
 		range_pairs fcc;
 
-		const int canbe0length = gather_nextchars(fcc, static_cast<state_size_type>(this->NFA_states[0].next1), 0u, false);
+		const bool canbe0length = gather_nextchars(fcc, static_cast<state_size_type>(this->NFA_states[0].next1), 0u, false);
 
 		if (canbe0length)
 		{
@@ -7051,9 +6972,9 @@ private:
 	}
 #endif	//  !defined(SRELLDBG_NO_1STCHRCLS)
 
-	int gather_nextchars(range_pairs &nextcharclass, state_size_type pos, simple_array<bool> &checked, const ui_l32 bracket_number, const bool subsequent) const
+	bool gather_nextchars(range_pairs &nextcharclass, state_size_type pos, simple_array<char> &checked, const ui_l32 bracket_number, const bool subsequent) const
 	{
-		int canbe0length = 0;
+		bool canbe0length = false;
 
 		for (;;)
 		{
@@ -7062,7 +6983,7 @@ private:
 			if (checked[pos])
 				break;
 
-			checked[pos] = true;
+			checked[pos] = 1;
 
 			if (state.next2
 					&& (state.type != st_increment_counter)
@@ -7072,11 +6993,8 @@ private:
 					&& (state.type != st_repeat_in_push)
 					&& (state.type != st_backreference || (state.next1 != state.next2))
 					&& (state.type != st_lookaround_open))
-			{
-				const int c0l = gather_nextchars(nextcharclass, pos + state.next2, checked, bracket_number, subsequent);
-				if (c0l)
-					canbe0length = 1;
-			}
+				if (gather_nextchars(nextcharclass, pos + state.next2, checked, bracket_number, subsequent))
+					canbe0length = true;
 
 			switch (state.type)
 			{
@@ -7144,11 +7062,11 @@ private:
 		return canbe0length;
 	}
 
-	int gather_nextchars(range_pairs &nextcharclass, const state_size_type pos, const ui_l32 bracket_number, const bool subsequent) const
+	bool gather_nextchars(range_pairs &nextcharclass, const state_size_type pos, const ui_l32 bracket_number, const bool subsequent) const
 	{
-		simple_array<bool> checked;
+		simple_array<char> checked(this->NFA_states.size());
 
-		checked.resize(this->NFA_states.size(), false);
+		checked.reset();
 		return gather_nextchars(nextcharclass, pos, checked, bracket_number, subsequent);
 	}
 
@@ -7307,7 +7225,7 @@ private:
 
 				{
 					nextcc.clear();
-					const int canbe0length = gather_nextchars(nextcc, nextno, 0u, true);
+					const bool canbe0length = gather_nextchars(nextcc, nextno, 0u, true);
 
 					if (nextcc.size())
 					{
@@ -7559,7 +7477,7 @@ private:
 				if (nextcharpos)
 				{
 					range_pairs nextcharclass2;
-					const int canbe0length = gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
+					const bool canbe0length = gather_nextchars(nextcharclass2, pos + state.next2, 0u /* bracket_number */, true);
 
 					if (!canbe0length && !nextcharclass1.is_overlap(nextcharclass2))
 					{
@@ -7842,19 +7760,13 @@ private:
 		return 0u;
 	}
 
-	int create_rewinder(const state_size_type end, const int needs_rerun, const cvars_type &cvars)
+	bool create_rewinder(const state_size_type end, const int needs_rerun, const cvars_type &cvars)
 	{
 		state_array newNFAs;
 		state_type rwstate;
 
-		{
-			const int res = reverse_atoms(newNFAs, this->NFA_states, 1u, end, cvars);
-
-			if (res < 1)
-				return res;
-		}
-		if (newNFAs.size() == 0u)
-			return 0;
+		if (!reverse_atoms(newNFAs, this->NFA_states, 1u, end, cvars) || newNFAs.size() == 0u)
+			return false;
 
 		rwstate.reset(st_lookaround_pop, meta_char::mc_eq);
 		rwstate.quantifier.atmost = 0;
@@ -7883,10 +7795,10 @@ private:
 		this->NFA_states.insert(1, newNFAs);
 		this->NFA_states[0].next2 = static_cast<std::ptrdiff_t>(newNFAs.size()) + 1;
 
-		return 1;
+		return true;
 	}
 
-	int reverse_atoms(state_array &revNFAs, const state_array &NFAs, state_size_type cur, const state_size_type send, const cvars_type &cvars)
+	bool reverse_atoms(state_array &revNFAs, const state_array &NFAs, state_size_type cur, const state_size_type send, const cvars_type &cvars)
 	{
 		const state_size_type orglen = send - cur;
 		state_array atomseq;
@@ -7931,7 +7843,7 @@ private:
 			const state_size_type boundary = find_atom_boundary(NFAs, cur, send, false);
 
 			if (boundary == 0u || cur == boundary)
-				return 0;
+				return false;
 
 			atomseq.clear();
 			atomseq.append(NFAs, cur, boundary - cur);
@@ -7951,11 +7863,7 @@ private:
 						{
 							pos += 2;
 
-							{
-								const int res = reverse_atoms(revgrp, atomseq, pos, rbend, cvars);
-								if (res < 1)
-									return res;
-							}
+							if (reverse_atoms(revgrp, atomseq, pos, rbend, cvars))
 							{
 								if (s.quantifier.is_greedy)
 								{
@@ -7989,7 +7897,7 @@ private:
 							}
 						}
 					}
-					return 0;
+					return false;
 
 				case st_epsilon:
 					if (s.char_num == epsilon_type::et_ncgopen)
@@ -8000,18 +7908,14 @@ private:
 						{
 							++pos;
 
-							{
-								const int res = reverse_atoms(revgrp, atomseq, pos, grend, cvars);
-								if (res < 1)
-									return res;
-							}
+							if (reverse_atoms(revgrp, atomseq, pos, grend, cvars))
 							{
 								atomseq.replace(pos, grend - pos, revgrp);
 								pos = grend;
 								continue;
 							}
 						}
-						return 0;
+						return false;
 					}
 					else if ((s.char_num == epsilon_type::et_ccastrsk || s.char_num == epsilon_type::et_dfastrsk)
 						&& s.next2 != 0 && !s.quantifier.is_greedy)
@@ -8033,7 +7937,7 @@ private:
 						}
 						continue;
 					}
-					return 0;
+					return false;
 
 				default:;
 				}
@@ -8042,7 +7946,7 @@ private:
 			cur = boundary;
 			revNFAs.insert(0, atomseq);
 		}
-		return revNFAs.size() == orglen ? 1 : 0;
+		return revNFAs.size() == orglen;
 	}
 
 	state_size_type find_atom_boundary(const state_array &NFAs, state_size_type cur, const state_size_type end, const bool separate) const
@@ -8196,7 +8100,7 @@ private:
 		return begin != charatomseq_endpos ? charatomseq_endpos : 0u;
 	}
 
-	int find_better_es(state_size_type cur, const cvars_type &cvars)
+	bool find_better_es(state_size_type cur, const cvars_type &cvars)
 	{
 		const state_array &NFAs = this->NFA_states;
 		state_size_type betterpos = 0u;
@@ -8243,7 +8147,7 @@ private:
 				break;
 
 			nextcc.clear();
-			const int canbe0length = gather_nextchars(nextcc, cur, 0u, false);
+			const bool canbe0length = gather_nextchars(nextcc, cur, 0u, false);
 
 			if (canbe0length)
 				break;
@@ -8271,7 +8175,7 @@ private:
 			cur = boundary;
 		}
 
-		return (charcount > 1u) ? create_rewinder(betterpos, needs_rerun, cvars) : 0;
+		return (charcount > 1u) ? create_rewinder(betterpos, needs_rerun, cvars) : false;
 	}
 
 #endif	//  !defined(SRELLDBG_NO_MPREWINDER)
@@ -8736,12 +8640,7 @@ public:
 	typedef sub_match<BidirectionalIterator> value_type;
 	typedef const value_type & const_reference;
 	typedef const_reference reference;
-#if defined(SRELL_HAS_TYPE_TRAITS)
-	typedef typename re_detail::container_type<value_type, Allocator, std::is_trivially_copyable<BidirectionalIterator>::value>::type sub_match_array;
-#else
-	typedef typename re_detail::container_type<BidirectionalIterator, value_type, Allocator>::type sub_match_array;
-#endif
-	typedef typename sub_match_array::const_iterator const_iterator;
+	typedef typename std::vector<value_type, Allocator>::const_iterator const_iterator;
 	typedef const_iterator iterator;
 	typedef typename std::iterator_traits<BidirectionalIterator>::difference_type difference_type;
 
@@ -9256,6 +9155,8 @@ public:	//  For debug.
 	void print_addresses(const value_type &, const char *const) const;
 
 private:
+
+	typedef std::vector<value_type, Allocator> sub_match_array;
 
 	re_detail::ui_l32 ready_;
 	sub_match_array sub_matches_;
