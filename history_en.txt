@@ -1,3 +1,17 @@
+20251010; version 4.100:
+  * Now SRELL requires that the bit widths of int and size_t be at least
+    32.
+  * Based on the additional requirement above, simplified the code in
+    some places.
+  * Modified overloads of constructors, assign(), and operator=() of
+    basic_regex for supporting string_view etc.
+  * Other minor improvements:
+    1. Switch to CPU cache friendly Boyer-Moore-Horspool data.
+    2. Pre-C++11 compilers had been unable to compile
+       regex_token_iterator since version 4.065 owing to lack of data()
+       in std::vector.
+    3. Coexistence of SIMD info and info for non-contiguous iterators.
+
 20250928; version 4.090:
   * Improved memory efficiency in lookup for Unicode property names and
     values.

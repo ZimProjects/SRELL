@@ -1,3 +1,16 @@
+20251010; version 4.100:
+  ・intおよびsize_tのビット幅が32以上であることを求めるように。
+  ・上の要件追加により、一部のコードを簡略化。
+  ・basic_regexのコンストラクタ、assign(), operator=()をstring_view対応
+    に。
+  ・その他細々とした改良：
+    1. CPUキャッシュと相性の良いBoyer-Moore-Horspoolデータに。
+    2. C++11より前のコンパイラにはstd::vectorにdata()メンバがないため、
+       version 4.065以降でregex_token_iteratorがコンパイルできなくなって
+       いました。
+    3. SIMD用の情報とcontiguousではないイテレータ用の情報とが共存できる
+       ように。
+
 20250928; version 4.090:
   ・Unicode property名を引く時のメモリ使用効率を改良。
   ・bad_allocなしモード（SRELL_NO_THROW 2）対応無期限延期につき、関連コ
