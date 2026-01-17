@@ -1,4 +1,4 @@
-//  Generated on 2025/09/18.
+//  Generated on 2025/10/12.
 
 struct testdata
 {
@@ -365,16 +365,16 @@ testdata tests[] = {
 	STR0("aBcD")
 },
 {
-	0, "BMH 04a: Case-folded UTF-8 representation becomes longer in code unit.\n",
-	"8i",
+	8, "BMH 04a: Case-folded UTF-8 representation becomes longer in code unit.\n",
+	"i",
 	RE("\\u023Az"),	//  023a (2 octets) -> 2c65 (3 octets).
 	STR("zzz\\u{023A}zzzz"),	//  Code unit(s): 1, 1, 1, 2, 1, 1, 1, 1.
 	0, 1,
 	STR0("\\u{023A}z")
 },
 {
-	0, "BMH 04b: Case-folded UTF-8 representation becomes longer in code unit.\n",
-	"8i",
+	8, "BMH 04b: Case-folded UTF-8 representation becomes longer in code unit.\n",
+	"i",
 	RE("\\u023Ez"),	//  023e (2 octets) -> 2c66 (3 octets).
 	STR("zzz\\u{023E}zzzz"),
 	0, 1,

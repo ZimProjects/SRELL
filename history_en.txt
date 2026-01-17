@@ -1,3 +1,27 @@
+20251227; version 4.140:
+  * Fixed several undefined behaviour problems warned by GCC/Clang's
+    ubsan (undefined behaviour sanitizer). (Thanks to Avi Hayoun for the
+    report.)
+
+20251214; version 4.130:
+  * Extended the change made in the previous version so that no
+    compilation error would occur even if both _MSC_VER and __GNUC__ are
+    defined at the same time.
+
+20251130; version 4.120:
+  * Adopted a patch to fix a compilation error with clang-cl. (Thanks to
+    Rimas Misevičius for the patch.)
+
+20251111; version 4.110:
+  * Unified the pattern compiler's finalise operations into one place.
+  * Combined four algorithm core functions into two, to solve a matching
+    performance problem within a subexpression where the icase flag is
+    modified (?i-i:) having been slower than pure icase matching.
+    (Secondarily, this change reduces binary size.)
+  * Fixed a bug that caused BMH 04a and 04b in conftest to fail when
+    searching with bidirectional iterators (since version 2.710).
+  * Updated unicode/ucfdataout2.cpp and unicode/updataout3.cpp.
+
 20251010; version 4.100:
   * Now SRELL requires that the bit widths of int and size_t be at least
     32.

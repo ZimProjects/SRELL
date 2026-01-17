@@ -1,5 +1,5 @@
 //
-//  updataout.cpp: version 3.007 (2025/08/23).
+//  updataout3.cpp: version 3.008 (2025/11/02).
 //
 //  This is a program that generates srell_updata3.h from:
 //    DerivedCoreProperties.txt
@@ -451,8 +451,8 @@ private:
 
 	void read_unidata(rangeholder &gc, rangeholder &bp, const char *const unidatafilename, const char *const indir)
 	{
-		const srell::regex re_dataline("^([0-9A-F]+);([^;]*);(([^;]*);(?:[^;]*;){6}([^;]*)(?:;[^;]*){5})$");
-		const srell::regex re_rangefirst("^<(.*), First>$");
+		const srell::regex re_dataline("^([0-9A-F]+);([^;]*);(([^;]*);(?:[^;]*;){6}([^;]*)(?:;[^;]*){5})$", srell::regex::sticky);
+		const srell::regex re_rangefirst("^<(.*), First>$", srell::regex::sticky);
 
 		const std::string stringY("Y");
 		const std::string stringN("N");
@@ -538,8 +538,8 @@ private:
 
 	void read_scriptnames(canonicalname_mapper &sn_maps, strings_type &sn_aliases, std::string &licensetext, const char *const scfilename, const char *const pvafilename, const up_options &opts)
 	{
-		const srell::regex re_scline("^[0-9A-Fa-f.]+\\s*;\\s*(\\S+)");
-		const srell::regex re_pvaline("scx?\\s*;\\s*(\\S.*)\\r?\\n?");
+		const srell::regex re_scline("^[0-9A-Fa-f.]+\\s*;\\s*(\\S+)", srell::regex::sticky);
+		const srell::regex re_pvaline("scx?\\s*;\\s*(\\S.*)\\r?\\n?", srell::regex::sticky);
 		const srell::regex re_split("[ ;]+");
 		ui_l32 count = 0;
 		std::string data;
@@ -556,7 +556,7 @@ private:
 		{
 			const srell::csub_match &line = lines[i];
 
-			if (srell::regex_search(line.first, line.second, cmatch, re_scline, srell::regex_constants::match_continuous))
+			if (srell::regex_search(line.first, line.second, cmatch, re_scline))
 			{
 				const std::string scname(cmatch.str(1));
 
@@ -586,7 +586,7 @@ private:
 		{
 			const srell::csub_match &line = lines[i];
 
-			if (srell::regex_match(line.first, line.second, cmatch, re_pvaline, srell::regex_constants::match_continuous))
+			if (srell::regex_match(line.first, line.second, cmatch, re_pvaline))
 			{
 				srell::cregex_iterator2 rei2s(cmatch[1].first, cmatch[1].second, re_split);
 
@@ -627,14 +627,14 @@ private:
 
 	matchranges_type::size_type read_license(std::string &licensetext, const matchranges_type &lines, matchranges_type::size_type pos)
 	{
-		static const srell::regex re_license("^#[ \\t]*(\\S.*)?$");
+		static const srell::regex re_license("^#[ \\t]*(\\S.*)?$", srell::regex::sticky);
 		srell::cmatch cm;
 
 		for (; pos < lines.size(); ++pos)
 		{
 			const srell::csub_match &line = lines[pos];
 
-			if (srell::regex_search(line.first, line.second, cm, re_license, srell::regex_constants::match_continuous))
+			if (srell::regex_search(line.first, line.second, cm, re_license))
 			{
 				const std::string comment(cm[1].str());
 
@@ -710,7 +710,7 @@ private:
 
 	void read_binprops(rangeholder &bp, std::string &licensetext, const char *const *propdatafiles, const char *const indir)
 	{
-		static const srell::regex re_propfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#]+)\\s*");	//  (#.*)?$");
+		const srell::regex re_propfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#]+)\\s*", srell::regex::sticky);	//  (#.*)?$");
 		ucprange range;
 		std::string data;
 		matchranges_type lines;
@@ -730,7 +730,7 @@ private:
 			{
 				const srell::csub_match &line = lines[i];
 
-				if (srell::regex_search(line.first, line.second, cmatch, re_propfmt, srell::regex_constants::match_continuous))
+				if (srell::regex_search(line.first, line.second, cmatch, re_propfmt))
 				{
 					const srell::cmatch::value_type &begin = cmatch[1];
 					const srell::cmatch::value_type &end = cmatch[2];
@@ -748,8 +748,8 @@ private:
 
 	void read_emoseq(seqholder &emsq, std::string &licensetext, const char *const *emodatafiles, const char *const indir)
 	{
-		const srell::regex re_emsqfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,})|((?:\\s+[0-9A-Fa-f]{4,})+))?\\s*;\\s*([^\\s;#]+)\\s*");	//  (?:\\s*;[^#]*)(#.*)?$");
-		const srell::regex re_emsq2fmt("\\s*([0-9A-Fa-f]{4,})");
+		const srell::regex re_emsqfmt("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,})|((?:\\s+[0-9A-Fa-f]{4,})+))?\\s*;\\s*([^\\s;#]+)\\s*", srell::regex::sticky);	//  (?:\\s*;[^#]*)(#.*)?$");
+		const srell::regex re_emsq2fmt("\\s*([0-9A-Fa-f]{4,})", srell::regex::sticky);
 		std::string data;
 		matchranges_type lines;
 		srell::cmatch cmatch;
@@ -768,7 +768,7 @@ private:
 			{
 				const srell::csub_match &line = lines[i];
 
-				if (srell::regex_search(line.first, line.second, cmatch, re_emsqfmt, srell::regex_constants::match_continuous))
+				if (srell::regex_search(line.first, line.second, cmatch, re_emsqfmt))
 				{
 					const srell::cmatch::value_type &begin = cmatch[1];
 					const srell::cmatch::value_type &end = cmatch[2];
@@ -780,7 +780,7 @@ private:
 					if (seqs.matched)
 					{
 						const u32array::size_type orgsize = emsq[seqname].size();
-						srell::cregex_iterator2 it(seqs.first, seqs.second, re_emsq2fmt, srell::regex_constants::match_continuous);
+						srell::cregex_iterator2 it(seqs.first, seqs.second, re_emsq2fmt);
 						ui_l32 count = 2;
 
 						emsq[seqname].push_back_c(0);	//  Number of code points.
@@ -826,7 +826,7 @@ private:
 
 	void read_scripts(rangeholder &sc, std::string &licensetext, const char *const filename, const char *const indir)
 	{
-		const srell::regex re_scriptdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#]+)\\s*");	//  (#.*)?$");
+		const srell::regex re_scriptdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#]+)\\s*", srell::regex::sticky);	//  (#.*)?$");
 		ucprange range;
 		std::string data;
 		matchranges_type lines;
@@ -845,7 +845,7 @@ private:
 		{
 			const srell::csub_match &line = lines[i];
 
-			if (srell::regex_search(line.first, line.second, cmatch, re_scriptdata, srell::regex_constants::match_continuous))
+			if (srell::regex_search(line.first, line.second, cmatch, re_scriptdata))
 			{
 				const srell::cmatch::value_type &begin = cmatch[1];
 				const srell::cmatch::value_type &end = cmatch[2];
@@ -883,7 +883,7 @@ private:
 
 	void modify_for_scx(rangeholder &scx, const canonicalname_mapper &canonicalnames, std::string &licensetext, const char *const filename, const char *const indir)
 	{
-		const srell::regex re_scxdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#][^;#]*[^\\s;#])\\s*", srell::regex::multiline);	//  (#.*)?$");
+		const srell::regex re_scxdata("^\\s*([0-9A-Fa-f]{4,})(?:\\.\\.([0-9A-Fa-f]{4,}))?\\s*;\\s*([^\\s;#][^;#]*[^\\s;#])\\s*", srell::regex::multiline | srell::regex::sticky);	//  (#.*)?$");
 		const srell::regex re_space(" ");
 		const std::string name_common("Common");
 		const std::string name_inherited("Inherited");
@@ -906,7 +906,7 @@ private:
 		{
 			const srell::csub_match &line = lines[i];
 
-			if (srell::regex_search(line.first, line.second, cmatch, re_scxdata, srell::regex_constants::match_continuous))
+			if (srell::regex_search(line.first, line.second, cmatch, re_scxdata))
 			{
 				const srell::cmatch::value_type &begin = cmatch[1];
 				const srell::cmatch::value_type &end = cmatch[2];
@@ -923,7 +923,7 @@ private:
 
 				for (rei2s.split_begin();; rei2s.split_next())
 				{
-					const std::string scriptname(!rei2s.done() ? rei2s.split_range() : rei2s.split_remainder());
+					const std::string scriptname(rei2s.split_aptrange());
 
 					if (scriptname.size())
 					{
@@ -1201,7 +1201,7 @@ private:
 
 			for (rei2.split_begin();; rei2.split_next())
 			{
-				const std::string name(!rei2.done() ? rei2.split_range() : rei2.split_remainder());
+				const std::string name(rei2.split_aptrange());
 				categories[name] = i;
 				++count;
 
@@ -1291,7 +1291,7 @@ private:
 
 				for (rei2.split_begin();; rei2.split_next())
 				{
-					const std::string alias(!rei2.done() ? rei2.split_range() : rei2.split_remainder());
+					const std::string alias(rei2.split_aptrange());
 
 					rangeno_map[ptype + ':' + alias] = pno;
 					if (rei2.done())
@@ -1313,7 +1313,7 @@ private:
 
 				for (rei2.split_begin();; rei2.split_next())
 				{
-					const std::string alias(!rei2.done() ? rei2.split_range() : rei2.split_remainder());
+					const std::string alias(rei2.split_aptrange());
 
 					rangeno_map[ptype + ':' + alias] = property_number;
 					if (rei2.done())
@@ -1383,7 +1383,7 @@ private:
 
 			for (rei2.split_begin();; rei2.split_next())
 			{
-				const std::string alias(!rei2.done() ? rei2.split_range() : rei2.split_remainder());
+				const std::string alias(rei2.split_aptrange());
 
 				rangeno_map[ptype + ':' + aliases] = property_number;
 				if (rei2.done())

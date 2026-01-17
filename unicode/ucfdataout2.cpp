@@ -1,5 +1,5 @@
 //
-//  ucfdataout.cpp: version 2.104 (2024/07/20).
+//  ucfdataout2.cpp: version 2.105 (2025/11/02).
 //
 //  This is a program that generates srell_ucfdata2.h from CaseFolding.txt
 //  provided by the Unicode Consortium. The latese version is available at:
@@ -200,13 +200,11 @@ public:
 
 		if (unishared::read_file(buf, opts.infilename, opts.indir))
 		{
-			static const srell::regex re_line("^.*$", srell::regex::multiline);
-			static const srell::regex re_license("^# (.*)$");
-			static const srell::regex re_cfdata("^\\s*([0-9A-Fa-f]+); ([CS]); ([0-9A-Fa-f]+);\\s*#\\s*(.*)$");
-			static const srell::regex re_comment_or_emptyline("^#.*|^$");
+			const srell::regex re_line("^.*$", srell::regex::multiline);
+			const srell::regex re_license("^# (.*)$", srell::regex::sticky);
+			const srell::regex re_cfdata("^\\s*([0-9A-Fa-f]+); ([CS]); ([0-9A-Fa-f]+);\\s*#\\s*(.*)$", srell::regex::sticky);
 			srell::cregex_iterator2 iter(buf.c_str(), buf.c_str() + buf.size(), re_line);
 			srell::cmatch match;
-			int colcount = 0;
 
 			for (; !iter.done(); ++iter)
 			{
@@ -235,9 +233,6 @@ public:
 					update(from, to);
 				}
 			}
-
-			if (colcount > 0)
-				outdata.append(1, '\n');
 
 			outdata += "\tstatic const T1 ucf_maxcodepoint = 0x" + unishared::to_string(ucf_maxcodepoint_, 16, 4) + ";\n";
 			outdata += "\tstatic const T2 ucf_deltatablesize = 0x" + unishared::to_string(ucf_numofsegs_ << 8, 16) + ";\n";
@@ -313,13 +308,13 @@ private:
 			++numofcps_to_;
 		}
 
-		if (appearance_counts_.count(to))
-			++appearance_counts_[to];
+		if (appearance_counts_.count(cp_to))
+			++appearance_counts_[cp_to];
 		else
-			appearance_counts_[to] = 1;
+			appearance_counts_[cp_to] = 1;
 
-		if (max_appearance_ < appearance_counts_[to])
-			max_appearance_ = appearance_counts_[to];
+		if (max_appearance_ < appearance_counts_[cp_to])
+			max_appearance_ = appearance_counts_[cp_to];
 	}
 
 	unsigned int maxset() const
@@ -549,7 +544,7 @@ private:
 	flagset_type cps_counted_as_foldedto;	//  The set of code points marked as "folded to".
 
 	unsigned int max_appearance_;
-	std::map<std::string, unsigned int> appearance_counts_;
+	std::map<long, unsigned int> appearance_counts_;
 
 	long nextoffset_;
 	std::basic_string<long> ucf_deltas_;
