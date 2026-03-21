@@ -1,8 +1,8 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.140
+**  SRELL (std::regex-like library) version 2026.01
 **
-**  Copyright (c) 2012-2025, Nozomu Katoo. All rights reserved.
+**  Copyright (c) 2012-2026, Nozomu Katoo. All rights reserved.
 **
 **  Redistribution and use in source and binary forms, with or without
 **  modification, are permitted provided that the following conditions are
@@ -30,8 +30,8 @@
 ******************************************************************************
 */
 
-#ifndef SRELL_REGEX_TEMPLATE_LIBRARY
-#define SRELL_REGEX_TEMPLATE_LIBRARY
+#ifndef SRELL_HPP_
+#define SRELL_HPP_ 202601
 
 #include <climits>
 #include <cwchar>
@@ -17608,11 +17608,6 @@ protected:
 		return true;
 	}
 
-	bool is_ricase() const
-	{
-		return this->NFA_states.size() && this->NFA_states[0].flags ? true : false;	//  icase.
-	}
-
 private:
 
 	typedef re_object_core<charT, traits> base_type;
@@ -19565,7 +19560,8 @@ private:
 
 							if (prevstate.is_asterisk_or_plus_for_onelen_atom())
 							{
-								prevstate.next1 = 2;
+								brs.next1 = prevstate.farnext() + brs.next1;
+								prevstate.next1 = 1;
 								prevstate.next2 = 0;
 								prevstate.char_num = epsilon_type::et_fmrbckrf;
 							}
@@ -20217,7 +20213,7 @@ private:
 				this->character_class.copy_to(charclass, cst.char_num);
 				return pos;
 			}
-			else if (cst.type == st_epsilon && cst.char_num != epsilon_type::et_jmpinlp)
+			else if (cst.type == st_epsilon && cst.char_num != epsilon_type::et_jmpinlp && cst.char_num != epsilon_type::et_ncgclose && cst.char_num != epsilon_type::et_rvfmrcg && cst.char_num != epsilon_type::et_mfrfmrcg)
 			{
 				pos += cst.next1;
 			}
@@ -21383,21 +21379,19 @@ std::basic_ostream<charT, ST> &operator<<(std::basic_ostream<charT, ST> &os, con
 template <class BidirectionalIterator, class Allocator = std::allocator<sub_match<BidirectionalIterator> > >
 class match_results
 {
+private:
+
+	typedef std::vector<sub_match<BidirectionalIterator>, Allocator> sub_match_array_;
+
 public:
 
 	typedef sub_match<BidirectionalIterator> value_type;
 	typedef const value_type & const_reference;
 	typedef const_reference reference;
-	typedef typename std::vector<value_type, Allocator>::const_iterator const_iterator;
+	typedef typename sub_match_array_::const_iterator const_iterator;
 	typedef const_iterator iterator;
 	typedef typename std::iterator_traits<BidirectionalIterator>::difference_type difference_type;
-
-#if defined(__cplusplus) && __cplusplus >= 201103L
-	typedef typename std::allocator_traits<Allocator>::size_type size_type;
-#else
-	typedef typename Allocator::size_type size_type;	//  TR1.
-#endif
-
+	typedef typename sub_match_array_::size_type size_type;
 	typedef Allocator allocator_type;
 	typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 	typedef std::basic_string<char_type> string_type;
@@ -21902,10 +21896,8 @@ public:	//  For debug.
 
 private:
 
-	typedef std::vector<value_type, Allocator> sub_match_array;
-
 	re_detail::ui_l32 ready_;
-	sub_match_array sub_matches_;
+	sub_match_array_ sub_matches_;
 	value_type prefix_;
 	value_type suffix_;
 	value_type unmatched_;
@@ -22001,7 +21993,7 @@ public:
 			{
 				typedef typename std::iterator_traits<BidirectionalIterator>::iterator_category ic;
 
-				if (!this->is_ricase() ? this->bmdata->do_casesensitivesearch(sstate, ic()) : this->bmdata->do_icasesearch(sstate, ic()))
+				if (this->NFA_states[0].flags == 0 ? this->bmdata->do_casesensitivesearch(sstate, ic()) : this->bmdata->do_icasesearch(sstate, ic()))
 					return results.set_match_results_bmh_();
 			}
 			else
@@ -24638,4 +24630,4 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 #undef SRELL_HAS_SSE42
 #undef SRELL_HAS_TYPE_TRAITS
 
-#endif	//  SRELL_REGEX_TEMPLATE_LIBRARY
+#endif	//  SRELL_HPP_

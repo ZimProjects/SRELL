@@ -1,3 +1,18 @@
+20260316; version 2026.01:
+  ・Versions 4.001-4.003での修正とrewinderとの相性が悪さに由来する後方参
+    照バグを修正（報告してくださったRimas Misevičius氏に感謝します）。
+
+20260316; version 2026.00:
+  ・Include guard名を変更。値にヴァージョン番号を定義。
+  ・match_results::size_typeの定義を簡略化。
+  ・/(?:|)a/ や /(?:a|)a/ のような表現で誤った最適化により落ちるバグを
+    修正。発生条件：
+      1. 非キャプチャグループの後ろに1文字以上続いている。
+      2. そのグループ内に '|' があり、それに隔てられたすべての
+         Alternativesが空、もしくはグループに後続している文字と同じ文字
+         で始まっている。
+    （報告してくださったRimas Misevičius氏に感謝します）
+
 20251227; version 4.140:
   ・GCC/Clangのubsan (undefined behaviour sanitizer) が警告を発する問題
     に対処（報告してくださったAvi Hayoun氏に感謝します）。

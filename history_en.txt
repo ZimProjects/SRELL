@@ -1,3 +1,20 @@
+20260316; version 2026.01:
+  * Fixed a backreference bug originating from the fact that the fixes in
+    versions 4.001-4.003 and the rewinder do not consider each other.
+    (Thanks to Rimas Misevičius for the report.)
+
+20260316; version 2026.00:
+  * Changed the include guard name. Its value represents the version
+    number.
+  * Simplified the definition of match_results::size_type.
+  * Fixed an optimisation bug that caused a crash when such an
+    expression as /(?:|)a/, /(?:a|)a/ was given. Conditions:
+      1. A non-capturing group is followed by at least one character,
+      2. The group contains a '|' and all Alternatives separated by it
+         are empty or begin with the same character as the one following
+         the group.
+    (Thanks to Rimas Misevičius for the report.)
+
 20251227; version 4.140:
   * Fixed several undefined behaviour problems warned by GCC/Clang's
     ubsan (undefined behaviour sanitizer). (Thanks to Avi Hayoun for the
