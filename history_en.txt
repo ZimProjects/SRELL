@@ -1,3 +1,18 @@
+20260601; version 2026.04:
+  * Implemented \A, \Z, and \z.
+  * Readjusted the conditions for using memchr variants.
+
+20260523; version 2026.03:
+  * Applied the same change as in 2026.02 to {n,m}?.
+  * Modified to prioritise memchr() over _mm_cmpestri() for char/char8_t
+    if AVX2 is available.
+  * Addressed a warning in GCC 16 for regex_error.
+
+20260502; version 2026.02:
+  * Addressed an issue that caused search with a regex containing *? or
+    +? could slow down because of an optimisation side effect.
+  * Fixed minor issues and improvements.
+
 20260316; version 2026.01:
   * Fixed a backreference bug originating from the fact that the fixes in
     versions 4.001-4.003 and the rewinder do not consider each other.
