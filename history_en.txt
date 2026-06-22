@@ -1,3 +1,11 @@
+20260614; version 2026.05:
+  * Fixed a bug where /(|\w*)+/.exec("ab") returned ["", ""] while
+    /(|\w*){1,10}/.exec("ab") returned ["ab", "ab"] correctly.
+  * Simplified several macros.
+  * Fixed a bug where several member functions of regex_token_iterator
+    were not implemented correctly.
+  * Simplified initialisation of nested capturing brackets.
+
 20260601; version 2026.04:
   * Implemented \A, \Z, and \z.
   * Readjusted the conditions for using memchr variants.
@@ -15,7 +23,7 @@
 
 20260316; version 2026.01:
   * Fixed a backreference bug originating from the fact that the fixes in
-    versions 4.001-4.003 and the rewinder do not consider each other.
+    versions 4.001-4.003 and the rewinder did not consider each other.
     (Thanks to Rimas Misevičius for the report.)
 
 20260316; version 2026.00:

@@ -1,4 +1,4 @@
-//  Generated on 2025/10/12.
+//  Generated on 2026/06/14.
 
 struct testdata
 {
@@ -193,6 +193,69 @@ testdata tests[] = {
 	STR0("ABCabcDEFdef")
 	STR0("(undefined)")
 	STR0("def")
+},
+{
+	0, "Repeat 03a: Nullable group **.",
+	"",
+	RE("(|\\w*)*"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
+},
+{
+	0, "Repeat 03b: Nullable group *+.",
+	"",
+	RE("(|\\w*)+"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
+},
+{
+	0, "Repeat 03c: Nullable group +*.",
+	"",
+	RE("(|\\w+)*"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
+},
+{
+	0, "Repeat 03d: Nullable group ++.",
+	"",
+	RE("(|\\w+)+"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
+},
+{
+	0, "Repeat 03e: Nullable group {0,m}.",
+	"",
+	RE("(|\\w*){0,10}"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
+},
+{
+	0, "Repeat 03f: Nullable group {1,m}.",
+	"",
+	RE("(|\\w*){1,10}"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
+},
+{
+	0, "Repeat 03g: Nullable group {2,m}.",
+	"",
+	RE("(|\\w*){2,10}"),
+	STR("ab"),
+	0, 2,
+	STR0("ab")
+	STR0("ab")
 },
 	//  Non-ASCII character.
 {

@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 2026.04
+**  SRELL (std::regex-like library) version 2026.05
 **
 **  Copyright (c) 2012-2026, Nozomu Katoo. All rights reserved.
 **
@@ -31,7 +31,7 @@
 */
 
 #ifndef SRELL_HPP_
-#define SRELL_HPP_ 202604
+#define SRELL_HPP_ 202605
 
 #include <climits>
 #include <cwchar>
@@ -73,11 +73,11 @@
 #if defined(__SSE4_2__)
 	#define SRELL_HAS_SSE42 1
 #elif defined(__clang__)
-	#if defined(__clang_major__) && ((__clang_major__ >= 4) || ((__clang_major__ == 3) && defined(__clang_minor__) && (__clang_minor__ >= 8)))
+	#if ((__clang_major__ + 0) >= 4) || (((__clang_major__ + 0) == 3) && ((__clang_minor__ + 0) >= 8))
 	#define SRELL_HAS_SSE42 1
 	#endif
 #elif defined(__GNUC__)
-	#if ((__GNUC__ >= 5) || ((__GNUC__ == 4) && defined(__GNUC_MINOR__) && (__GNUC_MINOR__ >= 9)))
+	#if ((__GNUC__ >= 5) || ((__GNUC__ == 4) && ((__GNUC_MINOR__ + 0) >= 9)))
 	#define SRELL_HAS_SSE42 1
 	#endif
 #elif defined(_MSC_VER) && (_MSC_VER >= 1500)
@@ -8274,11 +8274,17 @@ public:
 		}
 	}
 
-	void set_(const typename re_detail::re_submatch_type<BidirectionalIterator> &br)
+	void set_(const typename re_detail::re_submatch_type<BidirectionalIterator> &br, const BidirectionalIterator srchend)
 	{
-		this->first = br.core.open_at;
-		this->second = br.core.close_at;
 		this->matched = br.counter != 0;
+
+		if (this->matched)
+		{
+			this->first = br.core.open_at;
+			this->second = br.core.close_at;
+		}
+		else
+			this->first = this->second = srchend;
 	}
 };
 
@@ -9064,7 +9070,7 @@ public:	//  For internal.
 		sub_matches_[0].matched = true;
 
 		for (re_detail::ui_l32 i = 1; i < num_of_brackets; ++i)
-			sub_matches_[i].set_(sstate_.bracket[i]);
+			sub_matches_[i].set_(sstate_.bracket[i], sstate_.srchend);
 
 		base_ = sstate_.lblim;
 		prefix_.first = sstate_.srchbegin;
@@ -9306,7 +9312,7 @@ SRELL_NO_VCWARNING(4127)
 					if ((this->NFA_states[0].char_num & static_cast<ui_l32>(utf_traits::ecmask))
 #if defined(SRELL_HAS_SSE42)
 						&& ((simd_ac::is_ci == 0) || ((cpu_checker<int>::x86simd() & 2)
-#if !defined(_MSC_VER) || (defined(_HAS_CXX17) && _HAS_CXX17 && (!defined(_MSVC_STL_UPDATE) || (_MSVC_STL_UPDATE < 202408L)))
+#if !defined(_MSC_VER) || (((_HAS_CXX17 + 0) > 0) && (!defined(_MSVC_STL_UPDATE) || (_MSVC_STL_UPDATE < 202408L)))
 							&& (sizeof (typename bi_traits::value_type) != 2)
 #endif
 						))
@@ -9982,7 +9988,6 @@ SRELL_NO_VCWARNING_END
 
 						sstate.push_sm(inner_bracket.core);
 						sstate.push_c(inner_bracket.counter);
-						inner_bracket.core.open_at = inner_bracket.core.close_at = sstate.srchend;
 						inner_bracket.counter = 0;
 						//  ECMAScript 2025 22.2.2.3.1, NOTE 3.
 					}
@@ -10015,31 +10020,11 @@ SRELL_NO_VCWARNING_END
 					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 					submatchcore_type &brc = bracket.core;
 
-					if ((!reverse ? brc.open_at : brc.close_at) != sstate.ssc.iter)
-					{
-						sstate.ssc.state = sstate.ssc.state->next_state1;
-					}
-					else	//  0 width match, breaks from the loop.
-					{
-						if (sstate.ssc.state->next_state1->type != st_check_counter)
-						{
-							if (bracket.counter > sstate.ssc.state->quantifier.atleast)
-								goto NOT_MATCHED0;
+					if ((!reverse ? brc.open_at : brc.close_at) == sstate.ssc.iter
+							&& bracket.counter > sstate.ssc.state->quantifier.atleast)
+						goto NOT_MATCHED0;
 
-							sstate.ssc.state = sstate.ssc.state->next_state2;
-								//  Accepts 0 width match and exits.
-						}
-						else	//  A pair with check_counter.
-						{
-							const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
-
-							if (counter > sstate.ssc.state->quantifier.atleast)
-								goto NOT_MATCHED0;	//  Takes a captured string in the previous loop.
-
-							sstate.ssc.state = sstate.ssc.state->next_state1;
-								//  Accepts 0 width match and continues.
-						}
-					}
+					sstate.ssc.state = sstate.ssc.state->next_state1;
 					(!reverse ? brc.close_at : brc.open_at) = sstate.ssc.iter;
 				}
 				continue;
@@ -10060,7 +10045,6 @@ SRELL_NO_VCWARNING_END
 
 						sstate.push_sm(inner_bracket.core);
 						sstate.push_c(inner_bracket.counter);
-						inner_bracket.core.open_at = inner_bracket.core.close_at = sstate.srchend;
 						inner_bracket.counter = 0;
 					}
 					sstate.push_bt(sstate.ssc);
@@ -11634,12 +11618,17 @@ public:
 				this->suffix_ = that.suffix_;
 				this->N_ = that.N_;
 				this->subs_ = that.subs_;
+
+				if (that.result_ == &that.suffix_)
+					result_ = &suffix_;
+				else
+					result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
 			}
 		}
 		return *this;
 	}
 
-	bool operator==(const regex_token_iterator &right)
+	bool operator==(const regex_token_iterator &right) const
 	{
 		if (right.result_ == NULL || this->result_ == NULL)
 			return this->result_ == right.result_;
@@ -11652,17 +11641,17 @@ public:
 			&& this->subs_ == right.subs_;
 	}
 
-	bool operator!=(const regex_token_iterator &right)
+	bool operator!=(const regex_token_iterator &right) const
 	{
 		return !(*this == right);
 	}
 
-	const value_type &operator*()
+	const value_type &operator*() const
 	{
 		return *result_;
 	}
 
-	const value_type *operator->()
+	const value_type *operator->() const
 	{
 		return result_;
 	}
