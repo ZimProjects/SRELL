@@ -1,6 +1,6 @@
 //
 //  Conformance test program for SRELL.
-//  Version 3.007 (2025/09/18)
+//  Version 3.009 (2026/08/16)
 //
 //  This needs to be compiled and run on a system that supports
 //  an ISO-646/US-ASCII compatible encoding.
@@ -14,6 +14,13 @@
 #ifdef DUP_CHECK
 #include <map>
 #endif
+
+#define SRELL_NO_THROW
+
+#include "../srell.hpp"
+
+namespace srell_conftest
+{
 
 #define SRELL_HAS_U8TYPE
 #define SRELL_HAS_U1632TYPE
@@ -57,7 +64,6 @@ typedef unsigned char u8char_type;
 #endif
 #endif
 
-#include "../srell.hpp"
 #include "conftest-data.h"
 
 namespace constants
@@ -523,13 +529,40 @@ bool conf_test(
 		tried[comb] = true;
 #endif
 
-	try
 	{
+		std::fprintf(stdout, "\t/%s/%s.%sch(\"%s\");", expfc.c_str(), flagstr2.c_str(), search ? "sear" : "mat", strfc.c_str());
+
+		if (offset != 0 && errortest == 0)
+			std::fprintf(stdout, " offset:%u\n", offset);
+		else
+			std::fprintf(stdout, "\n");
+
+		if (max > 1)
+			std::fprintf(stdout, "\t%u times\n", max);
+
 		re.assign(exp, so);
 
-		if (errortest)	//  Reaching here means that an exception has not been thrown.
+		if (re.ecode())
 		{
-			std::fprintf(stdout, "\t/%s/\nResult: Failed (expected %u \"%s\", but no error thrown).\n\n", expfc.c_str(), offset, srell::regex_error(offset).what());
+			if (errortest)
+			{
+				if (re.ecode() == static_cast<srell::regex_constants::error_type>(offset))
+				{
+					std::fprintf(stdout, "Result: OK.\n\n");
+					return true;
+				}
+
+				std::fprintf(stdout, "Result: Failed... (expected: %u \"%s\")\n\n", offset, srell::regex_error(offset).what());
+			}
+			else
+				std::fprintf(stdout, "Result: Failed.\n\n");
+
+			return false;
+		}
+
+		if (errortest)
+		{
+			std::fprintf(stdout, "Result: Failed (expected %u \"%s\", but no error thrown).\n\n", offset, srell::regex_error(offset).what());
 			return false;
 		}
 
@@ -548,16 +581,6 @@ bool conf_test(
 		{
 			b = srell::regex_match(begin, end, mr, re, mf);
 		}
-
-		std::fprintf(stdout, "\t/%s/%s.%sch(\"%s\");", expfc.c_str(), flagstr2.c_str(), search ? "sear" : "mat", strfc.c_str());
-
-		if (offset != 0)
-			std::fprintf(stdout, " offset:%u\n", offset);
-		else
-			std::fprintf(stdout, "\n");
-
-		if (max > 1)
-			std::fprintf(stdout, "\t%u times\n", max);
 
 		std::fprintf(stdout, "\t%s.\n", b ? "Found" : "Not Found");
 
@@ -648,28 +671,6 @@ bool conf_test(
 
 		return num_of_failures == 0;
 	}
-	catch (const srell::regex_error &e)
-	{
-		std::fprintf(stdout, "Error (regex_error): %d \"%s\"\n\t/%s/%s;\n", e.code(), e.what(), expfc.c_str(), flagstr2.c_str());
-
-		if (errortest)
-		{
-			if (e.code() == static_cast<srell::regex_constants::error_type>(offset))
-			{
-				std::fprintf(stdout, "Result: OK.\n\n");
-				return true;
-			}
-
-			std::fprintf(stdout, "Result: Failed... (expected: %u \"%s\")\n\n", offset, srell::regex_error(offset).what());
-		}
-		else
-			std::fprintf(stdout, "Result: Failed.\n\n");
-	}
-	catch (const std::exception &e)
-	{
-		std::fprintf(stdout, "Error (std::exception): \"%s\"\nResult: Failed.\n\n", e.what());
-	}
-	return false;
 }
 
 bool conf_test(
@@ -721,15 +722,19 @@ bool conf_test(
 	}
 }
 
+}	//  namespace srell_conftest
+
 struct options
 {
-	constants::utf_type utype;
+	srell_conftest::constants::utf_type utype;
 	int errorno;
 
 	options(const int argc, const char *const *const argv)
-		: utype(constants::unknown)
+		: utype(srell_conftest::constants::unknown)
 		, errorno(0)
 	{
+		using namespace srell_conftest;
+
 		if (argc >= 2)
 		{
 			const std::size_t len = std::strlen(argv[1]);
@@ -814,6 +819,8 @@ struct options
 
 int main(const int argc, const char *const argv[])
 {
+	using namespace srell_conftest;
+
 	options opts(argc, argv);
 //	const unsigned int count = 100000;
 	unsigned int num_of_tests = 0;
@@ -840,12 +847,21 @@ int main(const int argc, const char *const argv[])
 			break;
 
 		std::fputs(t->title, stdout);
-		if (t->type == 8 && !is_utf8)
+
+		if ((t->type & 8) && !is_utf8)
 		{
 			std::fputs("[Info] This test is specific to UTF-8. Skipped...\n\n", stdout);
 			++skipped;
 			continue;
 		}
+#if defined(SRELL_LINEAR)
+		if (t->type & 2)
+		{
+			std::fputs("[Info] This test requires a backtracking engine. Skipped...\n\n", stdout);
+			++skipped;
+			continue;
+		}
+#endif
 
 		if (t->re)
 			re = t->re;

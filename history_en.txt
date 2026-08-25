@@ -1,3 +1,9 @@
+20260820; version 2026.06:
+  * Modified the pattern compiler not to check beyond a repeated group
+    when deciding a starting character set for matching.
+    Example: For /(A)B/, position B is checked whereas for /(A)+B/, the
+    check stops at A.
+
 20260614; version 2026.05:
   * Fixed a bug where /(|\w*)+/.exec("ab") returned ["", ""] while
     /(|\w*){1,10}/.exec("ab") returned ["ab", "ab"] correctly.
